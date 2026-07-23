@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-background: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eeeef0;
+  --color-text: #0e0e11;
+  --color-text-secondary: #5c5c6a;
+  --color-border: #dcdce0;
+  --color-primary: #c8102e;
+  --color-primary-pressed: #a50d25;
+  --color-primary-soft: #fff1f3;
+}
+
+@layer base {
+  html {
+    @apply scroll-smooth antialiased;
+  }
+
+  body {
+    @apply bg-background font-sans text-ink;
+  }
+}
+
+@layer components {
+  .page-container {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .section-title {
+    @apply font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl;
+  }
+}

@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: autohub
+          POSTGRES_PASSWORD: autohub
+          POSTGRES_DB: autohub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U autohub -d autohub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://autohub:autohub@localhost:5432/autohub?schema=public
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm db:generate
+      - run: pnpm --filter @autohub/database exec prisma migrate deploy
+      - run: pnpm --filter @autohub/types build
+      - run: pnpm --filter @autohub/utils build
+      - run: pnpm --filter @autohub/config build
+      - run: pnpm --filter @autohub/ui build
+      - run: pnpm --filter @autohub/database build
+      - run: pnpm --filter @autohub/api build
+      - run: pnpm --filter @autohub/web build
+      - run: pnpm --filter @autohub/admin build

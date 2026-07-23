@@ -1,0 +1,1151 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum ListingCategoryCode {
+  CAR
+  PLATE
+  MOTORCYCLE
+  TRUCK
+  HEAVY_EQUIPMENT
+  PARTS
+  RENTAL
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  RESERVED
+  SOLD
+  ARCHIVED
+}
+
+enum LanguageCode {
+  ar
+  ku
+  en
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  MEDIA_360
+  DOCUMENT
+}
+
+enum MediaVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum MediaAssetStatus {
+  PENDING_UPLOAD
+  PROCESSING
+  READY
+  FAILED
+  DELETED
+}
+
+enum MediaVariantKind {
+  ORIGINAL
+  THUMBNAIL
+  SMALL
+  MEDIUM
+  LARGE
+  WEBP
+  POSTER
+}
+
+enum VirusScanStatus {
+  PENDING
+  CLEAN
+  INFECTED
+  SKIPPED
+  FAILED
+}
+
+enum PlateValidationStrictness {
+  SOFT
+  STRICT
+}
+
+enum UserRole {
+  USER
+  DEALER
+  MODERATOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AuthAuditAction {
+  LOGIN
+  LOGOUT
+  TOKEN_REFRESH
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum SellerType {
+  INDIVIDUAL
+  DEALER
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  IN_ESCROW
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+enum EscrowStatus {
+  HELD
+  RELEASED
+  REFUNDED
+  DISPUTED
+}
+
+enum AuctionStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+// ─── Currency (multi-country ready) ──────────────────────────────────────────
+
+model Currency {
+  id            String   @id @default(cuid())
+  code          String   @unique // IQD, USD, EUR, …
+  nameEn        String
+  nameAr        String
+  nameKu        String?
+  symbol        String
+  decimalPlaces Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdById   String?
+  updatedById   String?
+  deletedAt     DateTime?
+
+  createdBy User? @relation("CurrencyCreatedBy", fields: [createdById], references: [id])
+  updatedBy User? @relation("CurrencyUpdatedBy", fields: [updatedById], references: [id])
+
+  countriesAsDefault Country[] @relation("CountryDefaultCurrency")
+  listingsPrimary    Listing[] @relation("ListingPrimaryCurrency")
+  listingsSecondary  Listing[] @relation("ListingSecondaryCurrency")
+  orders             Order[]
+  payments           Payment[]
+  auctionStart       Auction[] @relation("AuctionStartCurrency")
+  plans              SubscriptionPlan[]
+}
+
+// ─── Catalog / geo ───────────────────────────────────────────────────────────
+
+model Category {
+  id          String              @id @default(cuid())
+  code        ListingCategoryCode @unique
+  slug        String              @unique
+  nameEn      String
+  nameAr      String
+  nameKu      String?
+  sortOrder   Int                 @default(0)
+  active      Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+
+  createdBy User?     @relation("CategoryCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?     @relation("CategoryUpdatedBy", fields: [updatedById], references: [id])
+  listings  Listing[]
+
+  @@index([active, sortOrder])
+}
+
+model Country {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  nameEn            String
+  nameAr            String
+  nameKu            String?
+  defaultCurrencyId String
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdById       String?
+  updatedById       String?
+  deletedAt         DateTime?
+
+  defaultCurrency Currency      @relation("CountryDefaultCurrency", fields: [defaultCurrencyId], references: [id])
+  createdBy       User?         @relation("CountryCreatedBy", fields: [createdById], references: [id])
+  updatedBy       User?         @relation("CountryUpdatedBy", fields: [updatedById], references: [id])
+  governorates    Governorate[]
+  listings        Listing[]
+}
+
+model Governorate {
+  id          String   @id @default(cuid())
+  countryId   String
+  code        String
+  nameEn      String
+  nameAr      String
+  nameKu      String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+
+  country      Country       @relation(fields: [countryId], references: [id])
+  createdBy    User?         @relation("GovernorateCreatedBy", fields: [createdById], references: [id])
+  updatedBy    User?         @relation("GovernorateUpdatedBy", fields: [updatedById], references: [id])
+  cities       City[]
+  plateFormats PlateFormat[]
+
+  @@unique([countryId, code])
+  @@index([countryId])
+}
+
+model City {
+  id            String   @id @default(cuid())
+  governorateId String
+  slug          String
+  nameEn        String
+  nameAr        String
+  nameKu        String?
+  isLaunchCity  Boolean  @default(false)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdById   String?
+  updatedById   String?
+  deletedAt     DateTime?
+
+  governorate Governorate @relation(fields: [governorateId], references: [id])
+  createdBy   User?       @relation("CityCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?       @relation("CityUpdatedBy", fields: [updatedById], references: [id])
+  listings    Listing[]
+  users       User[]
+
+  @@unique([governorateId, slug])
+  @@index([governorateId])
+}
+
+// ─── Vehicle specification reference tables ──────────────────────────────────
+
+model FuelType {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  nameEn      String
+  nameAr      String
+  nameKu      String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+
+  createdBy   User?                @relation("FuelTypeCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?                @relation("FuelTypeUpdatedBy", fields: [updatedById], references: [id])
+  cars        CarDetails[]
+  motorcycles MotorcycleDetails[]
+  trucks      TruckDetails[]
+}
+
+model TransmissionType {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  nameEn      String
+  nameAr      String
+  nameKu      String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+
+  createdBy User?        @relation("TransmissionCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?        @relation("TransmissionUpdatedBy", fields: [updatedById], references: [id])
+  cars      CarDetails[]
+  trucks    TruckDetails[]
+}
+
+model DriveType {
+  id          String   @id @default(cuid())
+  code        String   @unique // FWD, RWD, AWD, 4WD
+  nameEn      String
+  nameAr      String
+  nameKu      String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+
+  createdBy User?        @relation("DriveTypeCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?        @relation("DriveTypeUpdatedBy", fields: [updatedById], references: [id])
+  cars      CarDetails[]
+}
+
+model BodyType {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  nameEn      String
+  nameAr      String
+  nameKu      String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+
+  createdBy User?        @relation("BodyTypeCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?        @relation("BodyTypeUpdatedBy", fields: [updatedById], references: [id])
+  cars      CarDetails[]
+}
+
+model Color {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  nameEn      String
+  nameAr      String
+  nameKu      String?
+  hex         String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+
+  createdBy   User?                @relation("ColorCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?                @relation("ColorUpdatedBy", fields: [updatedById], references: [id])
+  cars        CarDetails[]
+  motorcycles MotorcycleDetails[]
+  trucks      TruckDetails[]
+}
+
+model EngineType {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  nameEn      String
+  nameAr      String
+  nameKu      String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+
+  createdBy User?        @relation("EngineTypeCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?        @relation("EngineTypeUpdatedBy", fields: [updatedById], references: [id])
+  cars      CarDetails[]
+}
+
+model ConditionType {
+  id          String   @id @default(cuid())
+  code        String   @unique // NEW, USED, CERTIFIED
+  nameEn      String
+  nameAr      String
+  nameKu      String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+
+  createdBy User?     @relation("ConditionCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?     @relation("ConditionUpdatedBy", fields: [updatedById], references: [id])
+  listings  Listing[]
+}
+
+model VehicleBrand {
+  id          String              @id @default(cuid())
+  slug        String              @unique
+  nameEn      String
+  nameAr      String
+  nameKu      String?
+  category    ListingCategoryCode
+  active      Boolean             @default(true)
+  sortOrder   Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+
+  createdBy User?          @relation("BrandCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?          @relation("BrandUpdatedBy", fields: [updatedById], references: [id])
+  models    VehicleModel[]
+  cars      CarDetails[]
+  motorcycles MotorcycleDetails[]
+  trucks    TruckDetails[]
+
+  @@index([category, active])
+  @@index([slug])
+}
+
+model VehicleModel {
+  id          String   @id @default(cuid())
+  brandId     String
+  slug        String
+  nameEn      String
+  nameAr      String
+  nameKu      String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+
+  brand       VehicleBrand         @relation(fields: [brandId], references: [id])
+  createdBy   User?                @relation("ModelCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?                @relation("ModelUpdatedBy", fields: [updatedById], references: [id])
+  cars        CarDetails[]
+  motorcycles MotorcycleDetails[]
+  trucks      TruckDetails[]
+
+  @@unique([brandId, slug])
+  @@index([brandId])
+  @@index([slug])
+}
+
+// ─── Identity ────────────────────────────────────────────────────────────────
+
+model User {
+  id                String       @id @default(cuid())
+  firebaseUid       String?      @unique
+  phone             String?      @unique
+  email             String?      @unique
+  displayName       String?
+  role              UserRole     @default(USER)
+  status            UserStatus   @default(ACTIVE)
+  preferredLanguage LanguageCode @default(ar)
+  cityId            String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  createdById       String?
+  updatedById       String?
+  deletedAt         DateTime?
+
+  city              City?              @relation(fields: [cityId], references: [id])
+  createdBy         User?              @relation("UserCreatedBy", fields: [createdById], references: [id])
+  updatedBy         User?              @relation("UserUpdatedBy", fields: [updatedById], references: [id])
+  createdUsers      User[]             @relation("UserCreatedBy")
+  updatedUsers      User[]             @relation("UserUpdatedBy")
+  sellerProfile     SellerProfile?
+  listings          Listing[]          @relation("ListingSeller")
+  dealerMemberships DealerMember[]
+  auctionBids       AuctionBid[]
+  ordersAsBuyer     Order[]            @relation("BuyerOrders")
+  subscriptions     Subscription[]
+  refreshTokens     RefreshToken[]
+  authAuditLogs     AuthAuditLog[]
+  savedSearches     SavedSearch[]
+  searchEvents      SearchEvent[]
+  mediaAssets       MediaAsset[]
+
+  // Audit reverse relations
+  currenciesCreated      Currency[]          @relation("CurrencyCreatedBy")
+  currenciesUpdated      Currency[]          @relation("CurrencyUpdatedBy")
+  categoriesCreated      Category[]          @relation("CategoryCreatedBy")
+  categoriesUpdated      Category[]          @relation("CategoryUpdatedBy")
+  countriesCreated       Country[]           @relation("CountryCreatedBy")
+  countriesUpdated       Country[]           @relation("CountryUpdatedBy")
+  governoratesCreated    Governorate[]       @relation("GovernorateCreatedBy")
+  governoratesUpdated    Governorate[]       @relation("GovernorateUpdatedBy")
+  citiesCreated          City[]              @relation("CityCreatedBy")
+  citiesUpdated          City[]              @relation("CityUpdatedBy")
+  fuelTypesCreated       FuelType[]          @relation("FuelTypeCreatedBy")
+  fuelTypesUpdated       FuelType[]          @relation("FuelTypeUpdatedBy")
+  transmissionsCreated   TransmissionType[]  @relation("TransmissionCreatedBy")
+  transmissionsUpdated   TransmissionType[]  @relation("TransmissionUpdatedBy")
+  driveTypesCreated      DriveType[]         @relation("DriveTypeCreatedBy")
+  driveTypesUpdated      DriveType[]         @relation("DriveTypeUpdatedBy")
+  bodyTypesCreated       BodyType[]          @relation("BodyTypeCreatedBy")
+  bodyTypesUpdated       BodyType[]          @relation("BodyTypeUpdatedBy")
+  colorsCreated          Color[]             @relation("ColorCreatedBy")
+  colorsUpdated          Color[]             @relation("ColorUpdatedBy")
+  engineTypesCreated     EngineType[]        @relation("EngineTypeCreatedBy")
+  engineTypesUpdated     EngineType[]        @relation("EngineTypeUpdatedBy")
+  conditionsCreated      ConditionType[]     @relation("ConditionCreatedBy")
+  conditionsUpdated      ConditionType[]     @relation("ConditionUpdatedBy")
+  brandsCreated          VehicleBrand[]      @relation("BrandCreatedBy")
+  brandsUpdated          VehicleBrand[]      @relation("BrandUpdatedBy")
+  modelsCreated          VehicleModel[]      @relation("ModelCreatedBy")
+  modelsUpdated          VehicleModel[]      @relation("ModelUpdatedBy")
+  listingsCreated        Listing[]           @relation("ListingCreatedBy")
+  listingsUpdated        Listing[]           @relation("ListingUpdatedBy")
+  mediaCreated           ListingMedia[]      @relation("MediaCreatedBy")
+  mediaUpdated           ListingMedia[]      @relation("MediaUpdatedBy")
+  translationsCreated    ListingTranslation[] @relation("TranslationCreatedBy")
+  translationsUpdated    ListingTranslation[] @relation("TranslationUpdatedBy")
+  plateFormatsCreated    PlateFormat[]       @relation("PlateFormatCreatedBy")
+  plateFormatsUpdated    PlateFormat[]       @relation("PlateFormatUpdatedBy")
+  mediaAssetsCreated     MediaAsset[]        @relation("MediaAssetCreatedBy")
+  mediaAssetsUpdated     MediaAsset[]        @relation("MediaAssetUpdatedBy")
+
+  @@index([role, status])
+}
+
+model RefreshToken {
+  id           String    @id @default(cuid())
+  userId       String
+  tokenHash    String    @unique
+  familyId     String
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  userAgent    String?
+  ipAddress    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+  @@index([expiresAt])
+}
+
+model AuthAuditLog {
+  id        String          @id @default(cuid())
+  userId    String?
+  action    AuthAuditAction
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime        @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+// ─── Search & discovery ──────────────────────────────────────────────────────
+
+model SavedSearch {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String?
+  query     String?
+  filters   Json
+  sort      String   @default("NEWEST")
+  notify    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, deletedAt])
+  @@index([createdAt])
+}
+
+model SearchEvent {
+  id            String   @id @default(cuid())
+  userId        String?
+  sessionId     String?
+  keyword       String?
+  categoryId    String?
+  brandId       String?
+  modelId       String?
+  cityId        String?
+  governorateId String?
+  filters       Json?
+  resultCount   Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([keyword, createdAt])
+  @@index([brandId, createdAt])
+  @@index([modelId, createdAt])
+  @@index([categoryId, createdAt])
+}
+
+model PopularKeyword {
+  id        String   @id @default(cuid())
+  keyword   String   @unique
+  hitCount  Int      @default(0)
+  lastHitAt DateTime @default(now())
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([hitCount(sort: Desc)])
+  @@index([active, hitCount])
+}
+
+// ─── Media platform (module-agnostic) ────────────────────────────────────────
+
+model MediaAsset {
+  id              String            @id @default(cuid())
+  ownerId         String?
+  mediaType       MediaType
+  visibility      MediaVisibility   @default(PRIVATE)
+  status          MediaAssetStatus  @default(PENDING_UPLOAD)
+  originalKey     String
+  filename        String?
+  mimeType        String
+  byteSize        Int               @default(0)
+  checksumSha256  String?
+  width           Int?
+  height          Int?
+  durationSeconds Float?
+  ownerModule     String?
+  ownerEntityId   String?
+  virusScanStatus VirusScanStatus   @default(PENDING)
+  processingError String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  createdById     String?
+  updatedById     String?
+  deletedAt       DateTime?
+
+  owner     User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  createdBy User?          @relation("MediaAssetCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?          @relation("MediaAssetUpdatedBy", fields: [updatedById], references: [id])
+  variants  MediaVariant[]
+
+  @@index([ownerId, deletedAt])
+  @@index([status, mediaType])
+  @@index([ownerModule, ownerEntityId])
+  @@index([originalKey])
+  @@index([visibility, status])
+}
+
+model MediaVariant {
+  id           String           @id @default(cuid())
+  mediaAssetId String
+  kind         MediaVariantKind
+  r2Key        String
+  mimeType     String
+  width        Int?
+  height       Int?
+  byteSize     Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  deletedAt    DateTime?
+
+  mediaAsset MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+
+  @@unique([mediaAssetId, kind])
+  @@index([mediaAssetId, deletedAt])
+}
+
+model SellerProfile {
+  id          String     @id @default(cuid())
+  userId      String     @unique
+  type        SellerType @default(INDIVIDUAL)
+  displayName String
+  bio         String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Listing hub ─────────────────────────────────────────────────────────────
+
+model Listing {
+  id                   String              @id @default(cuid())
+  sellerId             String?
+  categoryId           String
+  categoryCode         ListingCategoryCode
+  status               ListingStatus       @default(DRAFT)
+  countryId            String
+  cityId               String
+  conditionTypeId      String?
+
+  // Dual price via currency FKs (supports any currencies, not hard-coded)
+  primaryPrice         Decimal?            @db.Decimal(18, 2)
+  primaryCurrencyId    String?
+  secondaryPrice       Decimal?            @db.Decimal(18, 2)
+  secondaryCurrencyId  String?
+  fxRateSnapshot       Decimal?            @db.Decimal(18, 8)
+
+  // SEO
+  slug                 String              @unique
+  metaTitle            String?
+  metaDescription      String?
+
+  // Stats
+  viewsCount           Int                 @default(0)
+  favoritesCount       Int                 @default(0)
+  sharesCount          Int                 @default(0)
+  phoneClicks          Int                 @default(0)
+  whatsappClicks       Int                 @default(0)
+
+  // Verification / promotion
+  isFeatured           Boolean             @default(false)
+  isVerified           Boolean             @default(false)
+  verificationStatus   VerificationStatus  @default(UNVERIFIED)
+  featuredUntil        DateTime?
+
+  publishedAt          DateTime?
+  soldAt               DateTime?
+  expiresAt            DateTime?
+
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  createdById          String?
+  updatedById          String?
+  deletedAt            DateTime?
+
+  seller            User?     @relation("ListingSeller", fields: [sellerId], references: [id])
+  category          Category  @relation(fields: [categoryId], references: [id])
+  country           Country   @relation(fields: [countryId], references: [id])
+  city              City      @relation(fields: [cityId], references: [id])
+  conditionType     ConditionType? @relation(fields: [conditionTypeId], references: [id])
+  primaryCurrency   Currency? @relation("ListingPrimaryCurrency", fields: [primaryCurrencyId], references: [id])
+  secondaryCurrency Currency? @relation("ListingSecondaryCurrency", fields: [secondaryCurrencyId], references: [id])
+  createdBy         User?     @relation("ListingCreatedBy", fields: [createdById], references: [id])
+  updatedBy         User?     @relation("ListingUpdatedBy", fields: [updatedById], references: [id])
+
+  translations ListingTranslation[]
+  media        ListingMedia[]
+
+  carDetails            CarDetails?
+  motorcycleDetails     MotorcycleDetails?
+  truckDetails          TruckDetails?
+  heavyEquipmentDetails HeavyEquipmentDetails?
+  plateDetails          PlateDetails?
+
+  auction    Auction?
+  orderItems OrderItem[]
+
+  @@index([status, categoryCode, cityId])
+  @@index([categoryId, status])
+  @@index([cityId, status])
+  @@index([primaryPrice])
+  @@index([secondaryPrice])
+  @@index([status])
+  @@index([isFeatured, status])
+  @@index([isVerified, status])
+  @@index([viewsCount])
+  @@index([conditionTypeId, status])
+  @@index([status, isFeatured, publishedAt])
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([createdAt])
+  @@index([publishedAt(sort: Desc)])
+  @@index([sellerId, status])
+  @@index([deletedAt])
+}
+
+model ListingTranslation {
+  id          String       @id @default(cuid())
+  listingId   String
+  language    LanguageCode
+  title       String
+  description String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("TranslationCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?   @relation("TranslationUpdatedBy", fields: [updatedById], references: [id])
+
+  @@unique([listingId, language])
+  @@index([title])
+}
+
+model ListingMedia {
+  id           String    @id @default(cuid())
+  listingId    String
+  r2Key        String
+  thumbnailKey String?
+  mediaType    MediaType @default(IMAGE)
+  mimeType     String?
+  byteSize     Int?
+  width        Int?
+  height       Int?
+  sortOrder    Int       @default(0)
+  confirmed    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  createdById  String?
+  updatedById  String?
+  deletedAt    DateTime?
+
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("MediaCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?   @relation("MediaUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([listingId, sortOrder])
+  @@index([listingId, deletedAt])
+  @@index([mediaType])
+}
+
+// ─── Category detail tables ──────────────────────────────────────────────────
+
+model CarDetails {
+  listingId          String  @id
+  brandId            String?
+  modelId            String?
+  year               Int
+  mileageKm          Int?
+  fuelTypeId         String?
+  transmissionTypeId String?
+  driveTypeId        String?
+  bodyTypeId         String?
+  colorId            String?
+  engineTypeId       String?
+  engineSizeCc       Int?
+  doors              Int?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+
+  listing          Listing           @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  brand            VehicleBrand?     @relation(fields: [brandId], references: [id])
+  model            VehicleModel?     @relation(fields: [modelId], references: [id])
+  fuelType         FuelType?         @relation(fields: [fuelTypeId], references: [id])
+  transmissionType TransmissionType? @relation(fields: [transmissionTypeId], references: [id])
+  driveType        DriveType?        @relation(fields: [driveTypeId], references: [id])
+  bodyType         BodyType?         @relation(fields: [bodyTypeId], references: [id])
+  color            Color?            @relation(fields: [colorId], references: [id])
+  engineType       EngineType?       @relation(fields: [engineTypeId], references: [id])
+
+  @@index([brandId])
+  @@index([modelId])
+  @@index([year])
+  @@index([mileageKm])
+  @@index([fuelTypeId])
+  @@index([transmissionTypeId])
+  @@index([bodyTypeId])
+  @@index([driveTypeId])
+  @@index([year, brandId])
+}
+
+model MotorcycleDetails {
+  listingId    String    @id
+  brandId      String?
+  modelId      String?
+  year         Int
+  mileageKm    Int?
+  engineSizeCc Int?
+  fuelTypeId   String?
+  colorId      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  listing  Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  brand    VehicleBrand? @relation(fields: [brandId], references: [id])
+  model    VehicleModel? @relation(fields: [modelId], references: [id])
+  fuelType FuelType?     @relation(fields: [fuelTypeId], references: [id])
+  color    Color?        @relation(fields: [colorId], references: [id])
+
+  @@index([brandId])
+  @@index([modelId])
+}
+
+model TruckDetails {
+  listingId          String    @id
+  brandId            String?
+  modelId            String?
+  year               Int
+  mileageKm          Int?
+  fuelTypeId         String?
+  transmissionTypeId String?
+  colorId            String?
+  axleCount          Int?
+  payloadKg          Int?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  listing          Listing           @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  brand            VehicleBrand?     @relation(fields: [brandId], references: [id])
+  model            VehicleModel?     @relation(fields: [modelId], references: [id])
+  fuelType         FuelType?         @relation(fields: [fuelTypeId], references: [id])
+  transmissionType TransmissionType? @relation(fields: [transmissionTypeId], references: [id])
+  color            Color?            @relation(fields: [colorId], references: [id])
+
+  @@index([brandId])
+  @@index([modelId])
+}
+
+model HeavyEquipmentDetails {
+  listingId      String   @id
+  equipmentType  String
+  makeName       String?
+  modelName      String?
+  year           Int?
+  hoursUsed      Int?
+  conditionNotes String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model PlateFormat {
+  id            String                    @id @default(cuid())
+  code          String                    @unique
+  governorateId String?
+  nameEn        String
+  nameAr        String
+  nameKu        String?
+  mask          String
+  regex         String
+  example       String
+  strictness    PlateValidationStrictness @default(SOFT)
+  active        Boolean                   @default(true)
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  createdById   String?
+  updatedById   String?
+  deletedAt     DateTime?
+
+  governorate Governorate?   @relation(fields: [governorateId], references: [id])
+  createdBy   User?          @relation("PlateFormatCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?          @relation("PlateFormatUpdatedBy", fields: [updatedById], references: [id])
+  plates      PlateDetails[]
+}
+
+model PlateDetails {
+  listingId       String   @id
+  formatCode      String
+  plateDisplay    String
+  plateNormalized String
+  series          String?
+  number          String?
+  regionCode      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  listing Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  format  PlateFormat @relation(fields: [formatCode], references: [code])
+
+  @@index([formatCode, plateNormalized])
+}
+
+// ─── Future: dealers ─────────────────────────────────────────────────────────
+
+model DealerOrganization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+
+  members DealerMember[]
+}
+
+model DealerMember {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  role           String   @default("MEMBER")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  organization DealerOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+}
+
+// ─── Future: auctions ────────────────────────────────────────────────────────
+
+model Auction {
+  id              String        @id @default(cuid())
+  listingId       String        @unique
+  status          AuctionStatus @default(SCHEDULED)
+  startAt         DateTime
+  endAt           DateTime
+  startPrice      Decimal?      @db.Decimal(18, 2)
+  startCurrencyId String?
+  reservePrice    Decimal?      @db.Decimal(18, 2)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  listing       Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  startCurrency Currency?    @relation("AuctionStartCurrency", fields: [startCurrencyId], references: [id])
+  bids          AuctionBid[]
+}
+
+model AuctionBid {
+  id        String   @id @default(cuid())
+  auctionId String
+  bidderId  String
+  amount    Decimal  @db.Decimal(18, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  bidder  User    @relation(fields: [bidderId], references: [id])
+
+  @@index([auctionId, createdAt])
+}
+
+// ─── Future: payments ────────────────────────────────────────────────────────
+
+model Order {
+  id         String      @id @default(cuid())
+  buyerId    String
+  status     OrderStatus @default(PENDING)
+  currencyId String
+  total      Decimal?    @db.Decimal(18, 2)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
+
+  buyer    User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  currency Currency    @relation(fields: [currencyId], references: [id])
+  items    OrderItem[]
+  payments Payment[]
+  escrow   Escrow?
+
+  @@index([buyerId, status])
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  listingId String
+  price     Decimal? @db.Decimal(18, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  orderId     String
+  currencyId  String
+  provider    String
+  providerRef String?
+  status      PaymentStatus @default(PENDING)
+  amount      Decimal?      @db.Decimal(18, 2)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  currency Currency @relation(fields: [currencyId], references: [id])
+}
+
+model Escrow {
+  id         String       @id @default(cuid())
+  orderId    String       @unique
+  status     EscrowStatus @default(HELD)
+  heldAt     DateTime     @default(now())
+  releasedAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  deletedAt  DateTime?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model SubscriptionPlan {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  nameEn       String
+  nameAr       String
+  currencyId   String
+  price        Decimal? @db.Decimal(18, 2)
+  intervalDays Int
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  currency      Currency       @relation(fields: [currencyId], references: [id])
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id        String             @id @default(cuid())
+  userId    String
+  planId    String
+  status    SubscriptionStatus @default(ACTIVE)
+  startsAt  DateTime           @default(now())
+  endsAt    DateTime?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  deletedAt DateTime?
+
+  user User             @relation(fields: [userId], references: [id])
+  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([userId, status])
+}
