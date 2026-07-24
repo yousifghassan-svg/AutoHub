@@ -1,4 +1,4 @@
-# Media Platform Architecture (Sprint 6)
+# Media Platform Architecture (Sprint 6 + Sprint 17)
 
 ## Independence
 
@@ -8,6 +8,15 @@
 - `ownerEntityId` (string FK-like reference in the owning module)
 
 Listings’ existing `ListingMedia` remains for listing-specific gallery rows; the platform service is the reusable upload/processing layer.
+
+### Sprint 17 bridge
+
+- `ListingMedia.mediaAssetId` optionally links a gallery row to a `MediaAsset`
+- Primary image = `sortOrder === 0` (no `isPrimary` column)
+- `MediaAsset.blurDataUrl` — tiny JPEG data URL from image processing
+- `MediaAsset.documentPurpose` — `REGISTRATION | INSPECTION | OWNERSHIP | OTHER`
+- Soft-delete keeps R2 objects for 72h so `POST /media/:id/restore` works; cleanup job reaps after retention
+- Admin library: `GET /v1/admin/media` (filters + storage usage); moderators included via `isMediaAdmin`
 
 ## Flow
 
@@ -36,7 +45,7 @@ Alternate: `POST /media/upload` streams multipart through the API (direct upload
 
 `R2StorageService`:
 
-- `putObject` / `deleteObject` / `getObjectBuffer`
+- `putObject` / `deleteObject` / `copyObject` / `getObjectBuffer`
 - `createPresignedUploadUrl` / `createPresignedDownloadUrl`
 - `getPublicUrl` for `PUBLIC` assets
 
@@ -45,15 +54,22 @@ Alternate: `POST /media/upload` streams multipart through the API (direct upload
 | Control | Implementation |
 | --- | --- |
 | AuthZ | JWT + `MEDIA_UPLOAD` / `MEDIA_READ` / `MEDIA_DELETE` |
-| Ownership | Owner or ADMIN/SUPER_ADMIN |
+| Ownership | Owner or ADMIN / SUPER_ADMIN / MODERATOR (`isMediaAdmin`) |
+| Admin library | `admin:access` + `media:read` / `media:delete` |
 | MIME allow-list | Per media type |
 | Max size | Per media type |
 | Rate limit | `@Throttle` on mutating routes |
-| Virus scan | `VIRUS_SCANNER` DI token (default no-op) |
+| Virus scan | `VIRUS_SCANNER` DI token (default no-op `NoOpVirusScanner`) |
 
 ## Image pipeline
 
-sharp: rotate (EXIF orientation) → resize variants → JPEG mozjpeg + WebP → metadata stripped by default.
+sharp: rotate (EXIF orientation) → resize variants → JPEG mozjpeg + WebP → ~20px blur placeholder (`blurDataUrl`) → metadata stripped by default.
+
+## Replace / restore
+
+- **Replace**: same asset id, new `originalKey`, re-run process pipeline
+- **Delete**: soft-delete only; R2 retained until cleanup (≥72h)
+- **Restore**: clear `deletedAt`, set `READY` if within retention window
 
 ## Video pipeline
 

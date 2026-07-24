@@ -1,2 +1,9 @@
-/** Admin application layer — reserved for later implementation. */
-export {};
+export { AdminAuditService } from './admin-audit.service';
+export { AdminDashboardService } from './admin-dashboard.service';
+export { AdminListingsService } from './admin-listings.service';
+export { AdminPlatesService } from './admin-plates.service';
+export { AdminDealersService } from './admin-dealers.service';
+export { AdminUsersService } from './admin-users.service';
+export { AdminReportsService } from './admin-reports.service';
+export { AdminSettingsService } from './admin-settings.service';
+export { AdminStatsService } from './admin-stats.service';

@@ -2,15 +2,21 @@ import { ListingStatus } from '@autohub/database';
 
 /**
  * Allowed listing lifecycle transitions.
- * PENDING → ACTIVE requires admin/moderator (enforced in application layer).
+ * PENDING → ACTIVE / REJECTED requires admin/moderator (enforced in application layer).
  */
 export const LISTING_STATUS_TRANSITIONS: Record<ListingStatus, ListingStatus[]> = {
   DRAFT: [ListingStatus.PENDING, ListingStatus.ARCHIVED],
-  PENDING: [ListingStatus.DRAFT, ListingStatus.ACTIVE, ListingStatus.ARCHIVED],
+  PENDING: [
+    ListingStatus.DRAFT,
+    ListingStatus.ACTIVE,
+    ListingStatus.REJECTED,
+    ListingStatus.ARCHIVED,
+  ],
   ACTIVE: [ListingStatus.RESERVED, ListingStatus.SOLD, ListingStatus.ARCHIVED],
   RESERVED: [ListingStatus.ACTIVE, ListingStatus.SOLD, ListingStatus.ARCHIVED],
   SOLD: [ListingStatus.ARCHIVED],
-  ARCHIVED: [],
+  ARCHIVED: [ListingStatus.DRAFT],
+  REJECTED: [ListingStatus.DRAFT, ListingStatus.PENDING, ListingStatus.ARCHIVED],
 };
 
 export function canTransitionStatus(
@@ -26,5 +32,8 @@ export function requiresModerationApproval(
   from: ListingStatus,
   to: ListingStatus,
 ): boolean {
-  return from === ListingStatus.PENDING && to === ListingStatus.ACTIVE;
+  return (
+    (from === ListingStatus.PENDING && to === ListingStatus.ACTIVE) ||
+    (from === ListingStatus.PENDING && to === ListingStatus.REJECTED)
+  );
 }

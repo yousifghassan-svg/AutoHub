@@ -16,6 +16,7 @@ export interface AppRuntimeConfig {
     accessTtlSeconds: number;
     refreshTtlSeconds: number;
   };
+  allowStaffDevLogin: boolean;
   firebase: {
     projectId?: string;
     clientEmail?: string;
@@ -58,6 +59,12 @@ export class AppConfigService {
         accessTtlSeconds: this.config.get('JWT_ACCESS_TTL_SECONDS', { infer: true }),
         refreshTtlSeconds: this.config.get('JWT_REFRESH_TTL_SECONDS', { infer: true }),
       },
+      allowStaffDevLogin: (() => {
+        const flag = this.config.get('ALLOW_STAFF_DEV_LOGIN', { infer: true });
+        if (flag === true) return true;
+        if (flag === false) return false;
+        return this.config.get('NODE_ENV', { infer: true }) !== 'production';
+      })(),
       firebase: {
         projectId: emptyToUndefined(this.config.get('FIREBASE_PROJECT_ID', { infer: true })),
         clientEmail: emptyToUndefined(

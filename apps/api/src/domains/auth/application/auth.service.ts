@@ -12,7 +12,7 @@ import { UsersService } from '../../users/application/users.service';
 import { AuthAuditRepository } from '../infrastructure/auth-audit.repository';
 import { RefreshTokenRepository } from '../infrastructure/refresh-token.repository';
 import { generateOpaqueToken, hashToken } from '../infrastructure/token.util';
-import { permissionsForRole } from '../domain/permissions';
+import { isStaffRole, permissionsForRole } from '../domain/permissions';
 import type {
   AccessTokenPayload,
   AuthenticatedUser,
@@ -57,6 +57,45 @@ export class AuthService {
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
       metadata: { created, provider: 'firebase_phone' },
+    });
+
+    return {
+      ...tokens,
+      user: this.toAuthenticatedUser(user),
+    };
+  }
+
+  /**
+   * Staff dashboard login by phone (seed admins / local ops).
+   * Disabled in production unless ALLOW_STAFF_DEV_LOGIN=true.
+   */
+  async staffLogin(phone: string, ctx: RequestContext): Promise<AuthTokensResponse> {
+    if (!this.appConfig.app.allowStaffDevLogin) {
+      throw new ForbiddenException('Staff phone login is disabled');
+    }
+
+    const normalized = normalizePhone(phone);
+    const user = await this.users.findActiveByPhone(normalized);
+    if (!user) {
+      throw new UnauthorizedException('Staff account not found');
+    }
+    if (!isStaffRole(user.role)) {
+      throw new ForbiddenException('Account is not an admin staff role');
+    }
+
+    const tokens = await this.issueTokens(
+      user.id,
+      user.role,
+      { firebaseUid: user.firebaseUid, phone: user.phone },
+      ctx,
+    );
+
+    await this.audit.create({
+      userId: user.id,
+      action: AuthAuditAction.LOGIN,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+      metadata: { provider: 'staff_phone' },
     });
 
     return {
@@ -219,4 +258,12 @@ export class AuthService {
       status: user.status,
     };
   }
+}
+
+function normalizePhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (phone.startsWith('+')) return `+${digits}`;
+  if (digits.startsWith('964')) return `+${digits}`;
+  if (digits.startsWith('0')) return `+964${digits.slice(1)}`;
+  return `+964${digits}`;
 }

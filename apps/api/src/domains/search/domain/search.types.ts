@@ -26,6 +26,7 @@ export type SearchFilters = {
   fuelTypeId?: string;
   transmissionTypeId?: string;
   bodyTypeId?: string;
+  colorId?: string;
   driveTypeId?: string;
   conditionTypeId?: string;
   featuredOnly?: boolean;

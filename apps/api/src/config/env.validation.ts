@@ -19,6 +19,14 @@ export const envSchema = z.object({
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   JWT_REFRESH_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 60 * 24 * 30),
 
+  /** Allows POST /v1/auth/staff-login (phone → JWT for staff). Defaults on outside production. */
+  ALLOW_STAFF_DEV_LOGIN: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v): boolean | undefined =>
+      v === undefined ? undefined : v === 'true',
+    ),
+
   FIREBASE_PROJECT_ID: z.string().optional(),
   FIREBASE_CLIENT_EMAIL: z.string().optional(),
   FIREBASE_PRIVATE_KEY: z.string().optional(),

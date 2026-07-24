@@ -72,4 +72,27 @@ export class VehicleDetailsDto {
   @Min(2)
   @Max(6)
   doors?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  vin?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  trim?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(2)
+  @Max(9)
+  seats?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  interiorColor?: string;
 }

@@ -19,9 +19,14 @@ describe('permissionsForRole', () => {
     expect(permissions).not.toContain(Permission.LISTINGS_MODERATE);
   });
 
-  it('includes moderation for MODERATOR', () => {
+  it('includes moderation and admin access for MODERATOR', () => {
     expect(permissionsForRole('MODERATOR')).toContain(Permission.LISTINGS_MODERATE);
-    expect(permissionsForRole('MODERATOR')).not.toContain(Permission.ADMIN_ACCESS);
+    expect(permissionsForRole('MODERATOR')).toContain(Permission.ADMIN_ACCESS);
+  });
+
+  it('maps SUPPORT and DEALER_MANAGER staff permissions', () => {
+    expect(permissionsForRole('SUPPORT')).toContain(Permission.REPORTS_READ);
+    expect(permissionsForRole('DEALER_MANAGER')).toContain(Permission.DEALERS_MANAGE);
   });
 
   it('gives SUPER_ADMIN system manage', () => {

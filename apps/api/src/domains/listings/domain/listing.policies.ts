@@ -6,7 +6,7 @@ export function isAdminLike(role: UserRole): boolean {
 }
 
 export function isModeratorLike(role: UserRole): boolean {
-  return isAdminLike(role) || role === 'MODERATOR';
+  return isAdminLike(role) || role === 'MODERATOR' || role === 'SUPPORT';
 }
 
 export function canModerateListings(

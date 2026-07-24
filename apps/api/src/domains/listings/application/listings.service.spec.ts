@@ -35,6 +35,10 @@ describe('ListingsService', () => {
   const r2 = {
     deleteObject: jest.fn().mockResolvedValue(undefined),
   };
+  const mediaAssets = {
+    findById: jest.fn(),
+    update: jest.fn(),
+  };
 
   const service = new ListingsService(
     listings as never,
@@ -42,6 +46,7 @@ describe('ListingsService', () => {
     validation as never,
     thumbnails as never,
     r2 as never,
+    mediaAssets as never,
   );
 
   const owner = {

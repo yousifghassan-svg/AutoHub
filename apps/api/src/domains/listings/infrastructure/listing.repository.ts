@@ -33,6 +33,13 @@ const listingInclude = {
   media: {
     where: { deletedAt: null },
     orderBy: { sortOrder: 'asc' as const },
+    include: {
+      mediaAsset: {
+        include: {
+          variants: { where: { deletedAt: null } },
+        },
+      },
+    },
   },
   category: true,
   city: { include: { governorate: true } },
@@ -44,6 +51,31 @@ const listingInclude = {
   truckDetails: true,
   heavyEquipmentDetails: true,
   plateDetails: true,
+  seller: {
+    select: {
+      id: true,
+      displayName: true,
+      phone: true,
+      role: true,
+      dealerMemberships: {
+        where: { deletedAt: null },
+        take: 1,
+        select: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              verified: true,
+              phone: true,
+              whatsapp: true,
+              logoUrl: true,
+            },
+          },
+        },
+      },
+    },
+  },
 } satisfies Prisma.ListingInclude;
 
 export type ListingWithRelations = Prisma.ListingGetPayload<{

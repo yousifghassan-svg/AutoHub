@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
@@ -11,7 +12,7 @@ import { AppLoggerService } from '../logger/app-logger.service';
 
 /**
  * Cloudflare R2 (S3-compatible) storage adapter.
- * Supports put/get/delete and signed URLs for public/private objects.
+ * Supports put/get/delete/copy and signed URLs for public/private objects.
  */
 @Injectable()
 export class R2StorageService implements OnModuleInit {
@@ -106,6 +107,26 @@ export class R2StorageService implements OnModuleInit {
       new DeleteObjectCommand({
         Bucket: this.bucket,
         Key: key,
+      }),
+    );
+  }
+
+  /** Server-side copy within the same bucket (useful for replace / key rewrite). */
+  async copyObject(input: {
+    sourceKey: string;
+    destinationKey: string;
+    contentType?: string;
+    isPublic?: boolean;
+  }): Promise<void> {
+    this.assertConfigured();
+    await this.client!.send(
+      new CopyObjectCommand({
+        Bucket: this.bucket,
+        CopySource: `${this.bucket}/${input.sourceKey}`,
+        Key: input.destinationKey,
+        ContentType: input.contentType,
+        MetadataDirective: input.contentType ? 'REPLACE' : 'COPY',
+        ACL: input.isPublic ? 'public-read' : undefined,
       }),
     );
   }

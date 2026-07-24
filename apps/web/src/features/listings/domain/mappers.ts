@@ -14,6 +14,7 @@ export type ApiListing = {
   favoritesCount?: number;
   publishedAt?: string | null;
   categoryCode?: string;
+  thumbnailKey?: string | null;
   translations?: Array<{ language: string; title: string; description?: string }>;
   media?: Array<{
     id?: string;
@@ -21,11 +22,74 @@ export type ApiListing = {
     thumbnailKey: string | null;
     sortOrder: number;
     mediaType?: string;
+    blurDataUrl?: string | null;
+    isPrimary?: boolean;
+    variants?: Array<{
+      kind: string;
+      r2Key: string;
+      mimeType: string;
+      width: number | null;
+      height: number | null;
+    }>;
   }>;
   city?: { nameEn: string; nameAr: string };
-  carDetails?: { year: number | null; mileageKm: number | null } | null;
-  motorcycleDetails?: { year: number | null; mileageKm: number | null } | null;
-  truckDetails?: { year: number | null; mileageKm: number | null } | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  locationText?: string | null;
+  features?: string[];
+  sellerContact?: {
+    displayName: string | null;
+    phone: string | null;
+    whatsapp: string | null;
+    dealerSlug: string | null;
+    dealerName: string | null;
+    dealerVerified: boolean;
+    dealerLogoUrl: string | null;
+  } | null;
+  carDetails?: {
+    year: number | null;
+    mileageKm: number | null;
+    brandId?: string | null;
+    modelId?: string | null;
+    fuelTypeId?: string | null;
+    transmissionTypeId?: string | null;
+    colorId?: string | null;
+    bodyTypeId?: string | null;
+    driveTypeId?: string | null;
+    doors?: number | null;
+    seats?: number | null;
+    engineSizeCc?: number | null;
+    trim?: string | null;
+    interiorColor?: string | null;
+  } | null;
+  motorcycleDetails?: {
+    year: number | null;
+    mileageKm: number | null;
+    brandId?: string | null;
+    modelId?: string | null;
+    fuelTypeId?: string | null;
+    colorId?: string | null;
+  } | null;
+  truckDetails?: {
+    year: number | null;
+    mileageKm: number | null;
+    brandId?: string | null;
+    modelId?: string | null;
+    fuelTypeId?: string | null;
+    transmissionTypeId?: string | null;
+    colorId?: string | null;
+  } | null;
+  conditionTypeId?: string | null;
+  governorateId?: string | null;
+  title?: string;
+  plateDetails?: {
+    formatCode: string;
+    plateDisplay: string;
+    series?: string | null;
+    number?: string | null;
+    regionCode?: string | null;
+    plateType?: string | null;
+  } | null;
   category?: { code: string };
 };
 
@@ -43,9 +107,18 @@ export function mapListingToCard(
   const title =
     translations.find((t) => t.language === locale)?.title ??
     translations[0]?.title ??
+    listing.title ??
     listing.slug;
   const media = [...(listing.media ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
-  const thumb = media[0]?.thumbnailKey ?? media[0]?.r2Key ?? null;
+  const thumb =
+    media[0]?.thumbnailKey ?? media[0]?.r2Key ?? listing.thumbnailKey ?? null;
+  const imageUrls = media
+    .map((m) => mediaPublicUrl(m.thumbnailKey ?? m.r2Key))
+    .filter((u): u is string => Boolean(u));
+  if (!imageUrls.length && thumb) {
+    const u = mediaPublicUrl(thumb);
+    if (u) imageUrls.push(u);
+  }
   const details =
     listing.carDetails ?? listing.motorcycleDetails ?? listing.truckDetails ?? null;
   const location =
@@ -66,10 +139,22 @@ export function mapListingToCard(
     isFeatured: listing.isFeatured,
     thumbnailKey: thumb,
     imageUrl: mediaPublicUrl(thumb),
+    imageUrls,
     categoryCode: (listing.categoryCode ?? listing.category?.code ?? 'CAR') as ListingCategoryCode,
     status: listing.status,
     viewsCount: listing.viewsCount,
     favoritesCount: listing.favoritesCount,
+    dealerBadge: listing.isVerified,
+    plateDetails: listing.plateDetails
+      ? {
+          formatCode: listing.plateDetails.formatCode,
+          plateDisplay: listing.plateDetails.plateDisplay,
+          series: listing.plateDetails.series ?? null,
+          number: listing.plateDetails.number ?? null,
+          regionCode: listing.plateDetails.regionCode ?? null,
+          plateType: listing.plateDetails.plateType ?? null,
+        }
+      : null,
   };
 }
 
@@ -86,14 +171,51 @@ export function mapListingToDetail(listing: ApiListing): ListingDetailModel {
       id: m.id ?? m.r2Key,
       url: mediaPublicUrl(m.r2Key) ?? mediaPublicUrl(m.thumbnailKey),
       kind: m.mediaType ?? 'IMAGE',
+      blurDataUrl: m.blurDataUrl ?? null,
+      isPrimary: m.isPrimary ?? m.sortOrder === 0,
+      variants: m.variants,
     }));
+
+  const details =
+    listing.carDetails ?? listing.motorcycleDetails ?? listing.truckDetails ?? null;
+
+  const locationText = listing.locationText?.trim() || null;
 
   return {
     ...card,
+    location: locationText || card.location,
     description,
     media,
     publishedAt: listing.publishedAt ?? null,
     sellerId: listing.sellerId ?? null,
+    governorateId: listing.governorateId ?? null,
+    cityNameEn: listing.city?.nameEn ?? null,
+    latitude: listing.latitude ?? null,
+    longitude: listing.longitude ?? null,
+    locationText,
+    features: listing.features ?? [],
+    sellerContact: listing.sellerContact ?? null,
+    dealerBadge: Boolean(listing.sellerContact?.dealerSlug ?? listing.isVerified),
+    specs: details
+      ? {
+          brandId: details.brandId ?? null,
+          modelId: details.modelId ?? null,
+          fuelTypeId: details.fuelTypeId ?? null,
+          transmissionTypeId:
+            'transmissionTypeId' in details
+              ? ((details as { transmissionTypeId?: string | null }).transmissionTypeId ?? null)
+              : null,
+          colorId: details.colorId ?? null,
+          bodyTypeId: listing.carDetails?.bodyTypeId ?? null,
+          driveTypeId: listing.carDetails?.driveTypeId ?? null,
+          conditionTypeId: listing.conditionTypeId ?? null,
+          doors: listing.carDetails?.doors ?? null,
+          seats: listing.carDetails?.seats ?? null,
+          engineSizeCc: listing.carDetails?.engineSizeCc ?? null,
+          trim: listing.carDetails?.trim ?? null,
+          interiorColor: listing.carDetails?.interiorColor ?? null,
+        }
+      : null,
   };
 }
 

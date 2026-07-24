@@ -39,6 +39,19 @@ export interface VirusScanner {
 
 export const VIRUS_SCANNER = Symbol('VIRUS_SCANNER');
 
+/** Staff who can read/manage the admin media library (includes moderators). */
 export function isMediaAdmin(role: UserRole): boolean {
-  return role === 'ADMIN' || role === 'SUPER_ADMIN';
+  return role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MODERATOR';
 }
+
+/** Soft-delete retention window before R2 objects are reaped (hours). */
+export const MEDIA_SOFT_DELETE_RETENTION_HOURS = 72;
+
+export const DOCUMENT_PURPOSES = [
+  'REGISTRATION',
+  'INSPECTION',
+  'OWNERSHIP',
+  'OTHER',
+] as const;
+
+export type DocumentPurpose = (typeof DOCUMENT_PURPOSES)[number];

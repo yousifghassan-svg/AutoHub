@@ -64,7 +64,7 @@ export class ListingValidationService {
     assertSupportedListingMedia(mediaType);
   }
 
-  assertMediaLimits(count: number, max = 30) {
+  assertMediaLimits(count: number, max = 100) {
     if (count >= max) {
       throw new BadRequestException(`A listing may have at most ${max} media items`);
     }

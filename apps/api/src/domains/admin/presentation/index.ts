@@ -1,2 +1,9 @@
-/** Admin presentation layer — reserved for later implementation. */
-export {};
+export { AdminDashboardController } from './admin-dashboard.controller';
+export { AdminListingsController } from './admin-listings.controller';
+export { AdminPlatesController } from './admin-plates.controller';
+export { AdminDealersController } from './admin-dealers.controller';
+export { AdminUsersController } from './admin-users.controller';
+export { AdminReportsController } from './admin-reports.controller';
+export { ReportsController } from './reports.controller';
+export { AdminSettingsController } from './admin-settings.controller';
+export { AdminStatsController } from './admin-stats.controller';

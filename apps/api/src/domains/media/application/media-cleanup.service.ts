@@ -2,9 +2,10 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { MediaAssetStatus } from '@autohub/database';
 import { R2StorageService } from '../../../infrastructure/storage/r2-storage.service';
 import { MediaAssetRepository } from '../infrastructure/media-asset.repository';
+import { MEDIA_SOFT_DELETE_RETENTION_HOURS } from '../domain/media.policies';
 
 const STALE_PENDING_HOURS = 24;
-const SOFT_DELETE_RETENTION_HOURS = 72;
+const SOFT_DELETE_RETENTION_HOURS = MEDIA_SOFT_DELETE_RETENTION_HOURS;
 const INTERVAL_MS = 60 * 60 * 1000; // hourly
 
 /**

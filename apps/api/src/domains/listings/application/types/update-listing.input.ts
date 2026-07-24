@@ -1,5 +1,5 @@
 import type { LanguageCode } from '@autohub/database';
-import type { VehicleDetailsInput } from './create-listing.input';
+import type { PlateDetailsInput, VehicleDetailsInput } from './create-listing.input';
 
 export type UpdateListingInput = {
   cityId?: string;
@@ -18,4 +18,5 @@ export type UpdateListingInput = {
   isFeatured?: boolean;
   carDetails?: VehicleDetailsInput;
   vehicleDetails?: VehicleDetailsInput;
+  plateDetails?: PlateDetailsInput;
 };

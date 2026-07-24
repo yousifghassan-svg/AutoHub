@@ -1,2 +1,1 @@
-/** Dealers application layer — reserved for later implementation. */
-export {};
+export { PublicDealersService } from './public-dealers.service';

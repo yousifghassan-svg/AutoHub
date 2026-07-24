@@ -13,6 +13,20 @@ export type VehicleDetailsInput = {
   engineTypeId?: string;
   engineSizeCc?: number;
   doors?: number;
+  vin?: string;
+  trim?: string;
+  seats?: number;
+  interiorColor?: string;
+};
+
+export type PlateDetailsInput = {
+  formatCode: string;
+  plateDisplay: string;
+  plateNormalized?: string;
+  series?: string;
+  number?: string;
+  regionCode?: string;
+  plateType?: string;
 };
 
 export type CreateListingInput = {
@@ -32,4 +46,5 @@ export type CreateListingInput = {
   secondaryCurrencyId?: string;
   carDetails?: VehicleDetailsInput;
   vehicleDetails?: VehicleDetailsInput;
+  plateDetails?: PlateDetailsInput;
 };

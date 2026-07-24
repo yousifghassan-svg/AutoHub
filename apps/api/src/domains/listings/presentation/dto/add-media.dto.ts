@@ -7,21 +7,31 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 export class AddMediaDto {
   @ApiProperty({
-    enum: ['IMAGE', 'VIDEO', '360_MEDIA'],
+    enum: ['IMAGE', 'VIDEO', '360_MEDIA', 'DOCUMENT'],
     description: '360_MEDIA maps to MEDIA_360 in the database',
   })
   @IsString()
   @IsNotEmpty()
   mediaType!: string;
 
-  @ApiProperty({ description: 'Object key in Cloudflare R2' })
+  @ApiPropertyOptional({
+    description:
+      'Platform MediaAsset id — when set, r2Key/thumb/mime are pulled from the asset',
+  })
+  @IsOptional()
+  @IsString()
+  mediaAssetId?: string;
+
+  @ApiPropertyOptional({ description: 'Object key in Cloudflare R2 (required if no mediaAssetId)' })
+  @ValidateIf((o: AddMediaDto) => !o.mediaAssetId)
   @IsString()
   @IsNotEmpty()
-  r2Key!: string;
+  r2Key?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -46,6 +56,14 @@ export class AddMediaDto {
   @IsOptional()
   @IsBoolean()
   confirmed?: boolean;
+
+  @ApiPropertyOptional({
+    enum: ['REGISTRATION', 'INSPECTION', 'OWNERSHIP', 'OTHER'],
+    description: 'Document purpose when mediaType is DOCUMENT',
+  })
+  @IsOptional()
+  @IsString()
+  documentPurpose?: string;
 
   @ApiPropertyOptional({
     description:

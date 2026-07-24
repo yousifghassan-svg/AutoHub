@@ -13,6 +13,7 @@ import { AuthService } from '../application/auth.service';
 import { Permission } from '../domain/permissions';
 import type { AuthenticatedUser } from '../domain/auth.types';
 import { LoginDto } from './dto/login.dto';
+import { StaffLoginDto } from './dto/staff-login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { AuthTokensDto, AuthenticatedUserDto } from './dto/auth-response.dto';
@@ -32,6 +33,18 @@ export class AuthController {
   @ApiOkResponse({ type: AuthTokensDto })
   login(@Body() body: LoginDto, @Req() req: Request) {
     return this.auth.login(body.idToken, requestContext(req));
+  }
+
+  @Public()
+  @Post('staff-login')
+  @ApiOperation({
+    summary: 'Staff dashboard login by phone',
+    description:
+      'Issues JWT for an existing staff user (ADMIN, MODERATOR, …). Enabled in non-production by default; set ALLOW_STAFF_DEV_LOGIN to override.',
+  })
+  @ApiOkResponse({ type: AuthTokensDto })
+  staffLogin(@Body() body: StaffLoginDto, @Req() req: Request) {
+    return this.auth.staffLogin(body.phone, requestContext(req));
   }
 
   @Public()

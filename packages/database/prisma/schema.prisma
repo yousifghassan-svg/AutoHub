@@ -27,6 +27,7 @@ enum ListingStatus {
   RESERVED
   SOLD
   ARCHIVED
+  REJECTED
 }
 
 enum LanguageCode {
@@ -82,8 +83,25 @@ enum UserRole {
   USER
   DEALER
   MODERATOR
+  DEALER_MANAGER
+  SUPPORT
   ADMIN
   SUPER_ADMIN
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  REJECTED
+}
+
+enum ReportReason {
+  SPAM
+  FRAUD
+  INAPPROPRIATE
+  DUPLICATE
+  WRONG_CATEGORY
+  OTHER
 }
 
 enum AuthAuditAction {
@@ -262,11 +280,12 @@ model City {
   updatedById   String?
   deletedAt     DateTime?
 
-  governorate Governorate @relation(fields: [governorateId], references: [id])
-  createdBy   User?       @relation("CityCreatedBy", fields: [createdById], references: [id])
-  updatedBy   User?       @relation("CityUpdatedBy", fields: [updatedById], references: [id])
+  governorate Governorate          @relation(fields: [governorateId], references: [id])
+  createdBy   User?                @relation("CityCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?                @relation("CityUpdatedBy", fields: [updatedById], references: [id])
   listings    Listing[]
   users       User[]
+  dealers     DealerOrganization[]
 
   @@unique([governorateId, slug])
   @@index([governorateId])
@@ -539,6 +558,9 @@ model User {
   plateFormatsUpdated    PlateFormat[]       @relation("PlateFormatUpdatedBy")
   mediaAssetsCreated     MediaAsset[]        @relation("MediaAssetCreatedBy")
   mediaAssetsUpdated     MediaAsset[]        @relation("MediaAssetUpdatedBy")
+  listingReportsFiled    ListingReport[]     @relation("ListingReportReporter")
+  listingReportsResolved ListingReport[]     @relation("ListingReportResolver")
+  adminAuditLogs         AdminAuditLog[]     @relation("AdminAuditActor")
 
   @@index([role, status])
 }
@@ -654,6 +676,10 @@ model MediaAsset {
   durationSeconds Float?
   ownerModule     String?
   ownerEntityId   String?
+  /// REGISTRATION | INSPECTION | OWNERSHIP | OTHER (listing/document context)
+  documentPurpose String?
+  /// Tiny (~20px) JPEG base64 data URL for blur-up placeholders
+  blurDataUrl     String?
   virusScanStatus VirusScanStatus   @default(PENDING)
   processingError String?
   createdAt       DateTime          @default(now())
@@ -662,16 +688,18 @@ model MediaAsset {
   updatedById     String?
   deletedAt       DateTime?
 
-  owner     User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
-  createdBy User?          @relation("MediaAssetCreatedBy", fields: [createdById], references: [id])
-  updatedBy User?          @relation("MediaAssetUpdatedBy", fields: [updatedById], references: [id])
-  variants  MediaVariant[]
+  owner        User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  createdBy    User?          @relation("MediaAssetCreatedBy", fields: [createdById], references: [id])
+  updatedBy    User?          @relation("MediaAssetUpdatedBy", fields: [updatedById], references: [id])
+  variants     MediaVariant[]
+  listingMedia ListingMedia[]
 
   @@index([ownerId, deletedAt])
   @@index([status, mediaType])
   @@index([ownerModule, ownerEntityId])
   @@index([originalKey])
   @@index([visibility, status])
+  @@index([checksumSha256])
 }
 
 model MediaVariant {
@@ -747,6 +775,12 @@ model Listing {
   soldAt               DateTime?
   expiresAt            DateTime?
 
+  latitude             Decimal?            @db.Decimal(10, 7)
+  longitude            Decimal?            @db.Decimal(10, 7)
+  locationText         String?
+  /// Optional equipment / feature tags shown on marketplace detail
+  features             String[]            @default([])
+
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
   createdById          String?
@@ -771,6 +805,7 @@ model Listing {
   truckDetails          TruckDetails?
   heavyEquipmentDetails HeavyEquipmentDetails?
   plateDetails          PlateDetails?
+  reports               ListingReport[]
 
   auction    Auction?
   orderItems OrderItem[]
@@ -816,6 +851,8 @@ model ListingTranslation {
 model ListingMedia {
   id           String    @id @default(cuid())
   listingId    String
+  /// Optional bridge to platform MediaAsset (primary gallery image = sortOrder 0)
+  mediaAssetId String?
   r2Key        String
   thumbnailKey String?
   mediaType    MediaType @default(IMAGE)
@@ -831,13 +868,15 @@ model ListingMedia {
   updatedById  String?
   deletedAt    DateTime?
 
-  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  createdBy User?   @relation("MediaCreatedBy", fields: [createdById], references: [id])
-  updatedBy User?   @relation("MediaUpdatedBy", fields: [updatedById], references: [id])
+  listing    Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  mediaAsset MediaAsset? @relation(fields: [mediaAssetId], references: [id], onDelete: SetNull)
+  createdBy  User?       @relation("MediaCreatedBy", fields: [createdById], references: [id])
+  updatedBy  User?       @relation("MediaUpdatedBy", fields: [updatedById], references: [id])
 
   @@index([listingId, sortOrder])
   @@index([listingId, deletedAt])
   @@index([mediaType])
+  @@index([mediaAssetId])
 }
 
 // ─── Category detail tables ──────────────────────────────────────────────────
@@ -856,6 +895,10 @@ model CarDetails {
   engineTypeId       String?
   engineSizeCc       Int?
   doors              Int?
+  vin                String?
+  trim               String?
+  seats              Int?
+  interiorColor      String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   deletedAt          DateTime?
@@ -977,6 +1020,8 @@ model PlateDetails {
   series          String?
   number          String?
   regionCode      String?
+  /// Visual plate class for SVG renderer (Private, Taxi, Government, Commercial, Diplomatic)
+  plateType       String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   deletedAt       DateTime?
@@ -990,17 +1035,32 @@ model PlateDetails {
 // ─── Future: dealers ─────────────────────────────────────────────────────────
 
 model DealerOrganization {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  verified    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdById String?
-  updatedById String?
-  deletedAt   DateTime?
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  verified       Boolean  @default(false)
+  bio            String?
+  phone          String?
+  whatsapp       String?
+  address        String?
+  coverImageUrl  String?
+  logoUrl        String?
+  /// Free-form opening hours text or JSON string, e.g. "Sat–Thu 9:00–18:00"
+  openingHours   String?
+  cityId         String?
+  followersCount Int      @default(0)
+  viewsCount     Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdById    String?
+  updatedById    String?
+  deletedAt      DateTime?
 
+  city    City?          @relation(fields: [cityId], references: [id])
   members DealerMember[]
+
+  @@index([verified, deletedAt])
+  @@index([cityId])
 }
 
 model DealerMember {
@@ -1148,4 +1208,62 @@ model Subscription {
   plan SubscriptionPlan @relation(fields: [planId], references: [id])
 
   @@index([userId, status])
+}
+
+// ─── Admin platform ──────────────────────────────────────────────────────────
+
+model ListingReport {
+  id           String       @id @default(cuid())
+  listingId    String
+  reporterId   String
+  reason       ReportReason
+  details      String?
+  status       ReportStatus @default(OPEN)
+  resolution   String?
+  resolvedById String?
+  resolvedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?
+
+  listing    Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  reporter   User    @relation("ListingReportReporter", fields: [reporterId], references: [id])
+  resolvedBy User?   @relation("ListingReportResolver", fields: [resolvedById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([listingId, status])
+  @@index([reporterId])
+}
+
+model AdminAuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  module    String
+  entityId  String?
+  ip        String?
+  userAgent String?
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+
+  actor User? @relation("AdminAuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([module, createdAt])
+  @@index([actorId, createdAt])
+  @@index([entityId])
+}
+
+model SiteSettings {
+  id              String   @id @default("default")
+  siteName        String   @default("AutoHub")
+  maintenanceMode Boolean  @default(false)
+  featuredLimit   Int      @default(12)
+  maxImages       Int      @default(20)
+  defaultCurrency String   @default("IQD")
+  contactInfo     Json?
+  socialLinks     Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

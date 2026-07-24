@@ -67,6 +67,25 @@ export function useListingMutations() {
         repo().changeStatus(input.id, input.status),
       onSuccess: invalidate,
     }),
+    addMedia: useMutation({
+      mutationFn: (input: {
+        listingId: string;
+        mediaAssetId: string;
+        mediaType: string;
+        sortOrder?: number;
+      }) =>
+        repo().addMedia(input.listingId, {
+          mediaAssetId: input.mediaAssetId,
+          mediaType: input.mediaType,
+          sortOrder: input.sortOrder,
+        }),
+      onSuccess: invalidate,
+    }),
+    reorderMedia: useMutation({
+      mutationFn: (input: { listingId: string; orderedIds: string[] }) =>
+        repo().reorderMedia(input.listingId, input.orderedIds),
+      onSuccess: invalidate,
+    }),
     softDelete: useMutation({
       mutationFn: (id: string) => repo().softDelete(id),
       onSuccess: invalidate,

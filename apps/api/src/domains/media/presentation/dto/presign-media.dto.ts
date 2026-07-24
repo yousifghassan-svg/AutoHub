@@ -46,4 +46,12 @@ export class PresignMediaDto {
   @IsOptional()
   @IsString()
   ownerEntityId?: string;
+
+  @ApiPropertyOptional({
+    enum: ['REGISTRATION', 'INSPECTION', 'OWNERSHIP', 'OTHER'],
+    description: 'Required context for DOCUMENT media',
+  })
+  @IsOptional()
+  @IsString()
+  documentPurpose?: string;
 }

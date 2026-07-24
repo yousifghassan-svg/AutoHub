@@ -12,6 +12,41 @@
   --color-primary: #c8102e;
   --color-primary-pressed: #a50d25;
   --color-primary-soft: #fff1f3;
+  --plate-frame-bg: #ececef;
+  --plate-frame-border: #d0d0d6;
+  --plate-action-bg: #ffffff;
+  --plate-action-text: #0e0e11;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-background: #0f0f12;
+    --color-surface: #1a1a1f;
+    --color-surface-muted: #26262d;
+    --color-text: #f3f3f5;
+    --color-text-secondary: #a8a8b3;
+    --color-border: #33333c;
+    --color-primary-soft: #3a1218;
+    --plate-frame-bg: #222228;
+    --plate-frame-border: #3a3a44;
+    --plate-action-bg: #2a2a32;
+    --plate-action-text: #f3f3f5;
+  }
+}
+
+.dark,
+[data-theme='dark'] {
+  --color-background: #0f0f12;
+  --color-surface: #1a1a1f;
+  --color-surface-muted: #26262d;
+  --color-text: #f3f3f5;
+  --color-text-secondary: #a8a8b3;
+  --color-border: #33333c;
+  --color-primary-soft: #3a1218;
+  --plate-frame-bg: #222228;
+  --plate-frame-border: #3a3a44;
+  --plate-action-bg: #2a2a32;
+  --plate-action-text: #f3f3f5;
 }
 
 @layer base {
@@ -31,5 +66,49 @@
 
   .section-title {
     @apply font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl;
+  }
+
+  .marketplace-grid {
+    @apply grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+
+  /* Flat SVG plate; outer frame adapts to theme. */
+  .license-plate {
+    @apply w-full;
+  }
+
+  .license-plate__frame {
+    border: 1px solid var(--plate-frame-border);
+    background: var(--plate-frame-bg);
+    border-radius: 12px;
+    padding: 0.5rem 0.6rem;
+    line-height: 0;
+  }
+
+  .license-plate__bare {
+    line-height: 0;
+    background: transparent;
+  }
+
+  .license-plate__frame svg,
+  .license-plate__bare svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 700 / 178;
+  }
+
+  .license-plate__action {
+    border: 1px solid var(--color-border);
+    background: var(--plate-action-bg);
+    color: var(--plate-action-text);
+    border-radius: 8px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .license-plate__action:disabled {
+    opacity: 0.55;
   }
 }

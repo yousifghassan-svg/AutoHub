@@ -109,6 +109,11 @@ export class SearchQueryDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  colorId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   driveTypeId?: string;
 
   @ApiPropertyOptional()

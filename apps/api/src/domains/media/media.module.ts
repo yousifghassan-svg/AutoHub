@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MediaController } from './presentation/media.controller';
+import { AdminMediaController } from './presentation/admin-media.controller';
 import { MediaService } from './application/media.service';
 import { MediaCleanupService } from './application/media-cleanup.service';
 import { MediaValidationService } from './application/media-validation.service';
@@ -14,7 +15,7 @@ import { VIRUS_SCANNER } from './domain/media.policies';
  * via ownerModule / ownerEntityId.
  */
 @Module({
-  controllers: [MediaController],
+  controllers: [MediaController, AdminMediaController],
   providers: [
     MediaService,
     MediaCleanupService,
@@ -24,6 +25,6 @@ import { VIRUS_SCANNER } from './domain/media.policies';
     VideoProcessingService,
     { provide: VIRUS_SCANNER, useClass: NoOpVirusScanner },
   ],
-  exports: [MediaService, MediaCleanupService],
+  exports: [MediaService, MediaCleanupService, MediaAssetRepository],
 })
 export class MediaModule {}

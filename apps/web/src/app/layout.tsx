@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { IBM_Plex_Sans_Arabic, Outfit } from 'next/font/google';
 import { Providers } from '@/components/Providers';
+import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import './globals.css';
 
@@ -18,27 +19,51 @@ const ibmArabic = IBM_Plex_Sans_Arabic({
   display: 'swap',
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: 'AutoHub — Iraq vehicle marketplace',
     template: '%s · AutoHub',
   },
-  description: 'Buy and sell cars, plates, and vehicles across Iraq.',
+  description:
+    'Buy and sell cars, license plates, and vehicles across Iraq. Browse verified dealers, featured listings, and trusted local inventory.',
+  openGraph: {
+    type: 'website',
+    locale: 'en_IQ',
+    siteName: 'AutoHub',
+    title: 'AutoHub — Iraq vehicle marketplace',
+    description: 'Iraq’s professional marketplace for cars, plates, and dealers.',
+    url: siteUrl,
+    images: [
+      {
+        url: '/og.svg',
+        width: 1200,
+        height: 630,
+        alt: 'AutoHub — Iraq vehicle marketplace',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'AutoHub — Iraq vehicle marketplace',
+    description: 'Buy and sell cars and plates across Iraq.',
+    images: ['/og.svg'],
+  },
+  alternates: {
+    canonical: siteUrl,
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${outfit.variable} ${ibmArabic.variable}`}>
+    <html lang="en" className={`${outfit.variable} ${ibmArabic.variable}`} suppressHydrationWarning>
       <body>
         <Providers>
           <SiteHeader />
           <main className="min-h-[calc(100vh-4rem)]">{children}</main>
-          <footer className="mt-16 border-t border-border bg-surface">
-            <div className="page-container flex flex-col gap-2 py-8 text-sm text-ink-secondary sm:flex-row sm:items-center sm:justify-between">
-              <p className="font-display font-semibold text-ink">AutoHub</p>
-              <p>Iraq vehicle marketplace · Alpha</p>
-            </div>
-          </footer>
+          <SiteFooter />
         </Providers>
       </body>
     </html>

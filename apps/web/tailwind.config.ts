@@ -2,6 +2,7 @@ import type { Config } from 'tailwindcss';
 import { tokens } from '@autohub/ui';
 
 const config: Config = {
+  darkMode: ['class', '[data-theme="dark"]'],
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
   theme: {
     extend: {
@@ -9,18 +10,18 @@ const config: Config = {
         brand: {
           DEFAULT: tokens.colors.accent,
           pressed: tokens.colors.accentHover,
-          soft: '#FFF1F3',
+          soft: 'var(--color-primary-soft)',
         },
         ink: {
-          DEFAULT: tokens.colors.ink,
-          secondary: '#5C5C6A',
+          DEFAULT: 'var(--color-text)',
+          secondary: 'var(--color-text-secondary)',
         },
         surface: {
-          DEFAULT: tokens.colors.surface,
-          muted: tokens.colors.muted,
+          DEFAULT: 'var(--color-surface)',
+          muted: 'var(--color-surface-muted)',
         },
-        border: tokens.colors.border,
-        background: '#F7F7F8',
+        border: 'var(--color-border)',
+        background: 'var(--color-background)',
         success: { DEFAULT: '#1F9D6A', soft: '#E8F7F0' },
         error: { DEFAULT: '#E31937', soft: '#FFE8EC' },
         skeleton: '#DCDCE0',

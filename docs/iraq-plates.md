@@ -2,19 +2,30 @@
 
 ## Strategy
 
-Plate formats are stored in `PlateFormat` and validated by `PlateFormatRegistry` in the API. Admins can adjust masks/regex without redeploying.
+Plate formats are stored in `PlateFormat`. The web app renders original AutoHub SVG artwork (not official seals) via `<LicensePlate />`.
 
-## v1: Erbil (`IQ_ERBIL`)
+## Formats
 
-- Strictness: `STRICT`
-- Example: `A 12345`
-- Regex (initial): `^[A-Zء-ي]{1,3}[\s-]?\d{4,6}$`
-- Normalized form: uppercase, spaces collapsed
-
-## Other formats
-
-`IQ_BAGHDAD`, `IQ_BASRA`, `IQ_MOSUL`, `IQ_GENERIC` ship with `SOFT` validation so sellers can list while formats are refined.
+| Code | Governorate | Strictness |
+|------|-------------|------------|
+| `IQ_ERBIL` | Erbil | STRICT |
+| `IQ_BAGHDAD` | Baghdad | SOFT |
+| `IQ_DUHOK` | Duhok | SOFT |
+| `IQ_SULAYMANIYAH` | Sulaymaniyah | SOFT |
+| `IQ_BASRA` | Basra | SOFT |
+| `IQ_MOSUL` | Mosul | SOFT |
+| `IQ_KIRKUK` | Kirkuk | SOFT |
 
 ## Storage
 
-`PlateDetails` stores `plateDisplay`, `plateNormalized`, `formatCode`, and optional structured fields (`series`, `number`, `regionCode`).
+`PlateDetails` stores `plateDisplay`, `plateNormalized`, `formatCode`, optional `series` / `number` / `regionCode`, and `plateType` (`Private` · `Taxi` · `Government` · `Commercial` · `Diplomatic`).
+
+## Web generator
+
+- Feature: `apps/web/src/features/plates`
+- Component: `<LicensePlate governorate="Erbil" code="22" letter="X" number="60000" type="Private" />`
+- Final design: flat white face, thin black outer + inner borders, bold condensed black type
+- Fixed layout: Code **20%** · Letter **15%** · Number **65%** (same proportions everywhere)
+- No logos, badges, gradients, shadows, or metallic effects
+- SVG strings are LRU-cached; PNG/PDF export is client-side
+- Used in Sell Wizard preview, Listing Cards, Listing Details (plate detail), and PlateEditor

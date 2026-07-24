@@ -28,4 +28,12 @@ describe('listing status transitions', () => {
     expect(canTransitionStatus(ListingStatus.RESERVED, ListingStatus.SOLD)).toBe(true);
     expect(canTransitionStatus(ListingStatus.SOLD, ListingStatus.ARCHIVED)).toBe(true);
   });
+
+  it('allows PENDING → REJECTED and REJECTED → DRAFT', () => {
+    expect(canTransitionStatus(ListingStatus.PENDING, ListingStatus.REJECTED)).toBe(true);
+    expect(canTransitionStatus(ListingStatus.REJECTED, ListingStatus.DRAFT)).toBe(true);
+    expect(
+      requiresModerationApproval(ListingStatus.PENDING, ListingStatus.REJECTED),
+    ).toBe(true);
+  });
 });

@@ -5,11 +5,13 @@ import { ListingValidationService } from './application/listing-validation.servi
 import { ListingRepository } from './infrastructure/listing.repository';
 import { ListingMediaRepository } from './infrastructure/listing-media.repository';
 import { ThumbnailService } from './infrastructure/thumbnail.service';
+import { MediaModule } from '../media/media.module';
 
 /**
- * Listings domain — lifecycle, media, and search (Sprint 4).
+ * Listings domain — lifecycle, media, and search (Sprint 4 / Sprint 17 media bridge).
  */
 @Module({
+  imports: [MediaModule],
   controllers: [ListingsController],
   providers: [
     ListingsService,

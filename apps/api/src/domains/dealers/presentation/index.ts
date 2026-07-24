@@ -1,2 +1,1 @@
-/** Dealers presentation layer — reserved for later implementation. */
-export {};
+export { DealersController } from './dealers.controller';

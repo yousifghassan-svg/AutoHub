@@ -209,6 +209,7 @@ export class DiscoveryRepository {
       filters.fuelTypeId ||
       filters.transmissionTypeId ||
       filters.bodyTypeId ||
+      filters.colorId ||
       filters.driveTypeId;
 
     if (!hasVehicleDims) return undefined;
@@ -239,6 +240,7 @@ export class DiscoveryRepository {
               ...shared,
               transmissionTypeId: filters.transmissionTypeId,
               bodyTypeId: filters.bodyTypeId,
+              colorId: filters.colorId,
               driveTypeId: filters.driveTypeId,
             },
           },
@@ -251,6 +253,7 @@ export class DiscoveryRepository {
               year,
               mileageKm,
               fuelTypeId: filters.fuelTypeId,
+              colorId: filters.colorId,
               deletedAt: null,
             },
           },

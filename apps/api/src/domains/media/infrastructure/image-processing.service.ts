@@ -25,6 +25,8 @@ export class ImageProcessingService {
     width?: number;
     height?: number;
     variants: ProcessedImageVariant[];
+    /** Tiny (~20px) JPEG as `data:image/jpeg;base64,...` for blur-up placeholders. */
+    blurDataUrl?: string;
   }> {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const sharpImport = require('sharp') as {
@@ -68,10 +70,18 @@ export class ImageProcessingService {
       byteSize: webp.data.byteLength,
     });
 
+    const blur = await sharp(buffer, { failOn: 'none' })
+      .rotate()
+      .resize(20, 20, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 40, mozjpeg: true })
+      .toBuffer({ resolveWithObject: true });
+    const blurDataUrl = `data:image/jpeg;base64,${blur.data.toString('base64')}`;
+
     return {
       width: meta.width,
       height: meta.height,
       variants,
+      blurDataUrl,
     };
   }
 }

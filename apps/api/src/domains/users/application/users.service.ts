@@ -14,6 +14,13 @@ export class UsersService {
     });
   }
 
+  findActiveByPhone(phone: string): Promise<User | null> {
+    return this.users.findByPhone(phone).then((user) => {
+      if (!user || user.status !== 'ACTIVE') return null;
+      return user;
+    });
+  }
+
   /**
    * Initializes a local user profile on first successful Firebase phone login.
    * Subsequent logins refresh phone/email/displayName when present.

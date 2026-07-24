@@ -6,6 +6,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -26,12 +27,25 @@ import type { AuthenticatedUser } from '../../auth/domain/auth.types';
 import { MediaService } from '../application/media.service';
 import { PresignMediaDto } from './dto/presign-media.dto';
 import { CompleteMediaDto } from './dto/complete-media.dto';
+import { ListMediaDto } from './dto/list-media.dto';
 
 @ApiTags('media')
 @ApiBearerAuth('access-token')
 @Controller('media')
 export class MediaController {
   constructor(private readonly media: MediaService) {}
+
+  @Get()
+  @Permissions(Permission.MEDIA_READ)
+  @ApiOperation({ summary: 'List own media assets' })
+  listMine(@CurrentUser() user: AuthenticatedUser, @Query() query: ListMediaDto) {
+    return this.media.listMine(user, {
+      page: query.page,
+      pageSize: query.pageSize,
+      mediaType: query.mediaType,
+      status: query.status,
+    });
+  }
 
   @Post('presign')
   @Permissions(Permission.MEDIA_UPLOAD)
@@ -60,6 +74,10 @@ export class MediaController {
         visibility: { type: 'string', enum: ['PUBLIC', 'PRIVATE'] },
         ownerModule: { type: 'string' },
         ownerEntityId: { type: 'string' },
+        documentPurpose: {
+          type: 'string',
+          enum: ['REGISTRATION', 'INSPECTION', 'OWNERSHIP', 'OTHER'],
+        },
         durationSeconds: { type: 'number' },
       },
     },
@@ -77,6 +95,7 @@ export class MediaController {
     @Body('visibility') visibility?: MediaVisibility,
     @Body('ownerModule') ownerModule?: string,
     @Body('ownerEntityId') ownerEntityId?: string,
+    @Body('documentPurpose') documentPurpose?: string,
     @Body('durationSeconds') durationSeconds?: string,
   ) {
     if (!file) {
@@ -90,6 +109,7 @@ export class MediaController {
       visibility,
       ownerModule,
       ownerEntityId,
+      documentPurpose,
       durationSeconds: durationSeconds ? Number(durationSeconds) : undefined,
     });
   }
@@ -108,6 +128,55 @@ export class MediaController {
     });
   }
 
+  @Post(':id/replace')
+  @Permissions(Permission.MEDIA_UPLOAD)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        durationSeconds: { type: 'number' },
+      },
+    },
+  })
+  @ApiOperation({
+    summary: 'Replace media bytes (re-process, keep same asset id)',
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 200 * 1024 * 1024 },
+    }),
+  )
+  replace(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body('durationSeconds') durationSeconds?: string,
+  ) {
+    if (!file) {
+      throw new BadRequestException('file is required');
+    }
+    return this.media.replace(id, user, {
+      buffer: file.buffer,
+      mimeType: file.mimetype,
+      filename: file.originalname,
+      durationSeconds: durationSeconds ? Number(durationSeconds) : undefined,
+    });
+  }
+
+  @Post(':id/restore')
+  @Permissions(Permission.MEDIA_DELETE)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Restore soft-deleted media within the 72h retention window',
+  })
+  restore(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.media.restore(id, user);
+  }
+
   @Get(':id')
   @Permissions(Permission.MEDIA_READ)
   @ApiOperation({ summary: 'Get media asset metadata and access URLs' })
@@ -118,7 +187,9 @@ export class MediaController {
   @Delete(':id')
   @Permissions(Permission.MEDIA_DELETE)
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
-  @ApiOperation({ summary: 'Soft-delete media asset and remove R2 objects' })
+  @ApiOperation({
+    summary: 'Soft-delete media asset (R2 objects retained for 72h restore window)',
+  })
   remove(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.media.delete(id, user);
   }

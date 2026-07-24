@@ -24,6 +24,10 @@ describe('Media HTTP integration', () => {
     complete: jest.fn(),
     getById: jest.fn(),
     delete: jest.fn(),
+    listMine: jest.fn(),
+    listAdmin: jest.fn(),
+    replace: jest.fn(),
+    restore: jest.fn(),
   };
 
   const user = {
@@ -118,6 +122,21 @@ describe('Media HTTP integration', () => {
       .expect(200);
   });
 
+  it('GET /v1/media', async () => {
+    mediaService.listMine.mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 20,
+      total: 0,
+      totalPages: 1,
+    });
+
+    await request(app.getHttpServer())
+      .get('/v1/media')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+  });
+
   it('DELETE /v1/media/:id', async () => {
     mediaService.delete.mockResolvedValue({ success: true });
 
@@ -125,5 +144,14 @@ describe('Media HTTP integration', () => {
       .delete('/v1/media/a1')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
+  });
+
+  it('POST /v1/media/:id/restore', async () => {
+    mediaService.restore.mockResolvedValue({ id: 'a1', status: 'READY' });
+
+    await request(app.getHttpServer())
+      .post('/v1/media/a1/restore')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(201);
   });
 });

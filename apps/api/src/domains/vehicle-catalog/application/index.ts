@@ -1,2 +1,1 @@
-/** VehicleCatalog application layer — reserved for later implementation. */
-export {};
+export { CatalogFiltersService } from './catalog-filters.service';

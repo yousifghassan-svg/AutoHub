@@ -25,7 +25,10 @@ import { VideoProcessingService } from '../infrastructure/video-processing.servi
 import {
   VIRUS_SCANNER,
   isMediaAdmin,
+  MEDIA_SOFT_DELETE_RETENTION_HOURS,
+  DOCUMENT_PURPOSES,
   type VirusScanner,
+  type DocumentPurpose,
 } from '../domain/media.policies';
 
 @Injectable()
@@ -52,10 +55,12 @@ export class MediaService {
       visibility?: MediaVisibility;
       ownerModule?: string;
       ownerEntityId?: string;
+      documentPurpose?: string;
     },
   ) {
     const mediaType = this.validation.assertMediaType(input.mediaType);
     this.validation.assertMimeAndSize(mediaType, input.mimeType, input.byteSize);
+    const documentPurpose = this.parseDocumentPurpose(mediaType, input.documentPurpose);
 
     const assetId = randomUUID().replace(/-/g, '').slice(0, 24);
     const originalKey = this.validation.buildObjectKey({
@@ -77,6 +82,7 @@ export class MediaService {
       byteSize: input.byteSize,
       ownerModule: input.ownerModule,
       ownerEntityId: input.ownerEntityId,
+      documentPurpose,
       virusScanStatus: VirusScanStatus.PENDING,
       createdBy: { connect: { id: actor.id } },
       updatedBy: { connect: { id: actor.id } },
@@ -116,6 +122,7 @@ export class MediaService {
       ownerModule?: string;
       ownerEntityId?: string;
       durationSeconds?: number;
+      documentPurpose?: string;
     },
   ) {
     const mediaType = this.validation.assertMediaType(input.mediaType);
@@ -124,6 +131,7 @@ export class MediaService {
       input.mimeType,
       input.buffer.byteLength,
     );
+    const documentPurpose = this.parseDocumentPurpose(mediaType, input.documentPurpose);
 
     const scan = await this.virusScanner.scan(input.buffer, input.mimeType);
     if (scan.status === 'INFECTED') {
@@ -160,6 +168,7 @@ export class MediaService {
       checksumSha256: sha256(input.buffer),
       ownerModule: input.ownerModule,
       ownerEntityId: input.ownerEntityId,
+      documentPurpose,
       virusScanStatus: mapVirusStatus(scan.status),
       createdBy: { connect: { id: actor.id } },
       updatedBy: { connect: { id: actor.id } },
@@ -242,26 +251,189 @@ export class MediaService {
     return this.toResponse(asset, true);
   }
 
+  /** Owner library — own non-deleted assets. */
+  async listMine(
+    actor: AuthenticatedUser,
+    query: {
+      page?: number;
+      pageSize?: number;
+      mediaType?: string;
+      status?: string;
+    },
+  ) {
+    const page = Math.max(1, query.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
+    const mediaType = query.mediaType
+      ? this.validation.assertMediaType(query.mediaType)
+      : undefined;
+    const status = query.status
+      ? (query.status.toUpperCase() as MediaAssetStatus)
+      : undefined;
+
+    const { items, total } = await this.assets.listForOwner(actor.id, {
+      page,
+      pageSize,
+      mediaType,
+      status,
+    });
+
+    return {
+      items: await Promise.all(items.map((a) => this.toResponse(a, true))),
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
+  }
+
+  /** Admin library with filters + storage usage aggregate. */
+  async listAdmin(
+    actor: AuthenticatedUser,
+    query: {
+      page?: number;
+      pageSize?: number;
+      q?: string;
+      mediaType?: string;
+      status?: string;
+      unused?: boolean;
+      duplicates?: boolean;
+      includeDeleted?: boolean;
+    },
+  ) {
+    if (!isMediaAdmin(actor.role)) {
+      throw new ForbiddenException('Admin media library access required');
+    }
+
+    const page = Math.max(1, query.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
+    const mediaType = query.mediaType
+      ? this.validation.assertMediaType(query.mediaType)
+      : undefined;
+    const status = query.status
+      ? (query.status.toUpperCase() as MediaAssetStatus)
+      : undefined;
+
+    const result = await this.assets.listAdmin({
+      page,
+      pageSize,
+      q: query.q,
+      mediaType,
+      status,
+      unused: query.unused,
+      duplicates: query.duplicates,
+      includeDeleted: query.includeDeleted,
+    });
+
+    return {
+      items: await Promise.all(result.items.map((a) => this.toResponse(a, true))),
+      page,
+      pageSize,
+      total: result.total,
+      totalPages: Math.max(1, Math.ceil(result.total / pageSize)),
+      storageUsage: result.storageUsage,
+      duplicateChecksums: result.duplicateChecksums,
+    };
+  }
+
+  /**
+   * Replace bytes for an existing asset: re-process, keep same id, new original key.
+   */
+  async replace(
+    id: string,
+    actor: AuthenticatedUser,
+    input: {
+      buffer: Buffer;
+      mimeType: string;
+      filename?: string;
+      durationSeconds?: number;
+    },
+  ) {
+    const asset = await this.assets.findById(id);
+    if (!asset) throw new NotFoundException('Media asset not found');
+    this.assertCanManage(asset, actor);
+
+    this.validation.assertMimeAndSize(
+      asset.mediaType,
+      input.mimeType,
+      input.buffer.byteLength,
+    );
+
+    const scan = await this.virusScanner.scan(input.buffer, input.mimeType);
+    if (scan.status === 'INFECTED') {
+      throw new BadRequestException('File failed virus scan');
+    }
+
+    const originalKey = this.validation.buildObjectKey({
+      mediaType: asset.mediaType,
+      ownerId: asset.ownerId ?? actor.id,
+      filename: input.filename ?? asset.filename ?? undefined,
+      assetId: asset.id,
+    });
+
+    if (this.r2.isConfigured()) {
+      await this.r2.putObject({
+        key: originalKey,
+        body: input.buffer,
+        contentType: input.mimeType,
+        isPublic: asset.visibility === MediaVisibility.PUBLIC,
+      });
+    }
+
+    let updated = await this.assets.update(asset.id, {
+      originalKey,
+      filename: input.filename ?? asset.filename,
+      mimeType: input.mimeType,
+      byteSize: input.buffer.byteLength,
+      checksumSha256: sha256(input.buffer),
+      status: MediaAssetStatus.PROCESSING,
+      virusScanStatus: mapVirusStatus(scan.status),
+      processingError: null,
+      blurDataUrl: null,
+      updatedBy: { connect: { id: actor.id } },
+    });
+
+    updated = await this.processAsset(updated, input.buffer, {
+      durationSeconds: input.durationSeconds,
+    });
+
+    return this.toResponse(updated, true);
+  }
+
+  /**
+   * Restore a soft-deleted asset within the retention window.
+   * R2 objects are retained until the cleanup job reaps them after 72h.
+   */
+  async restore(id: string, actor: AuthenticatedUser) {
+    const asset = await this.assets.findByIdAny(id);
+    if (!asset) throw new NotFoundException('Media asset not found');
+    this.assertCanManage(asset, actor);
+
+    if (!asset.deletedAt || asset.status !== MediaAssetStatus.DELETED) {
+      throw new BadRequestException('Media asset is not soft-deleted');
+    }
+
+    const ageMs = Date.now() - asset.deletedAt.getTime();
+    const retentionMs = MEDIA_SOFT_DELETE_RETENTION_HOURS * 60 * 60 * 1000;
+    if (ageMs > retentionMs) {
+      throw new BadRequestException(
+        `Restore window expired (${MEDIA_SOFT_DELETE_RETENTION_HOURS}h retention)`,
+      );
+    }
+
+    const restored = await this.assets.restore(asset.id, actor.id);
+    return this.toResponse(restored, true);
+  }
+
+  /**
+   * Soft-delete only. R2 objects are kept until MediaCleanupService reaps after 72h,
+   * so restore remains possible within the retention window.
+   */
   async delete(id: string, actor: AuthenticatedUser) {
     const asset = await this.assets.findById(id);
     if (!asset) throw new NotFoundException('Media asset not found');
     this.assertCanManage(asset, actor);
 
-    // Soft-delete first so clients never see a half-deleted asset if R2 fails.
     await this.assets.softDelete(asset.id, actor.id);
-    for (const variant of asset.variants) {
-      try {
-        await this.r2.deleteObject(variant.r2Key);
-      } catch {
-        /* best-effort; cleanup job reaps orphans */
-      }
-    }
-    try {
-      await this.r2.deleteObject(asset.originalKey);
-    } catch {
-      /* best-effort */
-    }
-
     return { success: true as const };
   }
 
@@ -300,6 +472,7 @@ export class MediaService {
           status: MediaAssetStatus.READY,
           width: processed.width,
           height: processed.height,
+          blurDataUrl: processed.blurDataUrl ?? null,
           processingError: null,
         });
       }
@@ -350,6 +523,23 @@ export class MediaService {
     }
   }
 
+  private parseDocumentPurpose(
+    mediaType: MediaType,
+    value?: string,
+  ): DocumentPurpose | null {
+    if (!value) return null;
+    const normalized = value.trim().toUpperCase();
+    if (!(DOCUMENT_PURPOSES as readonly string[]).includes(normalized)) {
+      throw new BadRequestException(
+        `documentPurpose must be one of: ${DOCUMENT_PURPOSES.join(', ')}`,
+      );
+    }
+    if (mediaType !== MediaType.DOCUMENT) {
+      throw new BadRequestException('documentPurpose is only valid for DOCUMENT media');
+    }
+    return normalized as DocumentPurpose;
+  }
+
   private assertCanManage(
     asset: { ownerId: string | null },
     actor: AuthenticatedUser,
@@ -371,6 +561,16 @@ export class MediaService {
       }
     }
 
+    const owner =
+      'owner' in asset && asset.owner
+        ? {
+            id: asset.owner.id,
+            displayName: asset.owner.displayName,
+            email: asset.owner.email,
+            phone: asset.owner.phone,
+          }
+        : undefined;
+
     return {
       id: asset.id,
       mediaType: asset.mediaType,
@@ -386,8 +586,13 @@ export class MediaService {
       durationSeconds: asset.durationSeconds,
       ownerModule: asset.ownerModule,
       ownerEntityId: asset.ownerEntityId,
+      documentPurpose: asset.documentPurpose,
+      blurDataUrl: asset.blurDataUrl,
       virusScanStatus: asset.virusScanStatus,
       processingError: asset.processingError,
+      ownerId: asset.ownerId,
+      owner,
+      deletedAt: asset.deletedAt,
       createdAt: asset.createdAt,
       updatedAt: asset.updatedAt,
       variants: asset.variants.map((v) => ({

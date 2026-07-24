@@ -1,2 +1,1 @@
-/** VehicleCatalog presentation layer — reserved for later implementation. */
-export {};
+export { CatalogController } from './catalog.controller';

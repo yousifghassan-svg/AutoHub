@@ -5,7 +5,13 @@ import {
   mapListingToDetail,
   type ApiListing,
 } from '../domain/mappers';
-import type { ListingCardModel, ListingDetailModel, ListingStatus } from '../domain/types';
+import type {
+  ContactChannel,
+  ListingCardModel,
+  ListingDetailModel,
+  ListingStatus,
+  ReportReason,
+} from '../domain/types';
 
 export type ListQuery = {
   page?: number;
@@ -37,13 +43,36 @@ function toQuery(params: ListQuery): string {
   return sp.toString();
 }
 
+export type AddListingMediaInput = {
+  mediaAssetId: string;
+  mediaType: string;
+  sortOrder?: number;
+};
+
+export type ListingMediaAttachResult = {
+  id: string;
+  mediaType?: string;
+  r2Key?: string;
+  thumbnailKey?: string | null;
+};
+
+export type CreateReportInput = {
+  listingId: string;
+  reason: ReportReason;
+  details?: string;
+};
+
 export type ListingsRepository = {
   list(query: ListQuery): Promise<Paginated<ListingCardModel>>;
   getById(id: string): Promise<ListingDetailModel>;
   create(body: Record<string, unknown>): Promise<ListingDetailModel>;
   update(id: string, body: Record<string, unknown>): Promise<ListingDetailModel>;
   changeStatus(id: string, status: ListingStatus): Promise<ListingDetailModel>;
+  addMedia(id: string, body: AddListingMediaInput): Promise<ListingMediaAttachResult>;
+  reorderMedia(id: string, orderedIds: string[]): Promise<ListingMediaAttachResult[]>;
   softDelete(id: string): Promise<void>;
+  contactClick(listingId: string, channel: ContactChannel): Promise<void>;
+  createReport(input: CreateReportInput): Promise<{ id: string }>;
 };
 
 export function createListingsRepository(http: HttpClient): ListingsRepository {
@@ -78,8 +107,24 @@ export function createListingsRepository(http: HttpClient): ListingsRepository {
       );
       return mapListingToDetail(data);
     },
+    async addMedia(id, body) {
+      return http.post<ListingMediaAttachResult>(`/v1/listings/${id}/media`, body, true);
+    },
+    async reorderMedia(id, orderedIds) {
+      return http.patch<ListingMediaAttachResult[]>(
+        `/v1/listings/${id}/media/reorder`,
+        { orderedIds },
+        true,
+      );
+    },
     async softDelete(id) {
       await http.delete(`/v1/listings/${id}`, true);
+    },
+    async contactClick(listingId, channel) {
+      await http.post(`/v1/listings/${listingId}/contact-click`, { channel }, false);
+    },
+    async createReport(input) {
+      return http.post<{ id: string }>('/v1/reports', input, true);
     },
   };
 }

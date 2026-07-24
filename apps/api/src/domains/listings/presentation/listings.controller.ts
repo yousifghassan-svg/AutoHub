@@ -24,6 +24,8 @@ import { UpdateListingDto } from './dto/update-listing.dto';
 import { SearchListingsDto } from './dto/search-listings.dto';
 import { ChangeStatusDto } from './dto/change-status.dto';
 import { AddMediaDto } from './dto/add-media.dto';
+import { ReorderMediaDto } from './dto/reorder-media.dto';
+import { ContactClickDto } from './dto/contact-click.dto';
 
 @ApiTags('listings')
 @Controller('listings')
@@ -85,8 +87,9 @@ export class ListingsController {
   @ApiBearerAuth('access-token')
   @Permissions(Permission.LISTINGS_UPDATE)
   @ApiOperation({
-    summary: 'Add listing media (IMAGE | VIDEO | 360_MEDIA)',
-    description: 'Generates thumbnail key; optional imageBase64 produces a JPEG thumbnail buffer metadata.',
+    summary: 'Add listing media (IMAGE | VIDEO | 360_MEDIA | DOCUMENT)',
+    description:
+      'Pass mediaAssetId to bridge a platform MediaAsset, or r2Key for legacy attach. Primary = sortOrder 0.',
   })
   addMedia(
     @Param('id') id: string,
@@ -99,13 +102,45 @@ export class ListingsController {
 
     return this.listings.addMedia(id, user, {
       mediaType: body.mediaType,
+      mediaAssetId: body.mediaAssetId,
       r2Key: body.r2Key,
       sortOrder: body.sortOrder,
       mimeType: body.mimeType,
       byteSize: body.byteSize,
       confirmed: body.confirmed,
+      documentPurpose: body.documentPurpose,
       sourceBuffer,
     });
+  }
+
+  @Patch(':id/media/reorder')
+  @ApiBearerAuth('access-token')
+  @Permissions(Permission.LISTINGS_UPDATE)
+  @ApiOperation({
+    summary: 'Reorder listing media',
+    description: 'Body { orderedIds } — index 0 becomes primary (sortOrder 0).',
+  })
+  reorderMedia(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: ReorderMediaDto,
+  ) {
+    return this.listings.reorderMedia(id, user, body.orderedIds);
+  }
+
+  @Post(':id/media/:mediaId/primary')
+  @ApiBearerAuth('access-token')
+  @Permissions(Permission.LISTINGS_UPDATE)
+  @ApiOperation({
+    summary: 'Set listing media as primary',
+    description: 'Sets sortOrder 0 on the target and shifts others.',
+  })
+  setPrimaryMedia(
+    @Param('id') id: string,
+    @Param('mediaId') mediaId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.listings.setPrimaryMedia(id, mediaId, user);
   }
 
   @Delete(':id/media/:mediaId')
@@ -136,5 +171,12 @@ export class ListingsController {
     @Body() body: ChangeStatusDto,
   ) {
     return this.listings.changeStatus(id, user, body.status);
+  }
+
+  @Public()
+  @Post(':id/contact-click')
+  @ApiOperation({ summary: 'Record phone / WhatsApp contact click' })
+  contactClick(@Param('id') id: string, @Body() body: ContactClickDto) {
+    return this.listings.recordContactClick(id, body.channel);
   }
 }

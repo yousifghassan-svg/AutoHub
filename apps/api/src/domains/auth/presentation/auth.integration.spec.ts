@@ -85,6 +85,30 @@ describe('Auth HTTP integration', () => {
               refreshStore.set(data.tokenHash, row);
               return row;
             }),
+            rotate: jest.fn(
+              async (input: {
+                revokeId: string;
+                create: {
+                  userId: string;
+                  tokenHash: string;
+                  familyId: string;
+                  expiresAt: Date;
+                };
+              }) => {
+                for (const [key, value] of refreshStore.entries()) {
+                  if (value.id === input.revokeId) {
+                    refreshStore.set(key, { ...value, revokedAt: new Date() });
+                  }
+                }
+                const row = {
+                  id: `rt-${refreshStore.size + 1}`,
+                  revokedAt: null,
+                  ...input.create,
+                };
+                refreshStore.set(input.create.tokenHash, row);
+                return row;
+              },
+            ),
             findByHash: jest.fn(async (tokenHash: string) => refreshStore.get(tokenHash) ?? null),
             revoke: jest.fn(async (id: string) => {
               for (const [key, value] of refreshStore.entries()) {

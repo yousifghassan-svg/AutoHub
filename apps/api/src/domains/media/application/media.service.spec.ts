@@ -5,9 +5,13 @@ describe('MediaService', () => {
   const assets = {
     create: jest.fn(),
     findById: jest.fn(),
+    findByIdAny: jest.fn(),
     update: jest.fn(),
     softDelete: jest.fn(),
+    restore: jest.fn(),
     upsertVariant: jest.fn(),
+    listForOwner: jest.fn(),
+    listAdmin: jest.fn(),
   };
   const validation = {
     assertMediaType: jest.fn((v: string) => v.toUpperCase()),
@@ -27,6 +31,7 @@ describe('MediaService', () => {
     process: jest.fn(async () => ({
       width: 100,
       height: 80,
+      blurDataUrl: 'data:image/jpeg;base64,abc',
       variants: [
         {
           kind: 'THUMBNAIL',

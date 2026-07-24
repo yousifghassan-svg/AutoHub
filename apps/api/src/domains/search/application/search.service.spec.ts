@@ -37,7 +37,10 @@ describe('SearchService', () => {
     status: 'ACTIVE',
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    discovery.recordEvent.mockResolvedValue(undefined);
+  });
 
   it('searches and records analytics event', async () => {
     discovery.search.mockResolvedValue({
@@ -74,6 +77,7 @@ describe('SearchService', () => {
       ],
       total: 1,
     });
+    discovery.recordEvent.mockResolvedValue(undefined);
 
     const result = await service.search(
       { q: 'camry', brandId: 'b1', sort: SearchSort.NEWEST },

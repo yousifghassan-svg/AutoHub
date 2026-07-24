@@ -10,6 +10,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { LanguageCode } from '@autohub/database';
+import { PlateDetailsDto } from './plate-details.dto';
 import { VehicleDetailsDto } from './vehicle-details.dto';
 
 export class UpdateListingDto {
@@ -94,4 +95,10 @@ export class UpdateListingDto {
   @ValidateNested()
   @Type(() => VehicleDetailsDto)
   vehicleDetails?: VehicleDetailsDto;
+
+  @ApiPropertyOptional({ type: PlateDetailsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PlateDetailsDto)
+  plateDetails?: PlateDetailsDto;
 }

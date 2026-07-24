@@ -4,10 +4,13 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useFavoriteIds } from '@/features/favorites/favorites-store';
+import { useTheme } from './ThemeProvider';
 import { Button, cn } from './ui';
 
 const nav = [
   { href: '/search', label: 'Search' },
+  { href: '/dealers', label: 'Dealers' },
+  { href: '/plates', label: 'Plates' },
   { href: '/sell', label: 'Sell' },
   { href: '/my-listings', label: 'My listings' },
   { href: '/favorites', label: 'Favorites' },
@@ -16,8 +19,8 @@ const nav = [
 export function SiteHeader() {
   const { status, session, logout } = useAuth();
   const favorites = useFavoriteIds();
+  const { theme, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
-  // Avoid auth/favorites UI differing between SSR HTML and first client paint.
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -32,7 +35,7 @@ export function SiteHeader() {
           Auto<span className="text-brand">Hub</span>
         </Link>
 
-        <nav className="hidden items-center gap-6 md:flex">
+        <nav className="hidden items-center gap-5 lg:flex">
           {nav.map((item) => (
             <Link
               key={item.href}
@@ -45,23 +48,33 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-2 md:flex">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+            className="rounded-md border border-border px-2.5 py-2 text-sm text-ink-secondary hover:bg-surface-muted"
+          >
+            {mounted && theme === 'dark' ? 'Light' : 'Dark'}
+          </button>
           {showAccount ? (
             <>
               <Link href="/profile" className="text-sm font-medium text-ink">
                 {session?.user.displayName ?? session?.user.phone ?? 'Profile'}
               </Link>
-              <Button variant="secondary" onClick={() => void logout()}>
+              <Button variant="secondary" size="sm" onClick={() => void logout()}>
                 Log out
               </Button>
             </>
           ) : (
             <>
               <Link href="/login">
-                <Button variant="ghost">Log in</Button>
+                <Button variant="ghost" size="sm">
+                  Log in
+                </Button>
               </Link>
               <Link href="/register">
-                <Button>Get started</Button>
+                <Button size="sm">Get started</Button>
               </Link>
             </>
           )}
@@ -86,6 +99,9 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          <button type="button" onClick={toggleTheme} className="text-left text-sm">
+            Toggle {mounted && theme === 'dark' ? 'light' : 'dark'} mode
+          </button>
           {showAccount ? (
             <>
               <Link href="/profile" onClick={() => setOpen(false)}>

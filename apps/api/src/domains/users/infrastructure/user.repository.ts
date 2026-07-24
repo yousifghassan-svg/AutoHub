@@ -18,6 +18,12 @@ export class UserRepository {
     });
   }
 
+  findByPhone(phone: string): Promise<User | null> {
+    return this.prisma.user.findFirst({
+      where: { phone, deletedAt: null },
+    });
+  }
+
   createFromFirebase(input: {
     firebaseUid: string;
     phone: string;

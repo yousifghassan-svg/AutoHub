@@ -8,6 +8,8 @@ import {
   LanguageCode,
   ListingCategoryCode,
   ListingStatus,
+  MediaType,
+  MediaVariantKind,
   Prisma,
 } from '@autohub/database';
 import type { AuthenticatedUser } from '../../auth/domain/auth.types';
@@ -28,6 +30,8 @@ import { ListingMediaRepository } from '../infrastructure/listing-media.reposito
 import { ThumbnailService } from '../infrastructure/thumbnail.service';
 import { uniqueSlug } from '../infrastructure/slug.util';
 import { R2StorageService } from '../../../infrastructure/storage/r2-storage.service';
+import { MediaAssetRepository } from '../../media/infrastructure/media-asset.repository';
+import { DOCUMENT_PURPOSES } from '../../media/domain/media.policies';
 import { ListingValidationService } from './listing-validation.service';
 import type { CreateListingInput } from './types/create-listing.input';
 import type { UpdateListingInput } from './types/update-listing.input';
@@ -42,6 +46,7 @@ export class ListingsService {
     private readonly validation: ListingValidationService,
     private readonly thumbnails: ThumbnailService,
     private readonly r2: R2StorageService,
+    private readonly mediaAssets: MediaAssetRepository,
   ) {}
 
   async create(actor: AuthenticatedUser, input: CreateListingInput) {
@@ -327,8 +332,57 @@ export class ListingsService {
     const mediaType = parseApiMediaType(input.mediaType);
     this.validation.assertMediaType(mediaType);
 
-    if (!input.r2Key?.trim()) {
-      throw new BadRequestException('r2Key is required');
+    let r2Key = input.r2Key?.trim() ?? '';
+    let mimeType = input.mimeType;
+    let byteSize = input.byteSize;
+    let width: number | undefined;
+    let height: number | undefined;
+    let thumbnailKey: string | null | undefined;
+    const mediaAssetId = input.mediaAssetId?.trim() || undefined;
+    let documentPurpose = input.documentPurpose?.trim().toUpperCase() || undefined;
+
+    if (mediaType === MediaType.DOCUMENT) {
+      if (
+        documentPurpose &&
+        !(DOCUMENT_PURPOSES as readonly string[]).includes(documentPurpose)
+      ) {
+        throw new BadRequestException(
+          `documentPurpose must be one of: ${DOCUMENT_PURPOSES.join(', ')}`,
+        );
+      }
+    } else if (documentPurpose) {
+      throw new BadRequestException('documentPurpose is only valid for DOCUMENT media');
+    }
+
+    if (mediaAssetId) {
+      const asset = await this.mediaAssets.findById(mediaAssetId);
+      if (!asset) throw new NotFoundException('Media asset not found');
+      if (asset.ownerId && asset.ownerId !== actor.id && !canModerateListings(actor.role, actor.permissions)) {
+        throw new ForbiddenException('Not allowed to attach this media asset');
+      }
+      r2Key = asset.originalKey;
+      mimeType = mimeType ?? asset.mimeType;
+      byteSize = byteSize ?? asset.byteSize;
+      width = asset.width ?? undefined;
+      height = asset.height ?? undefined;
+      const thumbVariant = asset.variants.find(
+        (v) => v.kind === MediaVariantKind.THUMBNAIL,
+      );
+      thumbnailKey = thumbVariant?.r2Key ?? null;
+      if (asset.documentPurpose && !documentPurpose) {
+        documentPurpose = asset.documentPurpose;
+      }
+      if (documentPurpose && asset.documentPurpose !== documentPurpose) {
+        await this.mediaAssets.update(asset.id, { documentPurpose });
+      }
+      await this.mediaAssets.update(asset.id, {
+        ownerModule: 'listings',
+        ownerEntityId: listing.id,
+      });
+    }
+
+    if (!r2Key) {
+      throw new BadRequestException('r2Key or mediaAssetId is required');
     }
 
     const count = await this.media.countActive(listing.id);
@@ -339,41 +393,72 @@ export class ListingsService {
         ? input.sortOrder
         : await this.media.nextSortOrder(listing.id);
 
-    const thumb = await this.thumbnails.generate({
-      r2Key: input.r2Key.trim(),
-      mediaType,
-      sourceBuffer: input.sourceBuffer,
-    });
+    if (thumbnailKey === undefined) {
+      const thumb = await this.thumbnails.generate({
+        r2Key,
+        mediaType,
+        sourceBuffer: input.sourceBuffer,
+      });
+      thumbnailKey = thumb.thumbnailKey;
+      mimeType = mimeType ?? thumb.mimeType ?? undefined;
+      byteSize = byteSize ?? thumb.byteSize ?? undefined;
+      width = width ?? thumb.width ?? undefined;
+      height = height ?? thumb.height ?? undefined;
+    }
 
     const created = await this.media.create({
       listing: { connect: { id: listing.id } },
-      r2Key: input.r2Key.trim(),
-      thumbnailKey: thumb.thumbnailKey,
+      mediaAsset: mediaAssetId ? { connect: { id: mediaAssetId } } : undefined,
+      r2Key,
+      thumbnailKey: thumbnailKey ?? null,
       mediaType,
-      mimeType: input.mimeType ?? thumb.mimeType,
-      byteSize: input.byteSize ?? thumb.byteSize,
-      width: thumb.width,
-      height: thumb.height,
+      mimeType: mimeType ?? null,
+      byteSize: byteSize ?? null,
+      width: width ?? null,
+      height: height ?? null,
       sortOrder,
       confirmed: input.confirmed ?? true,
       createdBy: { connect: { id: actor.id } },
       updatedBy: { connect: { id: actor.id } },
     });
 
-    return {
-      id: created.id,
-      listingId: created.listingId,
-      r2Key: created.r2Key,
-      thumbnailKey: created.thumbnailKey,
-      mediaType: toApiMediaType(created.mediaType),
-      mimeType: created.mimeType,
-      byteSize: created.byteSize,
-      width: created.width,
-      height: created.height,
-      sortOrder: created.sortOrder,
-      confirmed: created.confirmed,
-      createdAt: created.createdAt,
-    };
+    return this.mapListingMedia(created);
+  }
+
+  async reorderMedia(
+    listingId: string,
+    actor: AuthenticatedUser,
+    orderedIds: string[],
+  ) {
+    const listing = await this.listings.findById(listingId);
+    if (!listing) throw new NotFoundException('Listing not found');
+    this.assertCanManage(listing, actor);
+
+    try {
+      const items = await this.media.reorder(listingId, orderedIds, actor.id);
+      return items.map((m) => this.mapListingMedia(m));
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Failed to reorder media',
+      );
+    }
+  }
+
+  async setPrimaryMedia(
+    listingId: string,
+    mediaId: string,
+    actor: AuthenticatedUser,
+  ) {
+    const listing = await this.listings.findById(listingId);
+    if (!listing) throw new NotFoundException('Listing not found');
+    this.assertCanManage(listing, actor);
+
+    try {
+      const items = await this.media.setPrimary(listingId, mediaId, actor.id);
+      return items.map((m) => this.mapListingMedia(m));
+    } catch {
+      throw new NotFoundException('Media not found');
+    }
   }
 
   async removeMedia(listingId: string, mediaId: string, actor: AuthenticatedUser) {
@@ -386,16 +471,62 @@ export class ListingsService {
       throw new NotFoundException('Media not found');
     }
 
-    // Soft-delete DB first; R2 cleanup is best-effort so a storage blip
-    // cannot leave an "active" row pointing at already-deleted objects.
+    // Soft-delete listing row only; platform MediaAsset lifecycle is independent.
     await this.media.softDelete(mediaId, actor.id);
-    try {
-      if (item.r2Key) await this.r2.deleteObject(item.r2Key);
-      if (item.thumbnailKey) await this.r2.deleteObject(item.thumbnailKey);
-    } catch {
-      // Orphans are reaped by MediaCleanupService.
-    }
     return { success: true as const };
+  }
+
+  private mapListingMedia(created: {
+    id: string;
+    listingId: string;
+    mediaAssetId?: string | null;
+    r2Key: string;
+    thumbnailKey: string | null;
+    mediaType: MediaType;
+    mimeType: string | null;
+    byteSize: number | null;
+    width: number | null;
+    height: number | null;
+    sortOrder: number;
+    confirmed: boolean;
+    createdAt: Date;
+    mediaAsset?: {
+      blurDataUrl: string | null;
+      documentPurpose: string | null;
+      variants: Array<{
+        kind: MediaVariantKind;
+        r2Key: string;
+        mimeType: string;
+        width: number | null;
+        height: number | null;
+      }>;
+    } | null;
+  }) {
+    return {
+      id: created.id,
+      listingId: created.listingId,
+      mediaAssetId: created.mediaAssetId ?? null,
+      r2Key: created.r2Key,
+      thumbnailKey: created.thumbnailKey,
+      mediaType: toApiMediaType(created.mediaType),
+      mimeType: created.mimeType,
+      byteSize: created.byteSize,
+      width: created.width,
+      height: created.height,
+      sortOrder: created.sortOrder,
+      confirmed: created.confirmed,
+      isPrimary: created.sortOrder === 0,
+      blurDataUrl: created.mediaAsset?.blurDataUrl ?? null,
+      documentPurpose: created.mediaAsset?.documentPurpose ?? null,
+      variants: (created.mediaAsset?.variants ?? []).map((v) => ({
+        kind: v.kind,
+        r2Key: v.r2Key,
+        mimeType: v.mimeType,
+        width: v.width,
+        height: v.height,
+      })),
+      createdAt: created.createdAt,
+    };
   }
 
   private canView(
@@ -427,6 +558,30 @@ export class ListingsService {
     categoryCode: ListingCategoryCode,
     input: CreateListingInput,
   ): Promise<Partial<Prisma.ListingCreateInput>> {
+    if (categoryCode === ListingCategoryCode.PLATE) {
+      if (!input.plateDetails) {
+        throw new BadRequestException('plateDetails is required for PLATE listings');
+      }
+      const plate = input.plateDetails;
+      const plateDisplay = plate.plateDisplay.trim();
+      const plateNormalized =
+        plate.plateNormalized?.trim().toUpperCase() ||
+        plateDisplay.replace(/\s+/g, '').toUpperCase();
+      return {
+        plateDetails: {
+          create: {
+            formatCode: plate.formatCode.trim(),
+            plateDisplay,
+            plateNormalized,
+            series: plate.series?.trim(),
+            number: plate.number?.trim(),
+            regionCode: plate.regionCode?.trim(),
+            plateType: plate.plateType?.trim(),
+          },
+        },
+      };
+    }
+
     const vehicle = input.carDetails ?? input.vehicleDetails;
     if (!vehicle) return {};
 
@@ -449,6 +604,10 @@ export class ListingsService {
             engineTypeId: vehicle.engineTypeId,
             engineSizeCc: vehicle.engineSizeCc,
             doors: vehicle.doors,
+            vin: vehicle.vin?.trim(),
+            trim: vehicle.trim?.trim(),
+            seats: vehicle.seats,
+            interiorColor: vehicle.interiorColor?.trim(),
           },
         },
       };
@@ -499,6 +658,31 @@ export class ListingsService {
     categoryCode: ListingCategoryCode,
     input: UpdateListingInput,
   ): Promise<Partial<Prisma.ListingUpdateInput>> {
+    if (categoryCode === ListingCategoryCode.PLATE && input.plateDetails) {
+      const plate = input.plateDetails;
+      const plateDisplay = plate.plateDisplay.trim();
+      const plateNormalized =
+        plate.plateNormalized?.trim().toUpperCase() ||
+        plateDisplay.replace(/\s+/g, '').toUpperCase();
+      const data = {
+        formatCode: plate.formatCode.trim(),
+        plateDisplay,
+        plateNormalized,
+        series: plate.series?.trim(),
+        number: plate.number?.trim(),
+        regionCode: plate.regionCode?.trim(),
+        plateType: plate.plateType?.trim(),
+      };
+      return {
+        plateDetails: {
+          upsert: {
+            create: data,
+            update: data,
+          },
+        },
+      };
+    }
+
     const vehicle = input.carDetails ?? input.vehicleDetails;
     if (!vehicle) return {};
 
@@ -515,6 +699,10 @@ export class ListingsService {
       engineTypeId: vehicle.engineTypeId,
       engineSizeCc: vehicle.engineSizeCc,
       doors: vehicle.doors,
+      vin: vehicle.vin?.trim(),
+      trim: vehicle.trim?.trim(),
+      seats: vehicle.seats,
+      interiorColor: vehicle.interiorColor?.trim(),
     };
 
     if (categoryCode === ListingCategoryCode.CAR) {
@@ -591,7 +779,30 @@ export class ListingsService {
     return {};
   }
 
+  async recordContactClick(id: string, channel: 'phone' | 'whatsapp') {
+    const listing = await this.listings.findById(id);
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (listing.status !== ListingStatus.ACTIVE) {
+      throw new BadRequestException('Contact is only available for active listings');
+    }
+
+    const updated = await this.listings.client.listing.update({
+      where: { id },
+      data:
+        channel === 'phone'
+          ? { phoneClicks: { increment: 1 } }
+          : { whatsappClicks: { increment: 1 } },
+      select: { phoneClicks: true, whatsappClicks: true },
+    });
+
+    return { ok: true, ...updated };
+  }
+
   private toResponse(listing: ListingWithRelations) {
+    const dealer = listing.seller?.dealerMemberships?.[0]?.organization ?? null;
+    const phone = dealer?.phone ?? listing.seller?.phone ?? null;
+    const whatsapp = dealer?.whatsapp ?? phone;
+
     return {
       id: listing.id,
       sellerId: listing.sellerId,
@@ -615,24 +826,22 @@ export class ListingsService {
       verificationStatus: listing.verificationStatus,
       viewsCount: listing.viewsCount,
       favoritesCount: listing.favoritesCount,
+      phoneClicks: listing.phoneClicks,
+      whatsappClicks: listing.whatsappClicks,
       publishedAt: listing.publishedAt,
       soldAt: listing.soldAt,
       createdAt: listing.createdAt,
       updatedAt: listing.updatedAt,
+      latitude: listing.latitude != null ? Number(listing.latitude) : null,
+      longitude: listing.longitude != null ? Number(listing.longitude) : null,
+      locationText: listing.locationText,
+      features: listing.features ?? [],
       translations: listing.translations.map((t) => ({
         language: t.language,
         title: t.title,
         description: t.description,
       })),
-      media: listing.media.map((m) => ({
-        id: m.id,
-        r2Key: m.r2Key,
-        thumbnailKey: m.thumbnailKey,
-        mediaType: toApiMediaType(m.mediaType),
-        mimeType: m.mimeType,
-        sortOrder: m.sortOrder,
-        confirmed: m.confirmed,
-      })),
+      media: listing.media.map((m) => this.mapListingMedia(m)),
       carDetails: listing.carDetails,
       motorcycleDetails: listing.motorcycleDetails,
       truckDetails: listing.truckDetails,
@@ -652,6 +861,17 @@ export class ListingsService {
         nameAr: listing.city.nameAr,
         governorateId: listing.city.governorateId,
       },
+      sellerContact: listing.status === ListingStatus.ACTIVE
+        ? {
+            displayName: dealer?.name ?? listing.seller?.displayName ?? null,
+            phone,
+            whatsapp,
+            dealerSlug: dealer?.slug ?? null,
+            dealerName: dealer?.name ?? null,
+            dealerVerified: dealer?.verified ?? false,
+            dealerLogoUrl: dealer?.logoUrl ?? null,
+          }
+        : null,
     };
   }
 }
