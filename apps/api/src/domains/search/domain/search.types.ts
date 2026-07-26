@@ -19,6 +19,7 @@ export type SearchFilters = {
   cityId?: string;
   minPrice?: number;
   maxPrice?: number;
+  currencyCode?: string;
   minYear?: number;
   maxYear?: number;
   minMileage?: number;

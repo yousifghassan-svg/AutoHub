@@ -31,7 +31,8 @@ export const CATALOG_CITIES: CatalogCity[] = [
   { id: 'city-karbala', slug: 'karbala', nameEn: 'Karbala', nameAr: 'كربلاء' },
 ];
 
+/** @deprecated Prefer currencyCode on create/update; catalog resolves codes server-side. */
 export const MOCK_CURRENCY_IDS = {
-  IQD: 'curr-iqd',
-  USD: 'curr-usd',
+  IQD: 'IQD',
+  USD: 'USD',
 } as const;

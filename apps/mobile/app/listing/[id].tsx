@@ -26,6 +26,8 @@ import {
   useSimilarListings,
 } from '@/features/listing-detail/hooks/useListingDetail';
 import { ApiError } from '@/lib/api/types';
+import { useFavoritesStore } from '@/src/features/favorites/favorites.store';
+import { resolveDomain } from '@/src/hooks/useMarketplacePath';
 
 export default function ListingDetailScreen() {
   const theme = useTheme();
@@ -35,6 +37,7 @@ export default function ListingDetailScreen() {
   const similar = useSimilarListings(detailQuery.data);
   const report = useReportListing();
   const recordView = useRecordListingView();
+  const toggleFavorite = useFavoritesStore((s) => s.toggle);
   const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
@@ -54,7 +57,9 @@ export default function ListingDetailScreen() {
       thumbnailKey: detailQuery.data.media[0]?.thumbnailKey ?? null,
       categoryCode: detailQuery.data.categoryCode,
     });
-  }, [detailQuery.data?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Favorites/recently-viewed should only re-fire when the listing id changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally id-only
+  }, [detailQuery.data?.id]);
 
   const openGallery = useCallback(
     (index: number) => {
@@ -180,7 +185,22 @@ export default function ListingDetailScreen() {
       <ActionBar
         detail={detail}
         onFavorite={() =>
-          Alert.alert('Favorites', 'Favorite sync arrives in a later sprint.')
+          toggleFavorite({
+            id: detail.id,
+            slug: detail.slug,
+            title: detail.title,
+            price: detail.price,
+            currencyCode: detail.currencyCode,
+            location: detail.cityName,
+            mileageKm: null,
+            year: null,
+            isVerified: detail.isVerified,
+            isFeatured: detail.isFeatured,
+            imageUrl: detail.media[0]?.thumbUrl ?? detail.media[0]?.url ?? null,
+            thumbnailKey: detail.media[0]?.thumbnailKey ?? null,
+            categoryCode: detail.categoryCode,
+            domain: resolveDomain(detail),
+          })
         }
         onReport={() => setReportOpen(true)}
       />

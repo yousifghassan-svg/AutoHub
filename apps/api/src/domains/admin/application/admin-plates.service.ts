@@ -5,13 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  ListingCategoryCode,
   ListingStatus,
-  Prisma,
 } from '@autohub/database';
-import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { AdminAuditService } from './admin-audit.service';
 import type { AuthenticatedUser } from '../../auth/domain/auth.types';
+import { PlateRepository } from '../../plates/infrastructure/plate.repository';
 
 export type AdminPlatesQuery = {
   page?: number;
@@ -39,61 +37,34 @@ export type UpsertPlateInput = {
   series: string;
   number: string;
   plateType?: string;
+  plateCategoryId?: string;
+  platePrefixId?: string;
   status?: ListingStatus;
 };
 
 @Injectable()
 export class AdminPlatesService {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
+    private readonly plates: PlateRepository,
   ) {}
 
   async list(query: AdminPlatesQuery) {
-    const page = query.page ?? 1;
-    const pageSize = Math.min(query.pageSize ?? 20, 100);
-    const where = this.buildWhere(query);
-
-    const [total, items] = await Promise.all([
-      this.prisma.listing.count({ where }),
-      this.prisma.listing.findMany({
-        where,
-        include: {
-          plateDetails: { include: { format: true } },
-          translations: true,
-          city: true,
-          seller: { select: { id: true, displayName: true, phone: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-    ]);
-
-    return {
-      items,
-      page,
-      pageSize,
-      total,
-      totalPages: Math.ceil(total / pageSize) || 0,
-    };
+    return this.plates.search({
+      page: query.page,
+      pageSize: query.pageSize,
+      province: query.governorate,
+      formatCode: query.formatCode,
+      prefix: query.letter,
+      series: query.letter,
+      number: query.number,
+      plateType: query.plateType,
+      keyword: query.q,
+    });
   }
 
   async findById(id: string) {
-    const listing = await this.prisma.listing.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-        categoryCode: ListingCategoryCode.PLATE,
-      },
-      include: {
-        plateDetails: { include: { format: true } },
-        translations: true,
-        media: { where: { deletedAt: null }, orderBy: { sortOrder: 'asc' } },
-        city: true,
-        seller: true,
-      },
-    });
+    const listing = await this.plates.findById(id);
     if (!listing) throw new NotFoundException('Plate listing not found');
     return listing;
   }
@@ -107,58 +78,51 @@ export class AdminPlatesService {
     const normalized = display.replace(/\s+/g, '').toUpperCase();
     await this.assertNoDuplicateActive(normalized);
 
-    const format = await this.prisma.plateFormat.findUnique({
-      where: { code: input.formatCode },
-    });
+    const format = await this.plates.findFormatByCode(input.formatCode);
     if (!format) throw new BadRequestException('Unknown plate format');
 
-    const country =
-      input.countryId ??
-      (
-        await this.prisma.city.findUniqueOrThrow({
-          where: { id: input.cityId },
-          include: { governorate: true },
-        })
-      ).governorate.countryId;
-
+    const city = await this.plates.findCityWithGovernorate(input.cityId);
+    const country = input.countryId ?? city.governorate.countryId;
     const slug = `plate-${normalized.toLowerCase()}-${Date.now().toString(36)}`;
 
-    const created = await this.prisma.listing.create({
-      data: {
-        sellerId: input.sellerId,
-        categoryId: input.categoryId,
-        categoryCode: ListingCategoryCode.PLATE,
-        status: input.status ?? ListingStatus.ACTIVE,
-        countryId: country,
-        cityId: input.cityId,
-        primaryPrice: input.primaryPrice,
-        slug,
-        metaTitle: input.title,
-        publishedAt: new Date(),
-        createdById: actor.id,
-        updatedById: actor.id,
-        translations: {
-          create: {
-            language: 'ar',
-            title: input.title,
-            description: input.description,
-            createdById: actor.id,
-            updatedById: actor.id,
-          },
-        },
-        plateDetails: {
-          create: {
-            formatCode: input.formatCode,
-            plateDisplay: display,
-            plateNormalized: normalized,
-            series: input.series.trim().toUpperCase(),
-            number: input.number.trim(),
-            regionCode: input.regionCode.trim(),
-            plateType: input.plateType,
-          },
+    const created = await this.plates.create({
+      seller: { connect: { id: input.sellerId } },
+      category: { connect: { id: input.categoryId } },
+      status: input.status ?? ListingStatus.ACTIVE,
+      country: { connect: { id: country } },
+      city: { connect: { id: input.cityId } },
+      primaryPrice: input.primaryPrice,
+      slug,
+      metaTitle: input.title,
+      publishedAt: new Date(),
+      createdBy: { connect: { id: actor.id } },
+      updatedBy: { connect: { id: actor.id } },
+      translations: {
+        create: {
+          language: 'ar',
+          title: input.title,
+          description: input.description,
+          createdById: actor.id,
+          updatedById: actor.id,
         },
       },
-      include: { plateDetails: true, translations: true },
+      plateDetails: {
+        create: {
+          format: { connect: { code: input.formatCode } },
+          plateDisplay: display,
+          plateNormalized: normalized,
+          series: input.series.trim().toUpperCase(),
+          number: input.number.trim(),
+          regionCode: input.regionCode.trim(),
+          plateType: input.plateType,
+          plateCategory: input.plateCategoryId
+            ? { connect: { id: input.plateCategoryId } }
+            : undefined,
+          platePrefix: input.platePrefixId
+            ? { connect: { id: input.platePrefixId } }
+            : undefined,
+        },
+      },
     });
 
     await this.audit.log({
@@ -191,49 +155,42 @@ export class AdminPlatesService {
       await this.assertNoDuplicateActive(normalized, id);
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      if (before.plateDetails) {
-        await tx.plateDetails.update({
-          where: { listingId: id },
-          data: {
-            formatCode: input.formatCode ?? before.plateDetails.formatCode,
+    const updated = await this.plates.updateWithDetails(id, {
+      listing: {
+        cityId: input.cityId,
+        primaryPrice: input.primaryPrice,
+        status: input.status,
+        updatedById: actor.id,
+      },
+      plateDetails: before.plateDetails
+        ? {
+            format: {
+              connect: {
+                code: input.formatCode ?? before.plateDetails.formatCode,
+              },
+            },
             plateDisplay: display || before.plateDetails.plateDisplay,
             plateNormalized: normalized || before.plateDetails.plateNormalized,
             series: series || before.plateDetails.series,
             number: number || before.plateDetails.number,
             regionCode: regionCode || before.plateDetails.regionCode,
             plateType: input.plateType ?? before.plateDetails.plateType,
-          },
-        });
-      }
-
-      const translation = before.translations[0];
-      if (translation && (input.title || input.description)) {
-        await tx.listingTranslation.update({
-          where: {
-            listingId_language: {
-              listingId: id,
-              language: translation.language,
-            },
-          },
-          data: {
-            title: input.title ?? translation.title,
-            description: input.description ?? translation.description,
+            ...(input.plateCategoryId
+              ? { plateCategory: { connect: { id: input.plateCategoryId } } }
+              : {}),
+            ...(input.platePrefixId
+              ? { platePrefix: { connect: { id: input.platePrefixId } } }
+              : {}),
+          }
+        : undefined,
+      translation: before.translations[0]
+        ? {
+            language: before.translations[0].language,
+            title: input.title ?? before.translations[0].title,
+            description: input.description ?? before.translations[0].description,
             updatedById: actor.id,
-          },
-        });
-      }
-
-      return tx.listing.update({
-        where: { id },
-        data: {
-          cityId: input.cityId,
-          primaryPrice: input.primaryPrice,
-          status: input.status,
-          updatedById: actor.id,
-        },
-        include: { plateDetails: true, translations: true },
-      });
+          }
+        : undefined,
     });
 
     await this.audit.log({
@@ -256,11 +213,7 @@ export class AdminPlatesService {
     ctx?: { ip?: string; userAgent?: string },
   ) {
     const before = await this.findById(id);
-    const updated = await this.prisma.listing.update({
-      where: { id },
-      data: { deletedAt: new Date(), status: ListingStatus.ARCHIVED, updatedById: actor.id },
-      include: { plateDetails: true },
-    });
+    const updated = await this.plates.softDelete(id, actor.id);
     await this.audit.log({
       actorId: actor.id,
       action: 'plate.delete',
@@ -275,52 +228,9 @@ export class AdminPlatesService {
   }
 
   private async assertNoDuplicateActive(normalized: string, excludeListingId?: string) {
-    const existing = await this.prisma.plateDetails.findFirst({
-      where: {
-        plateNormalized: normalized,
-        listingId: excludeListingId ? { not: excludeListingId } : undefined,
-        listing: {
-          deletedAt: null,
-          status: ListingStatus.ACTIVE,
-          categoryCode: ListingCategoryCode.PLATE,
-        },
-      },
-    });
+    const existing = await this.plates.findDuplicateNormalized(normalized, excludeListingId);
     if (existing) {
       throw new ConflictException('An active listing already uses this plate');
     }
-  }
-
-  private buildWhere(query: AdminPlatesQuery): Prisma.ListingWhereInput {
-    const plateFilter: Prisma.PlateDetailsWhereInput = {};
-    if (query.formatCode) plateFilter.formatCode = query.formatCode;
-    if (query.code) plateFilter.regionCode = { equals: query.code.trim(), mode: 'insensitive' };
-    if (query.letter) plateFilter.series = { equals: query.letter.trim().toUpperCase() };
-    if (query.number) plateFilter.number = { contains: query.number.trim() };
-    if (query.plateType) plateFilter.plateType = { equals: query.plateType, mode: 'insensitive' };
-    if (query.governorate) {
-      plateFilter.format = {
-        is: {
-          OR: [
-            { nameEn: { contains: query.governorate, mode: 'insensitive' } },
-            { nameAr: { contains: query.governorate, mode: 'insensitive' } },
-            { code: { contains: query.governorate.toUpperCase() } },
-          ],
-        },
-      };
-    }
-    if (query.q?.trim()) {
-      const q = query.q.trim();
-      plateFilter.OR = [
-        { plateDisplay: { contains: q, mode: 'insensitive' } },
-        { plateNormalized: { contains: q.replace(/\s+/g, '').toUpperCase() } },
-      ];
-    }
-
-    return {
-      deletedAt: null,
-      categoryCode: ListingCategoryCode.PLATE,
-      plateDetails: { is: plateFilter },
-    };
   }
 }

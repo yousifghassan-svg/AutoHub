@@ -51,6 +51,7 @@ type PlateForm = {
   plateType: PlateType;
   governorate: IraqiGovernorate;
   primaryPrice: string;
+  currencyCode: string;
   sellerId: string;
   cityId: string;
   categoryId: string;
@@ -65,6 +66,7 @@ const emptyForm = (): PlateForm => ({
   plateType: 'Private',
   governorate: 'Erbil',
   primaryPrice: '',
+  currencyCode: 'IQD',
   sellerId: '',
   cityId: '',
   categoryId: '',
@@ -113,6 +115,7 @@ export default function PlatesPage() {
         plateType: form.plateType,
         formatCode: formatCodeFor(form.governorate),
         primaryPrice: form.primaryPrice ? Number(form.primaryPrice) : undefined,
+        currencyCode: form.currencyCode || 'IQD',
         ...(editingId
           ? {}
           : {
@@ -157,6 +160,7 @@ export default function PlatesPage() {
         : 'Private') as PlateType,
       governorate: gov,
       primaryPrice: item.primaryPrice?.toString() ?? '',
+      currencyCode: item.primaryCurrency?.code ?? item.currencyCode ?? 'IQD',
       sellerId: item.seller?.id ?? '',
       cityId: item.city?.id ?? '',
       categoryId: '',
@@ -244,7 +248,12 @@ export default function PlatesPage() {
                   <Td>
                     <Badge tone={statusBadgeTone(item.status)}>{item.status}</Badge>
                   </Td>
-                  <Td>{formatPrice(item.primaryPrice)}</Td>
+                  <Td>
+                    {formatPrice(
+                      item.primaryPrice,
+                      item.primaryCurrency?.code ?? item.currencyCode ?? 'IQD',
+                    )}
+                  </Td>
                   <Td>{formatDate(item.createdAt)}</Td>
                   <Td>
                     <div className="flex gap-2">
@@ -382,11 +391,19 @@ export default function PlatesPage() {
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               />
               <Input
-                label="Price (IQD)"
+                label={`Price (${form.currencyCode || 'IQD'})`}
                 type="number"
                 value={form.primaryPrice}
                 onChange={(e) => setForm((f) => ({ ...f, primaryPrice: e.target.value }))}
               />
+              <Select
+                label="Currency"
+                value={form.currencyCode}
+                onChange={(e) => setForm((f) => ({ ...f, currencyCode: e.target.value }))}
+              >
+                <option value="IQD">IQD</option>
+                <option value="USD">USD</option>
+              </Select>
               {!editingId ? (
                 <>
                   <Input

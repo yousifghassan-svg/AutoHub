@@ -127,7 +127,12 @@ export default function ReportsPage() {
                   <Td>
                     {report.listing ? (
                       <Link
-                        href={`/listings/${report.listing.id}`}
+                        href={
+                          report.listing.domain === 'PLATE' ||
+                          report.listing.categoryCode === 'PLATE'
+                            ? `/plates?highlight=${report.listing.id}`
+                            : `/vehicles/${report.listing.id}`
+                        }
                         className="text-brand hover:underline"
                       >
                         {report.listing.title}

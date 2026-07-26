@@ -104,6 +104,56 @@ export class AuthService {
     };
   }
 
+  /**
+   * Non-production phone login for Web/mobile RC without Firebase.
+   * Same gate as staff-login. Reuses seed users by phone, or creates a USER.
+   */
+  async devLogin(phone: string, ctx: RequestContext): Promise<AuthTokensResponse> {
+    if (!this.appConfig.app.allowStaffDevLogin) {
+      throw new ForbiddenException('Dev phone login is disabled');
+    }
+
+    const normalized = normalizePhone(phone);
+    const existing = await this.users.findActiveByPhone(normalized);
+    let user = existing;
+    let created = false;
+
+    if (!user) {
+      const createdUser = await this.users.findOrCreateFromFirebase({
+        firebaseUid: `dev:${normalized}`,
+        phone: normalized,
+        email: null,
+        displayName: null,
+      });
+      user = createdUser.user;
+      created = createdUser.created;
+    }
+
+    if (user.status !== 'ACTIVE') {
+      throw new ForbiddenException('User account is not active');
+    }
+
+    const tokens = await this.issueTokens(
+      user.id,
+      user.role,
+      { firebaseUid: user.firebaseUid, phone: user.phone },
+      ctx,
+    );
+
+    await this.audit.create({
+      userId: user.id,
+      action: AuthAuditAction.LOGIN,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+      metadata: { created, provider: 'dev_phone' },
+    });
+
+    return {
+      ...tokens,
+      user: this.toAuthenticatedUser(user),
+    };
+  }
+
   async refresh(refreshToken: string, ctx: RequestContext): Promise<AuthTokensResponse> {
     const tokenHash = hashToken(refreshToken);
     const stored = await this.refreshTokens.findByHash(tokenHash);

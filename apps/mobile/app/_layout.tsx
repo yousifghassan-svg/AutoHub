@@ -20,6 +20,11 @@ import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from '@/features/auth/context/AuthProvider';
 import { createAppQueryClient } from '@/lib/query/query-client';
+import { PreferencesBridge } from '@/src/providers/PreferencesProvider';
+import { usePreferencesStore } from '@/src/features/preferences/preferences.store';
+import { FavoritesSync } from '@/src/features/favorites/FavoritesSync';
+import { StatusChangeWatcher } from '@/src/features/notifications/StatusChangeWatcher';
+import { ChatSync } from '@/src/features/chat/components/ChatSync';
 
 function RootNavigator() {
   const theme = useTheme();
@@ -39,8 +44,16 @@ function RootNavigator() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="listing" options={{ headerShown: false }} />
+        <Stack.Screen name="vehicle/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="plate/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="sell" options={{ headerShown: false }} />
         <Stack.Screen name="my-listings" options={{ headerShown: false }} />
+        <Stack.Screen name="my-vehicles" options={{ headerShown: false }} />
+        <Stack.Screen name="my-plates" options={{ headerShown: false }} />
+        <Stack.Screen name="inbox" options={{ headerShown: false }} />
+        <Stack.Screen name="dealer/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="settings" options={{ headerShown: false }} />
+        <Stack.Screen name="saved" options={{ headerShown: false }} />
       </Stack>
     </>
   );
@@ -48,6 +61,8 @@ function RootNavigator() {
 
 export default function RootLayout() {
   const [queryClient] = useState(() => createAppQueryClient());
+  const locale = usePreferencesStore((s) => s.locale);
+  const scheme = usePreferencesStore((s) => s.scheme);
   const [loaded] = useFonts({
     Outfit_400Regular,
     Outfit_500Medium,
@@ -70,10 +85,15 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider initialLocale="ar" initialScheme="system">
-          <AuthProvider>
-            <RootNavigator />
-          </AuthProvider>
+        <ThemeProvider initialLocale={locale} initialScheme={scheme}>
+          <PreferencesBridge>
+            <AuthProvider>
+              <FavoritesSync />
+              <StatusChangeWatcher />
+              <ChatSync />
+              <RootNavigator />
+            </AuthProvider>
+          </PreferencesBridge>
         </ThemeProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

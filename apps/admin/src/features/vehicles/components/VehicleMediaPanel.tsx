@@ -30,10 +30,10 @@ export function VehicleMediaPanel({
   const [docPurpose, setDocPurpose] = useState('OTHER');
 
   const invalidate = () =>
-    void qc.invalidateQueries({ queryKey: ['admin', 'listings', listingId] });
+    void qc.invalidateQueries({ queryKey: ['admin', 'vehicles', listingId] });
 
   const reorder = useMutation({
-    mutationFn: (orderedIds: string[]) => adminApi.listings.reorderMedia(listingId, orderedIds),
+    mutationFn: (orderedIds: string[]) => adminApi.vehicles.reorderMedia(listingId, orderedIds),
     onSuccess: () => {
       toast('Gallery reordered', 'success');
       invalidate();
@@ -42,7 +42,7 @@ export function VehicleMediaPanel({
   });
 
   const remove = useMutation({
-    mutationFn: (mediaId: string) => adminApi.listings.deleteMedia(listingId, mediaId),
+    mutationFn: (mediaId: string) => adminApi.vehicles.deleteMedia(listingId, mediaId),
     onSuccess: () => {
       toast('Media removed', 'success');
       invalidate();
@@ -51,7 +51,7 @@ export function VehicleMediaPanel({
   });
 
   const setPrimary = useMutation({
-    mutationFn: (mediaId: string) => adminApi.listings.setPrimaryMedia(listingId, mediaId),
+    mutationFn: (mediaId: string) => adminApi.vehicles.setPrimaryMedia(listingId, mediaId),
     onSuccess: () => {
       toast('Primary image updated', 'success');
       invalidate();
@@ -88,7 +88,7 @@ export function VehicleMediaPanel({
         if (!res.ok || !json.success || !json.data) {
           throw new Error(json.error?.message ?? 'Upload failed');
         }
-        await adminApi.listings.addMedia(listingId, {
+        await adminApi.vehicles.addMedia(listingId, {
           mediaAssetId: json.data.id,
           mediaType,
           documentPurpose: mediaType === 'DOCUMENT' ? docPurpose : undefined,

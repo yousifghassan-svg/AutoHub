@@ -82,6 +82,20 @@ export class SearchListingsDto {
   @Min(0)
   maxPrice?: number;
 
+  @ApiPropertyOptional({
+    example: 'IQD',
+    description:
+      'Filter by primary currency code. Applied automatically as IQD when min/max price or price sort is used without an explicit currency.',
+  })
+  @IsOptional()
+  @IsString()
+  currencyCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  primaryCurrencyId?: string;
+
   @ApiPropertyOptional({ enum: ListingStatus })
   @IsOptional()
   @IsEnum(ListingStatus)

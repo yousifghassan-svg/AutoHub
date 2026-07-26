@@ -14,6 +14,8 @@ export type ListingPlateModel = {
   plateType: string | null;
 };
 
+export type MarketplaceDomainCode = 'VEHICLE' | 'PLATE';
+
 export type ListingCardModel = {
   id: string;
   slug: string;
@@ -29,6 +31,8 @@ export type ListingCardModel = {
   imageUrl: string | null;
   imageUrls: string[];
   categoryCode: ListingCategoryCode;
+  /** Marketplace domain discriminator (Sprint 20). */
+  domain?: MarketplaceDomainCode;
   status?: string;
   viewsCount?: number;
   favoritesCount?: number;
@@ -117,7 +121,8 @@ export type ListingStatus =
   | 'ACTIVE'
   | 'RESERVED'
   | 'SOLD'
-  | 'ARCHIVED';
+  | 'ARCHIVED'
+  | 'REJECTED';
 
 export const CATEGORIES: Array<{ code: ListingCategoryCode; label: string; labelAr: string }> = [
   { code: 'CAR', label: 'Cars', labelAr: 'سيارات' },
@@ -135,4 +140,5 @@ export const STATUS_TABS: Array<{ id: 'ALL' | ListingStatus; label: string }> = 
   { id: 'RESERVED', label: 'Reserved' },
   { id: 'SOLD', label: 'Sold' },
   { id: 'ARCHIVED', label: 'Archived' },
+  { id: 'REJECTED', label: 'Rejected' },
 ];

@@ -36,6 +36,14 @@ const discoveryInclude = {
       nameAr: true,
     },
   },
+  primaryCurrency: {
+    select: {
+      id: true,
+      code: true,
+      symbol: true,
+      decimalPlaces: true,
+    },
+  },
   city: {
     select: {
       id: true,
@@ -137,7 +145,19 @@ export class DiscoveryRepository {
     if (filters.featuredOnly) and.push({ isFeatured: true });
     if (filters.verifiedOnly) and.push({ isVerified: true });
 
-    if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+    const hasPriceFilter =
+      filters.minPrice !== undefined || filters.maxPrice !== undefined;
+    const hasPriceSort =
+      filters.sort === SearchSort.PRICE_LOW ||
+      filters.sort === SearchSort.PRICE_HIGH;
+    if (filters.currencyCode) {
+      and.push({
+        primaryCurrency: { code: filters.currencyCode.toUpperCase() },
+      });
+    } else if (hasPriceFilter || hasPriceSort) {
+      and.push({ primaryCurrency: { code: 'IQD' } });
+    }
+    if (hasPriceFilter) {
       and.push({
         primaryPrice: {
           gte: filters.minPrice,

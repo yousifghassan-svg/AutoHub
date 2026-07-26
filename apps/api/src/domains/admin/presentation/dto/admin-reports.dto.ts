@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ReportReason, ReportStatus } from '@autohub/database';
-import { IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 import { AdminPaginationDto } from './admin-common.dto';
 
 export class AdminReportsQueryDto extends AdminPaginationDto {
@@ -8,6 +8,11 @@ export class AdminReportsQueryDto extends AdminPaginationDto {
   @IsOptional()
   @IsEnum(ReportStatus)
   status?: ReportStatus;
+
+  @ApiPropertyOptional({ enum: ['VEHICLE', 'PLATE'] })
+  @IsOptional()
+  @IsIn(['VEHICLE', 'PLATE'])
+  domain?: 'VEHICLE' | 'PLATE';
 }
 
 export class CreateListingReportDto {

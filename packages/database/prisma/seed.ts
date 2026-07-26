@@ -282,18 +282,25 @@ async function seedCatalog() {
     where: { code: 'IQD' },
     update: {
       nameEn: 'Iraqi Dinar',
-      nameAr: 'دينار عراقي',
+      nameAr: 'الدينار العراقي',
       nameKu: 'دیناری عێراقی',
       symbol: 'د.ع',
       decimalPlaces: 0,
+      active: true,
+      isDefault: true,
+      sortOrder: 10,
     },
     create: {
+      id: 'curr_iqd',
       code: 'IQD',
       nameEn: 'Iraqi Dinar',
-      nameAr: 'دينار عراقي',
+      nameAr: 'الدينار العراقي',
       nameKu: 'دیناری عێراقی',
       symbol: 'د.ع',
       decimalPlaces: 0,
+      active: true,
+      isDefault: true,
+      sortOrder: 10,
     },
   });
 
@@ -301,19 +308,31 @@ async function seedCatalog() {
     where: { code: 'USD' },
     update: {
       nameEn: 'US Dollar',
-      nameAr: 'دولار أمريكي',
+      nameAr: 'الدولار الأمريكي',
       nameKu: 'دۆلاری ئەمریکی',
       symbol: '$',
       decimalPlaces: 2,
+      active: true,
+      isDefault: false,
+      sortOrder: 20,
     },
     create: {
+      id: 'curr_usd',
       code: 'USD',
       nameEn: 'US Dollar',
-      nameAr: 'دولار أمريكي',
+      nameAr: 'الدولار الأمريكي',
       nameKu: 'دۆلاری ئەمریکی',
       symbol: '$',
       decimalPlaces: 2,
+      active: true,
+      isDefault: false,
+      sortOrder: 20,
     },
+  });
+
+  await prisma.currency.updateMany({
+    where: { code: { not: 'IQD' } },
+    data: { isDefault: false },
   });
 
   const categories = [

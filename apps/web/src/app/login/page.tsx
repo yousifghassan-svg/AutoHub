@@ -7,20 +7,38 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { Button, Input } from '@/components/ui';
 import { config } from '@/lib/config';
 
+function nextPath(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const n = new URLSearchParams(window.location.search).get('next');
+    return n && n.startsWith('/') ? n : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { sendOtp, authMode } = useAuth();
-  const [phone, setPhone] = useState('+9647');
+  const [phone, setPhone] = useState('+9647700010006');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const normalized = phone.trim();
+    if (!/^\+[1-9]\d{7,14}$/.test(normalized.replace(/\s/g, ''))) {
+      setError('Enter a valid E.164 phone (e.g. +9647700010006)');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      await sendOtp(phone);
-      router.push(`/otp?phone=${encodeURIComponent(phone)}`);
+      await sendOtp(normalized);
+      const next = nextPath();
+      const qs = new URLSearchParams({ phone: normalized });
+      if (next) qs.set('next', next);
+      router.push(`/otp?${qs.toString()}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send OTP');
     } finally {

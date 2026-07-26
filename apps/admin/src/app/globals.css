@@ -3,16 +3,28 @@
 @tailwind utilities;
 
 :root {
-  --color-background: #f7f7f8;
+  --color-background: #f4f4f5;
   --color-surface: #ffffff;
-  --color-surface-muted: #eeeef0;
-  --color-text: #0e0e11;
-  --color-text-secondary: #5c5c6a;
-  --color-border: #dcdce0;
+  --color-surface-muted: #f0f0f2;
+  --color-text: #111113;
+  --color-text-secondary: #6b6b76;
+  --color-border: #e4e4e7;
   --color-primary: #c8102e;
   --color-primary-pressed: #a50d25;
   --color-primary-soft: #fff1f3;
-  --color-skeleton: #dcdce0;
+  --color-skeleton: #e4e4e7;
+  --color-ring: rgba(200, 16, 46, 0.28);
+  --color-success: #16875d;
+  --color-success-soft: #e6f6ef;
+  --color-warning: #b45309;
+  --color-warning-soft: #fff7ed;
+  --color-error: #dc2626;
+  --color-error-soft: #fef2f2;
+  --color-info: #2563eb;
+  --color-info-soft: #eff6ff;
+  --color-sidebar: #fafafa;
+  --shadow-card: 0 1px 2px rgba(17, 17, 19, 0.04), 0 1px 3px rgba(17, 17, 19, 0.06);
+  --shadow-lift: 0 8px 24px rgba(17, 17, 19, 0.1), 0 2px 6px rgba(17, 17, 19, 0.04);
   --plate-frame-bg: #ececef;
   --plate-frame-border: #d0d0d6;
   --plate-action-bg: #ffffff;
@@ -21,14 +33,26 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --color-background: #0f0f12;
-    --color-surface: #1a1a1f;
-    --color-surface-muted: #26262d;
-    --color-text: #f3f3f5;
-    --color-text-secondary: #a8a8b3;
-    --color-border: #33333c;
+    --color-background: #0c0c0e;
+    --color-surface: #16161a;
+    --color-surface-muted: #222228;
+    --color-text: #f4f4f5;
+    --color-text-secondary: #a1a1aa;
+    --color-border: #2e2e36;
     --color-primary-soft: #3a1218;
-    --color-skeleton: #33333c;
+    --color-skeleton: #2e2e36;
+    --color-ring: rgba(248, 113, 113, 0.35);
+    --color-success: #34d399;
+    --color-success-soft: #052e1c;
+    --color-warning: #fbbf24;
+    --color-warning-soft: #3b2507;
+    --color-error: #f87171;
+    --color-error-soft: #3f1212;
+    --color-info: #60a5fa;
+    --color-info-soft: #0c1e3d;
+    --color-sidebar: #121216;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-lift: 0 12px 32px rgba(0, 0, 0, 0.45);
     --plate-frame-bg: #222228;
     --plate-frame-border: #3a3a44;
     --plate-action-bg: #2a2a32;
@@ -38,14 +62,26 @@
 
 .dark,
 [data-theme='dark'] {
-  --color-background: #0f0f12;
-  --color-surface: #1a1a1f;
-  --color-surface-muted: #26262d;
-  --color-text: #f3f3f5;
-  --color-text-secondary: #a8a8b3;
-  --color-border: #33333c;
+  --color-background: #0c0c0e;
+  --color-surface: #16161a;
+  --color-surface-muted: #222228;
+  --color-text: #f4f4f5;
+  --color-text-secondary: #a1a1aa;
+  --color-border: #2e2e36;
   --color-primary-soft: #3a1218;
-  --color-skeleton: #33333c;
+  --color-skeleton: #2e2e36;
+  --color-ring: rgba(248, 113, 113, 0.35);
+  --color-success: #34d399;
+  --color-success-soft: #052e1c;
+  --color-warning: #fbbf24;
+  --color-warning-soft: #3b2507;
+  --color-error: #f87171;
+  --color-error-soft: #3f1212;
+  --color-info: #60a5fa;
+  --color-info-soft: #0c1e3d;
+  --color-sidebar: #121216;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-lift: 0 12px 32px rgba(0, 0, 0, 0.45);
   --plate-frame-bg: #222228;
   --plate-frame-border: #3a3a44;
   --plate-action-bg: #2a2a32;
@@ -60,11 +96,37 @@
   body {
     @apply bg-background font-sans text-ink;
   }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-primary-soft);
+    color: var(--color-text);
+  }
 }
 
 @layer components {
   .page-container {
     @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .admin-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: color-mix(in srgb, var(--color-surface-muted) 92%, transparent);
+    backdrop-filter: blur(6px);
+  }
+
+  .admin-table tbody tr {
+    transition: background-color 150ms ease;
+  }
+
+  .admin-table tbody tr:hover {
+    background: color-mix(in srgb, var(--color-surface-muted) 70%, transparent);
   }
 
   .license-plate {

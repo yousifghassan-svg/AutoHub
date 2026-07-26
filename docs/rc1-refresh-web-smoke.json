@@ -1,0 +1,39 @@
+﻿{
+  "checkedAt": "2026-07-25T17:40:00Z",
+  "hydration": "FAIL",
+  "nextBuild": {
+    "exists": true,
+    "path": "apps/web/.next",
+    "lastWriteTime": "2026-07-24T23:56:09.4198761+03:00",
+    "newestFileWriteTime": "2026-07-24T23:56:09.4446828+03:00",
+    "diskBuildId": "NFxeEfjyn6TnyGDHXGQsR",
+    "servedBuildId": "rMCbXHQEexJkcxN5zEN29",
+    "buildIdMatch": false
+  },
+  "routes": [
+    { "url": "http://localhost:3000/", "status": 200, "notes": "HTML OK; references hashed Next chunks" },
+    { "url": "http://localhost:3000/search", "status": 200, "notes": "OK" },
+    { "url": "http://localhost:3000/vehicles/search", "status": 404, "notes": "Route missing or not mapped" },
+    { "url": "http://localhost:3000/login", "status": 200, "notes": "OK" },
+    { "url": "http://localhost:3000/otp?phone=%2B9647500000001", "status": 200, "notes": "OK" },
+    { "url": "http://localhost:3000/favorites", "status": 200, "notes": "OK" },
+    { "url": "http://localhost:3000/sell", "status": 200, "notes": "OK" },
+    { "url": "http://localhost:3000/my-listings", "status": 200, "notes": "OK" },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/main-app-7177626383cf1662.js",
+      "status": 400,
+      "notes": "Discovered from homepage HTML; Bad Request. File not on disk (disk has main-app-2ce6031b7dca82ea.js). Served buildId != disk BUILD_ID."
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/main-app.js",
+      "status": 404,
+      "notes": "Unhashed fallback path not found (expected when only hashed chunks exist)"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/webpack-d207c047660f4e02.js",
+      "status": 400,
+      "notes": "Also 400; static JS/CSS largely broken except polyfills (200)"
+    }
+  ],
+  "summary": "Page HTML routes mostly 200, but client hydration FAIL: hashed main-app/webpack/CSS return 400; buildId mismatch between running server (rMCbXHQEexJkcxN5zEN29) and apps/web/.next (NFxeEfjyn6TnyGDHXGQsR)."
+}

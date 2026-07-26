@@ -108,6 +108,7 @@ export function createApiMyListingsRepository(deps: {
             title: input.title,
             description: input.description,
             primaryPrice: input.primaryPrice,
+            currencyCode: input.currencyCode,
           },
         },
       );
@@ -124,7 +125,7 @@ export function createApiMyListingsRepository(deps: {
             ? listing.description
             : `${listing.description} — duplicated listing.`,
         primaryPrice: listing.price ?? undefined,
-        primaryCurrencyId: listing.primaryCurrencyId ?? undefined,
+        currencyCode: listing.currencyCode || 'IQD',
       });
       return mapManagedListing(created, locale);
     },

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { BottomSheet, Button, Input, Text, useTheme } from '@autohub/mobile-ui';
+import { BottomSheet, Button, Chip, Input, Text, useTheme } from '@autohub/mobile-ui';
 import type { ManagedListing } from '../domain/types';
 
 export function EditListingSheet({
@@ -14,18 +14,25 @@ export function EditListingSheet({
   visible: boolean;
   loading?: boolean;
   onClose: () => void;
-  onSave: (input: { title: string; description: string; primaryPrice?: number }) => void;
+  onSave: (input: {
+    title: string;
+    description: string;
+    primaryPrice?: number;
+    currencyCode?: 'IQD' | 'USD';
+  }) => void;
 }) {
   const theme = useTheme();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
+  const [currencyCode, setCurrencyCode] = useState<'IQD' | 'USD'>('IQD');
 
   useEffect(() => {
     if (!listing) return;
     setTitle(listing.title);
     setDescription(listing.description);
     setPrice(listing.price != null ? String(listing.price) : '');
+    setCurrencyCode(listing.currencyCode === 'USD' ? 'USD' : 'IQD');
   }, [listing]);
 
   if (!listing) return null;
@@ -44,8 +51,18 @@ export function EditListingSheet({
           multiline
           style={{ minHeight: 100, textAlignVertical: 'top' }}
         />
+        <View style={{ flexDirection: theme.isRTL ? 'row-reverse' : 'row', gap: theme.spacing.sm }}>
+          {(['IQD', 'USD'] as const).map((code) => (
+            <Chip
+              key={code}
+              label={code}
+              selected={currencyCode === code}
+              onPress={() => setCurrencyCode(code)}
+            />
+          ))}
+        </View>
         <Input
-          label="Price"
+          label={`Price (${currencyCode})`}
           value={price}
           onChangeText={setPrice}
           keyboardType="numeric"
@@ -58,6 +75,7 @@ export function EditListingSheet({
               title: title.trim(),
               description: description.trim(),
               primaryPrice: price ? Number(price) : undefined,
+              currencyCode,
             })
           }
         >

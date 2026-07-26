@@ -46,17 +46,46 @@ export async function fetchListingForSeo(id: string): Promise<SeoListing | null>
   return fetchApi<SeoListing>(`/v1/listings/${encodeURIComponent(id)}`);
 }
 
+export async function fetchVehicleForSeo(id: string): Promise<SeoListing | null> {
+  return fetchApi<SeoListing>(`/v1/vehicles/${encodeURIComponent(id)}`);
+}
+
+export async function fetchPlateForSeo(id: string): Promise<SeoListing | null> {
+  return fetchApi<SeoListing>(`/v1/plates/${encodeURIComponent(id)}`);
+}
+
 export async function fetchDealerForSeo(slug: string): Promise<SeoDealer | null> {
   return fetchApi<SeoDealer>(`/v1/dealers/${encodeURIComponent(slug)}`);
 }
 
+export type SitemapMarketItem = {
+  id: string;
+  domain: 'VEHICLE' | 'PLATE';
+  updatedAt?: string;
+  publishedAt?: string;
+};
+
+export async function fetchSitemapMarketItems(pageSize = 100): Promise<SitemapMarketItem[]> {
+  const [vehicles, plates] = await Promise.all([
+    fetchApi<{
+      items?: Array<{ id: string; updatedAt?: string; publishedAt?: string }>;
+    }>(`/v1/vehicles?page=1&pageSize=${pageSize}&sortBy=publishedAt&sortOrder=desc`),
+    fetchApi<{
+      items?: Array<{ id: string; updatedAt?: string; publishedAt?: string }>;
+    }>(`/v1/plates?page=1&pageSize=${pageSize}&sortBy=publishedAt&sortOrder=desc`),
+  ]);
+
+  return [
+    ...(vehicles?.items ?? []).map((item) => ({ ...item, domain: 'VEHICLE' as const })),
+    ...(plates?.items ?? []).map((item) => ({ ...item, domain: 'PLATE' as const })),
+  ];
+}
+
+/** @deprecated Prefer fetchSitemapMarketItems — kept for callers during migration. */
 export async function fetchSitemapListings(pageSize = 100): Promise<
   Array<{ id: string; updatedAt?: string; publishedAt?: string }>
 > {
-  const data = await fetchApi<{
-    items?: Array<{ id: string; updatedAt?: string; publishedAt?: string }>;
-  }>(`/v1/listings?page=1&pageSize=${pageSize}&sortBy=publishedAt&sortOrder=desc`);
-  return data?.items ?? [];
+  return fetchSitemapMarketItems(pageSize);
 }
 
 export async function fetchSitemapDealers(): Promise<Array<{ slug: string }>> {

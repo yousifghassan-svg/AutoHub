@@ -1,5 +1,14 @@
 /** Shared pure utilities (no domain/business rules). */
 
+export {
+  Money,
+  CurrencyMismatchError,
+  formatMoney,
+  toBcp47Locale,
+  type MoneyCurrencyCode,
+  type MoneyLocale,
+} from './money';
+
 export function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }

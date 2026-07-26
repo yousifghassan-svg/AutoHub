@@ -102,6 +102,16 @@ export type ReportReason =
   | 'WRONG_CATEGORY'
   | 'OTHER';
 
+export type DashboardCurrencyStats = {
+  vehiclesByCurrency: Array<{ currencyCode: string; count: number }>;
+  platesByCurrency: Array<{ currencyCode: string; count: number }>;
+  averagePriceByCurrency: Array<{
+    currencyCode: string;
+    averagePrice: number | null;
+    pricedListings: number;
+  }>;
+};
+
 export type DashboardSummary = {
   totalUsers: number;
   totalDealers: number;
@@ -115,6 +125,7 @@ export type DashboardSummary = {
   thisMonthListings: number;
   totalViews: number;
   totalFavorites: number;
+  currency?: DashboardCurrencyStats;
 };
 
 export type StatsRange = 'daily' | 'weekly' | 'monthly';
@@ -163,8 +174,9 @@ export type AdminListing = {
   conditionTypeId?: string | null;
   primaryPrice: number | null;
   secondaryPrice: number | null;
+  currencyCode?: string | null;
   primaryCurrencyId?: string | null;
-  primaryCurrency?: { id: string; code: string } | null;
+  primaryCurrency?: { id: string; code: string; symbol?: string; decimalPlaces?: number } | null;
   isFeatured: boolean;
   isVerified: boolean;
   slug: string;
@@ -288,6 +300,8 @@ export type ListingReport = {
     id: string;
     title: string;
     status: ListingStatus;
+    domain?: 'VEHICLE' | 'PLATE';
+    categoryCode?: string;
     seller?: { id: string; displayName: string | null } | null;
   } | null;
   reporter?: { id: string; displayName: string | null; phone: string | null } | null;
@@ -356,4 +370,37 @@ export type AdminMediaAsset = {
     height: number | null;
   }>;
   urls?: Record<string, string | null>;
+};
+
+export type PlateCategory = {
+  id: string;
+  code: string;
+  nameEn: string;
+  nameAr?: string | null;
+  sortOrder?: number;
+  active?: boolean;
+  deletedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PlatePrefix = {
+  id: string;
+  formatCode: string;
+  letter: string;
+  label?: string | null;
+  active?: boolean;
+  deletedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PlateVerification = {
+  id: string;
+  listingId: string;
+  status: string;
+  note?: string | null;
+  verifiedById?: string | null;
+  createdAt: string;
+  updatedAt?: string;
 };

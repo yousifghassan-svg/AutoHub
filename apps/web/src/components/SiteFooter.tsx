@@ -4,9 +4,10 @@ const columns = [
   {
     title: 'Browse',
     links: [
-      { href: '/search', label: 'Search' },
-      { href: '/search?category=CAR', label: 'Cars' },
+      { href: '/vehicles', label: 'Vehicles' },
+      { href: '/vehicles/search', label: 'Search vehicles' },
       { href: '/plates', label: 'License plates' },
+      { href: '/plates/search', label: 'Search plates' },
       { href: '/dealers', label: 'Dealers' },
       { href: '/favorites', label: 'Favorites' },
     ],
@@ -14,9 +15,9 @@ const columns = [
   {
     title: 'Sell',
     links: [
-      { href: '/sell', label: 'List a vehicle' },
+      { href: '/sell', label: 'Start selling' },
+      { href: '/vehicles/search?featured=1', label: 'Featured vehicles' },
       { href: '/my-listings', label: 'My listings' },
-      { href: '/search?featured=1', label: 'Featured listings' },
     ],
   },
   {

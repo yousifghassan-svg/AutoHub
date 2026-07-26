@@ -39,6 +39,14 @@ describe('ListingsService', () => {
     findById: jest.fn(),
     update: jest.fn(),
   };
+  const notifications = {
+    notifyListingStatus: jest.fn().mockResolvedValue(undefined),
+  };
+  const currencies = {
+    resolvePrimaryCurrency: jest.fn().mockResolvedValue({ id: 'curr_iqd', code: 'IQD' }),
+    assertActiveId: jest.fn().mockResolvedValue({ id: 'curr_usd', code: 'USD' }),
+    getDefault: jest.fn().mockResolvedValue({ id: 'curr_iqd', code: 'IQD' }),
+  };
 
   const service = new ListingsService(
     listings as never,
@@ -47,6 +55,8 @@ describe('ListingsService', () => {
     thumbnails as never,
     r2 as never,
     mediaAssets as never,
+    notifications as never,
+    currencies as never,
   );
 
   const owner = {

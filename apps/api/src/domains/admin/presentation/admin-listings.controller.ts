@@ -234,6 +234,7 @@ export class AdminListingsController {
       dealerId: query.dealerId ?? query.dealer,
       minPrice: query.minPrice ?? query.price,
       maxPrice: query.maxPrice ?? query.price,
+      currencyCode: query.currencyCode,
       year: query.year,
       plate: query.plate,
       categoryCode: query.categoryCode,

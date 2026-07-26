@@ -1,8 +1,11 @@
 import { buildQuery } from '@/lib/api/http-client';
 import { getHttpClient } from '@/lib/api/client';
+import { createVehicleAdminApi } from '@/lib/api/vehicle-api';
 import type {
+  PlateCategory,
+  PlatePrefix,
+  PlateVerification,
   AdminAuditLog,
-  AdminListing,
   AdminMediaAsset,
   AdminPlate,
   AdminUser,
@@ -14,7 +17,6 @@ import type {
   SiteSettings,
   StatsOverview,
   StatsRange,
-  ListingStatus,
   UserRole,
   UserStatus,
   ReportStatus,
@@ -28,82 +30,9 @@ export const adminApi = {
   stats: (range: StatsRange = 'monthly') =>
     http().get<StatsOverview>(`/v1/admin/stats${buildQuery({ range })}`),
 
-  listings: {
-    list: (
-      params: PaginationQuery & {
-        status?: ListingStatus;
-        categoryCode?: string;
-        brandId?: string;
-        cityId?: string;
-        sellerId?: string;
-        dealerId?: string;
-        year?: number;
-        featured?: boolean;
-        includeDeleted?: boolean;
-        sortBy?: string;
-        sortOrder?: 'asc' | 'desc';
-        minPrice?: number;
-        maxPrice?: number;
-      },
-    ) => http().get<Paginated<AdminListing>>(`/v1/admin/listings${buildQuery(params)}`),
-    get: (id: string, includeDeleted = false) =>
-      http().get<AdminListing>(
-        `/v1/admin/listings/${id}${buildQuery({ includeDeleted: includeDeleted || undefined })}`,
-      ),
-    create: (body: Record<string, unknown>) =>
-      http().post<AdminListing>('/v1/admin/listings', body),
-    update: (id: string, body: Record<string, unknown>) =>
-      http().patch<AdminListing>(`/v1/admin/listings/${id}`, body),
-    delete: (id: string) => http().delete<AdminListing>(`/v1/admin/listings/${id}`),
-    restore: (id: string) => http().post<AdminListing>(`/v1/admin/listings/${id}/restore`),
-    permanentDelete: (id: string, force = false) =>
-      http().delete<AdminListing>(
-        `/v1/admin/listings/${id}/permanent${buildQuery({ force: force || undefined })}`,
-      ),
-    bulk: (body: {
-      ids: string[];
-      action:
-        | 'delete'
-        | 'archive'
-        | 'activate'
-        | 'deactivate'
-        | 'feature'
-        | 'unfeature'
-        | 'restore';
-    }) => http().post<{ success: boolean; count: number }>('/v1/admin/listings/bulk', body),
-    exportCsv: async (params: Record<string, string | number | boolean | undefined>) => {
-      const session = await import('@/lib/api/client').then((m) => m.getTokenStorage().load());
-      const res = await fetch(
-        `${(await import('@/lib/config')).config.apiUrl}/v1/admin/listings/export${buildQuery(params)}`,
-        {
-          headers: {
-            Accept: 'text/csv',
-            ...(session?.accessToken
-              ? { Authorization: `Bearer ${session.accessToken}` }
-              : {}),
-          },
-        },
-      );
-      if (!res.ok) throw new Error('Export failed');
-      return res.text();
-    },
-    approve: (id: string) => http().post<AdminListing>(`/v1/admin/listings/${id}/approve`),
-    reject: (id: string) => http().post<AdminListing>(`/v1/admin/listings/${id}/reject`),
-    publish: (id: string) => http().post<AdminListing>(`/v1/admin/listings/${id}/publish`),
-    unpublish: (id: string) => http().post<AdminListing>(`/v1/admin/listings/${id}/unpublish`),
-    duplicate: (id: string) => http().post<AdminListing>(`/v1/admin/listings/${id}/duplicate`),
-    archive: (id: string) => http().post<AdminListing>(`/v1/admin/listings/${id}/archive`),
-    feature: (id: string) => http().post<AdminListing>(`/v1/admin/listings/${id}/feature`),
-    unfeature: (id: string) => http().post<AdminListing>(`/v1/admin/listings/${id}/unfeature`),
-    addMedia: (id: string, body: Record<string, unknown>) =>
-      http().post(`/v1/listings/${id}/media`, body),
-    reorderMedia: (id: string, orderedIds: string[]) =>
-      http().patch(`/v1/listings/${id}/media/reorder`, { orderedIds }),
-    setPrimaryMedia: (id: string, mediaId: string) =>
-      http().post(`/v1/listings/${id}/media/${mediaId}/primary`),
-    deleteMedia: (id: string, mediaId: string) =>
-      http().delete(`/v1/listings/${id}/media/${mediaId}`),
-  },
+  listings: createVehicleAdminApi(http, '/v1/admin/listings'),
+
+  vehicles: createVehicleAdminApi(http, '/v1/admin/vehicles'),
 
   plates: {
     list: (
@@ -121,6 +50,38 @@ export const adminApi = {
     update: (id: string, body: Record<string, unknown>) =>
       http().patch<AdminPlate>(`/v1/admin/plates/${id}`, body),
     delete: (id: string) => http().delete<AdminPlate>(`/v1/admin/plates/${id}`),
+    catalog: {
+      categories: {
+        list: () => http().get<PlateCategory[]>('/v1/admin/plates/catalog/categories'),
+        create: (body: Record<string, unknown>) =>
+          http().post<PlateCategory>('/v1/admin/plates/catalog/categories', body),
+        update: (categoryId: string, body: Record<string, unknown>) =>
+          http().patch<PlateCategory>(
+            `/v1/admin/plates/catalog/categories/${categoryId}`,
+            body,
+          ),
+        delete: (categoryId: string) =>
+          http().delete<PlateCategory>(`/v1/admin/plates/catalog/categories/${categoryId}`),
+      },
+      prefixes: {
+        list: (formatCode?: string) =>
+          http().get<PlatePrefix[]>(
+            `/v1/admin/plates/catalog/prefixes${buildQuery({ formatCode })}`,
+          ),
+        create: (body: Record<string, unknown>) =>
+          http().post<PlatePrefix>('/v1/admin/plates/catalog/prefixes', body),
+        update: (prefixId: string, body: Record<string, unknown>) =>
+          http().patch<PlatePrefix>(`/v1/admin/plates/catalog/prefixes/${prefixId}`, body),
+        delete: (prefixId: string) =>
+          http().delete<PlatePrefix>(`/v1/admin/plates/catalog/prefixes/${prefixId}`),
+      },
+    },
+    verifications: {
+      list: (params: PaginationQuery & { listingId?: string }) =>
+        http().get<Paginated<PlateVerification>>(
+          `/v1/admin/plates/verifications${buildQuery(params)}`,
+        ),
+    },
   },
 
   dealers: {
@@ -148,8 +109,9 @@ export const adminApi = {
   },
 
   reports: {
-    list: (params: PaginationQuery & { status?: ReportStatus }) =>
-      http().get<Paginated<ListingReport>>(`/v1/admin/reports${buildQuery(params)}`),
+    list: (
+      params: PaginationQuery & { status?: ReportStatus; domain?: 'VEHICLE' | 'PLATE' },
+    ) => http().get<Paginated<ListingReport>>(`/v1/admin/reports${buildQuery(params)}`),
     resolve: (id: string, resolution?: string) =>
       http().post<ListingReport>(`/v1/admin/reports/${id}/resolve`, { resolution }),
     reject: (id: string, resolution?: string) =>
@@ -195,5 +157,45 @@ export const adminApi = {
       >(`/v1/admin/media${buildQuery(params)}`),
     delete: (id: string) => http().delete<{ success: boolean }>(`/v1/admin/media/${id}`),
     restore: (id: string) => http().post<AdminMediaAsset>(`/v1/admin/media/${id}/restore`),
+  },
+
+  communication: {
+    stats: () =>
+      http().get<{
+        conversations: number;
+        messages: number;
+        openReports: number;
+        blocks: number;
+        flaggedMessages: number;
+      }>('/v1/admin/communication/stats'),
+    reports: (params: PaginationQuery & { status?: ReportStatus }) =>
+      http().get<
+        Paginated<{
+          id: string;
+          reason: string;
+          details: string | null;
+          status: ReportStatus;
+          createdAt: string;
+          conversationId: string;
+          reporter?: { id: string; displayName: string | null };
+        }>
+      >(`/v1/admin/communication/reports${buildQuery(params)}`),
+    resolveReport: (id: string, body: { status: 'RESOLVED' | 'REJECTED'; resolution?: string }) =>
+      http().patch(`/v1/admin/communication/reports/${id}`, body),
+    blocks: (params: PaginationQuery) =>
+      http().get<
+        Paginated<{
+          id: string;
+          createdAt: string;
+          reason: string | null;
+          blocker?: { id: string; displayName: string | null };
+          blocked?: { id: string; displayName: string | null };
+        }>
+      >(`/v1/admin/communication/blocks${buildQuery(params)}`),
+    moderate: (body: {
+      action: 'hide_conversation' | 'remove_message';
+      conversationId?: string;
+      messageId?: string;
+    }) => http().post('/v1/admin/communication/moderate', body),
   },
 };

@@ -6,12 +6,14 @@ import { ListingRepository } from './infrastructure/listing.repository';
 import { ListingMediaRepository } from './infrastructure/listing-media.repository';
 import { ThumbnailService } from './infrastructure/thumbnail.service';
 import { MediaModule } from '../media/media.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { CurrenciesModule } from '../currencies/currencies.module';
 
 /**
  * Listings domain — lifecycle, media, and search (Sprint 4 / Sprint 17 media bridge).
  */
 @Module({
-  imports: [MediaModule],
+  imports: [MediaModule, NotificationsModule, CurrenciesModule],
   controllers: [ListingsController],
   providers: [
     ListingsService,
@@ -20,6 +22,6 @@ import { MediaModule } from '../media/media.module';
     ListingMediaRepository,
     ThumbnailService,
   ],
-  exports: [ListingsService],
+  exports: [ListingsService, ListingValidationService],
 })
 export class ListingsModule {}

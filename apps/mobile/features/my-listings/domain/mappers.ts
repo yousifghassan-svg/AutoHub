@@ -11,6 +11,8 @@ type ApiListing = {
   cityId: string;
   primaryPrice: number | null;
   primaryCurrencyId: string | null;
+  currencyCode?: string | null;
+  primaryCurrency?: { code?: string | null } | null;
   isFeatured: boolean;
   isVerified: boolean;
   viewsCount: number;
@@ -55,7 +57,7 @@ export function mapManagedListing(
     description,
     status: listing.status as ListingStatus,
     price: listing.primaryPrice,
-    currencyCode: resolveCurrencyCode(listing.primaryCurrencyId),
+    currencyCode: resolveCurrencyCode(listing),
     location:
       locale === 'en'
         ? (listing.city?.nameEn ?? '')

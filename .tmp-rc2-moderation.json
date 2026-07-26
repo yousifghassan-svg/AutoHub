@@ -1,0 +1,38 @@
+﻿{
+    "staffLogin":  {
+                       "ok":  true,
+                       "status":  201,
+                       "hasToken":  true
+                   },
+    "pendingList":  {
+                        "ok":  true,
+                        "status":  200,
+                        "total":  4,
+                        "count":  4
+                    },
+    "approve":  {
+                    "ok":  true,
+                    "status":  201,
+                    "id":  "cmrxxg7ly01buehtcr7j0hanb"
+                },
+    "reject":  {
+                   "ok":  true,
+                   "status":  201,
+                   "id":  "cmrxxg7jo01b0ehtcql1llzdt"
+               },
+    "auditLogs":  {
+                      "ok":  true,
+                      "status":  200,
+                      "total":  0
+                  },
+    "notifications":  {
+                          "phone":  "+9647700010001",
+                          "types":  [
+                                        "NEW_MESSAGE"
+                                    ],
+                          "ok":  true,
+                          "empty":  false,
+                          "hasListingModeration":  false,
+                          "status":  200
+                      }
+}

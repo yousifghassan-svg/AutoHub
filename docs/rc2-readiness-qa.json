@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-07-25T19:35:00.000Z",
+  "rc": "RC-2",
+  "decision": "GO",
+  "qualityGates": {
+    "webLint": { "result": "PASS", "exitCode": 0, "notes": "Warnings only" },
+    "webTypecheck": { "result": "PASS", "exitCode": 0 },
+    "webBuild": { "result": "PASS", "exitCode": 0 },
+    "apiTypecheck": { "result": "PASS", "exitCode": 0 }
+  },
+  "moderationE2E": {
+    "approve": { "status": 201, "result": "PASS" },
+    "reject": { "status": 201, "result": "PASS" },
+    "auditLogs": { "result": "PASS", "recentActions": ["listing.reject", "listing.approve"] },
+    "notifications": {
+      "hasListingApproved": true,
+      "result": "PASS",
+      "note": "Admin transition now calls NotificationsService.notifyListingStatus; LISTING_APPROVED observed for seller +9647700010001"
+    }
+  },
+  "browserSpotChecks": {
+    "loginToOtp": "PASS",
+    "otpCountdownResend": "PASS",
+    "otpVerifyHome": "PASS",
+    "messagesInbox": "PASS",
+    "notificationsCenter": "PASS",
+    "myListingsLifecycleActions": "PASS"
+  },
+  "overall": {
+    "qualityGates": "PASS",
+    "blockers": "PASS",
+    "decision": "GO"
+  }
+}

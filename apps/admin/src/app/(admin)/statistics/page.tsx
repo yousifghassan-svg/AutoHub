@@ -28,16 +28,16 @@ function BarChart({
       {items.length === 0 ? (
         <EmptyState title="No data" />
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-4">
           {items.slice(0, 10).map((item, idx) => (
             <li key={idx}>
-              <div className="mb-1 flex justify-between text-sm">
-                <span>{labelKey(item)}</span>
-                <span className="font-medium text-ink-secondary">{item.count}</span>
+              <div className="mb-1.5 flex items-baseline justify-between gap-3 text-sm">
+                <span className="truncate font-medium text-ink">{labelKey(item)}</span>
+                <span className="shrink-0 tabular-nums text-ink-secondary">{item.count}</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-surface-muted">
+              <div className="h-1.5 overflow-hidden rounded-full bg-surface-muted">
                 <div
-                  className="h-full rounded-full bg-brand"
+                  className="h-full rounded-full bg-gradient-to-r from-brand to-brand-pressed transition-all duration-500 ease-soft"
                   style={{ width: `${(item.count / max) * 100}%` }}
                 />
               </div>

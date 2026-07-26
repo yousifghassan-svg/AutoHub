@@ -62,6 +62,11 @@ export class UpdateListingDto {
   @Min(0)
   primaryPrice?: number;
 
+  @ApiPropertyOptional({ example: 'IQD' })
+  @IsOptional()
+  @IsString()
+  currencyCode?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

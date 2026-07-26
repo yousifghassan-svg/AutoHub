@@ -20,6 +20,8 @@ export type ListingSearchParams = {
   modelId?: string;
   minPrice?: number;
   maxPrice?: number;
+  currencyCode?: string;
+  primaryCurrencyId?: string;
   status?: ListingStatus;
   statuses?: ListingStatus[];
   isFeatured?: boolean;
@@ -230,7 +232,21 @@ export class ListingRepository {
       and.push({ city: { governorateId: params.governorateId } });
     }
 
-    if (params.minPrice !== undefined || params.maxPrice !== undefined) {
+    const hasPriceFilter =
+      params.minPrice !== undefined || params.maxPrice !== undefined;
+    const hasPriceSort = params.sortBy === 'primaryPrice';
+    if (params.primaryCurrencyId) {
+      and.push({ primaryCurrencyId: params.primaryCurrencyId });
+    } else if (params.currencyCode) {
+      and.push({
+        primaryCurrency: { code: params.currencyCode.toUpperCase() },
+      });
+    } else if (hasPriceFilter || hasPriceSort) {
+      // Avoid cross-currency price comparisons when range/sort is used.
+      and.push({ primaryCurrency: { code: 'IQD' } });
+    }
+
+    if (hasPriceFilter) {
       and.push({
         primaryPrice: {
           gte: params.minPrice !== undefined ? params.minPrice : undefined,

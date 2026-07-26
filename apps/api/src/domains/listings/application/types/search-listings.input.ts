@@ -13,6 +13,9 @@ export type SearchListingsInput = {
   modelId?: string;
   minPrice?: number;
   maxPrice?: number;
+  /** When set with price range/sort, filters to this currency (no FX). */
+  currencyCode?: string;
+  primaryCurrencyId?: string;
   status?: ListingStatus;
   statuses?: ListingStatus[];
   isFeatured?: boolean;

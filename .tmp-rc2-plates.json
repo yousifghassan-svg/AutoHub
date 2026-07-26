@@ -1,0 +1,53 @@
+﻿{
+    "loginStatus":  201,
+    "listStatus":  200,
+    "plateId":  "cmrxxgcc602ufehtckj97q18z",
+    "initialStatus":  "ACTIVE",
+    "steps":  [
+                  [
+                      "to_ARCHIVED HTTP=200 body={\"success\":true,\"data\":{\"id\":\"cmrxxgcc602ufehtckj97q18z\",\"domain\":\"PLATE\",\"status\":\"ARCHIVED\",\"categoryId\":\"cmrxj7f870003ehjgwzrcscjn\",\"categoryCode\":\"PLATE\",\"sellerId\":\"cmrxxg3xv005rehtcwke15ywf\",\"cityId\":\"cmrxj7fed0023ehjgikq3yr8s\",\"countryId\":\"cmr",
+                      {
+                          "bodySnippet":  "{\"success\":true,\"data\":{\"id\":\"cmrxxgcc602ufehtckj97q18z\",\"domain\":\"PLATE\",\"status\":\"ARCHIVED\",\"categoryId\":\"cmrxj7f870003ehjgwzrcscjn\",\"categoryCode\":\"PLATE\",\"sellerId\":\"cmrxxg3xv005rehtcwke15ywf\",\"cityId\":\"cmrxj7fed0023ehjgikq3yr8s\",\"countryId\":\"cmr",
+                          "step":  "to_ARCHIVED",
+                          "requestStatus":  "ARCHIVED",
+                          "ok":  true,
+                          "path":  "/plates/:id/status",
+                          "method":  "PATCH",
+                          "httpStatus":  200
+                      }
+                  ],
+                  [
+                      "to_DRAFT HTTP=200 body={\"success\":true,\"data\":{\"id\":\"cmrxxgcc602ufehtckj97q18z\",\"domain\":\"PLATE\",\"status\":\"DRAFT\",\"categoryId\":\"cmrxj7f870003ehjgwzrcscjn\",\"categoryCode\":\"PLATE\",\"sellerId\":\"cmrxxg3xv005rehtcwke15ywf\",\"cityId\":\"cmrxj7fed0023ehjgikq3yr8s\",\"countryId\":\"cmrxj7",
+                      {
+                          "bodySnippet":  "{\"success\":true,\"data\":{\"id\":\"cmrxxgcc602ufehtckj97q18z\",\"domain\":\"PLATE\",\"status\":\"DRAFT\",\"categoryId\":\"cmrxj7f870003ehjgwzrcscjn\",\"categoryCode\":\"PLATE\",\"sellerId\":\"cmrxxg3xv005rehtcwke15ywf\",\"cityId\":\"cmrxj7fed0023ehjgikq3yr8s\",\"countryId\":\"cmrxj7",
+                          "step":  "to_DRAFT",
+                          "requestStatus":  "DRAFT",
+                          "ok":  true,
+                          "path":  "/plates/:id/status",
+                          "method":  "PATCH",
+                          "httpStatus":  200
+                      }
+                  ],
+                  [
+                      "to_PENDING HTTP=200 body={\"success\":true,\"data\":{\"id\":\"cmrxxgcc602ufehtckj97q18z\",\"domain\":\"PLATE\",\"status\":\"PENDING\",\"categoryId\":\"cmrxj7f870003ehjgwzrcscjn\",\"categoryCode\":\"PLATE\",\"sellerId\":\"cmrxxg3xv005rehtcwke15ywf\",\"cityId\":\"cmrxj7fed0023ehjgikq3yr8s\",\"countryId\":\"cmrx",
+                      {
+                          "bodySnippet":  "{\"success\":true,\"data\":{\"id\":\"cmrxxgcc602ufehtckj97q18z\",\"domain\":\"PLATE\",\"status\":\"PENDING\",\"categoryId\":\"cmrxj7f870003ehjgwzrcscjn\",\"categoryCode\":\"PLATE\",\"sellerId\":\"cmrxxg3xv005rehtcwke15ywf\",\"cityId\":\"cmrxj7fed0023ehjgikq3yr8s\",\"countryId\":\"cmrx",
+                          "step":  "to_PENDING",
+                          "requestStatus":  "PENDING",
+                          "ok":  true,
+                          "path":  "/plates/:id/status",
+                          "method":  "PATCH",
+                          "httpStatus":  200
+                      }
+                  ],
+                  {
+                      "bodySnippet":  "{\"success\":true,\"data\":{\"id\":\"cmrxxgcc602ufehtckj97q18z\",\"domain\":\"PLATE\",\"status\":\"PENDING\",\"categoryId\":\"cmrxj7f870003ehjgwzrcscjn\",\"categoryCode\":\"PLATE\",\"sellerId\":\"cmrxxg3xv005rehtcwke15ywf\",\"cityId\":\"cmrxj7fed0023ehjgikq3yr8s\",\"countryId\":\"cmrx",
+                      "step":  "title_update",
+                      "ok":  true,
+                      "path":  "/plates/:id",
+                      "method":  "PATCH",
+                      "httpStatus":  200,
+                      "title":  "RC2 Smoke Title 215135"
+                  }
+              ]
+}

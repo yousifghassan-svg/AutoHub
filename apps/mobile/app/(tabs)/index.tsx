@@ -1,70 +1,91 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
-import { EmptyState, ErrorState, Text, useTheme } from '@autohub/mobile-ui';
+import { ErrorState, Text, useI18n, useTheme } from '@autohub/mobile-ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { OfflineBanner } from '@/features/auth/components/OfflineBanner';
 import { CategoriesRow, SearchBarEntry } from '@/features/home/components/CategoriesRow';
 import { HomeSkeleton } from '@/features/home/components/HomeSkeleton';
-import { ListingCard } from '@/features/home/components/ListingCard';
-import { ListingRail } from '@/features/home/components/ListingRail';
-import { QuickActions, RecommendedPlaceholder } from '@/features/home/components/QuickActions';
+import { QuickActions } from '@/features/home/components/QuickActions';
 import {
   refreshHomeQueries,
   useCategories,
-  useFeaturedListings,
-  useLatestListingsInfinite,
-  useRecentlyViewed,
   useRecordListingView,
 } from '@/features/home/hooks/useHomeQueries';
-import type { ListingCardModel } from '@/features/home/domain/types';
+import { DealersRail } from '@/src/components/DealersRail';
+import { MarketplaceRail } from '@/src/components/MarketplaceRail';
+import { useFeaturedDealers } from '@/src/features/dealers/hooks/useDealers';
+import {
+  useFeaturedPlates,
+  useNewestPlates,
+} from '@/src/features/plates/hooks/usePlates';
+import {
+  useFeaturedVehicles,
+  useNewestVehicles,
+} from '@/src/features/vehicles/hooks/useVehicles';
+import { marketplaceDetailPath } from '@/src/hooks/useMarketplacePath';
+import type { MarketplaceCard } from '@/src/types/marketplace';
 import { ApiError } from '@/lib/api/types';
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
-  const featured = useFeaturedListings();
-  const latest = useLatestListingsInfinite(8);
+  const featuredVehicles = useFeaturedVehicles(8);
+  const newestVehicles = useNewestVehicles(8);
+  const featuredPlates = useFeaturedPlates(8);
+  const newestPlates = useNewestPlates(8);
+  const dealers = useFeaturedDealers(8);
   const categories = useCategories();
-  const recentlyViewed = useRecentlyViewed();
   const recordView = useRecordListingView();
-
-  const latestItems = useMemo(
-    () => latest.data?.pages.flatMap((p) => p.items) ?? [],
-    [latest.data],
-  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await refreshHomeQueries(qc);
+      await Promise.all([
+        refreshHomeQueries(qc),
+        featuredVehicles.refetch(),
+        newestVehicles.refetch(),
+        featuredPlates.refetch(),
+        newestPlates.refetch(),
+        dealers.refetch(),
+      ]);
     } finally {
       setRefreshing(false);
     }
-  }, [qc]);
+  }, [
+    qc,
+    featuredVehicles,
+    newestVehicles,
+    featuredPlates,
+    newestPlates,
+    dealers,
+  ]);
 
-  const openListing = useCallback(
-    (listing: ListingCardModel) => {
-      void recordView.mutateAsync(listing);
-      router.push(`/listing/${listing.id}`);
+  const openItem = useCallback(
+    (item: MarketplaceCard) => {
+      void recordView.mutateAsync(item);
+      router.push(marketplaceDetailPath(item) as never);
     },
     [recordView],
   );
 
   const bootLoading =
-    featured.isLoading && latest.isLoading && categories.isLoading && !featured.data;
+    featuredVehicles.isLoading &&
+    newestVehicles.isLoading &&
+    featuredPlates.isLoading &&
+    !featuredVehicles.data;
 
   const fatalError =
-    featured.isError && latest.isError
-      ? featured.error
+    featuredVehicles.isError && newestVehicles.isError && featuredPlates.isError
+      ? featuredVehicles.error
       : null;
 
   if (bootLoading) {
@@ -82,15 +103,15 @@ export default function HomeScreen() {
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <OfflineBanner />
         <ErrorState
-          title={offline ? 'You are offline' : 'Could not load home'}
+          title={offline ? 'You are offline' : t('errorTitle')}
           description={
             offline
               ? 'Connect to the internet and pull to refresh.'
               : fatalError instanceof Error
                 ? fatalError.message
-                : 'Please try again.'
+                : t('errorBody')
           }
-          retryLabel="Retry"
+          retryLabel={t('retry')}
           onRetry={() => void onRefresh()}
         />
       </View>
@@ -100,131 +121,127 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <OfflineBanner />
-      <FlatList
-        data={latestItems}
-        keyExtractor={(item) => item.id}
+      <ScrollView
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />
         }
-        onEndReached={() => {
-          if (latest.hasNextPage && !latest.isFetchingNextPage) {
-            void latest.fetchNextPage();
-          }
-        }}
-        onEndReachedThreshold={0.4}
         contentContainerStyle={{
           paddingBottom: theme.spacing['4xl'],
-          gap: theme.spacing.md,
+          gap: theme.spacing.xl,
+          paddingTop: theme.spacing.lg,
         }}
-        ListHeaderComponent={
-          <View style={{ gap: theme.spacing.xl, paddingTop: theme.spacing.lg }}>
-            <View style={{ paddingHorizontal: theme.layout.gutter, gap: theme.spacing.xs }}>
-              <Text variant="overline" color="brand">
-                AUTOHUB
-              </Text>
-              <Text variant="h1">Home</Text>
-            </View>
+      >
+        <View style={{ paddingHorizontal: theme.layout.gutter, gap: theme.spacing.xs }}>
+          <Text variant="overline" color="brand">
+            AUTOHUB
+          </Text>
+          <Text variant="h1">{t('home')}</Text>
+        </View>
 
-            <SearchBarEntry
-              placeholder="Search cars, plates, trucks…"
-              onPress={() => router.push('/(tabs)/search')}
-            />
+        <SearchBarEntry
+          placeholder={`${t('searchVehicles')} · ${t('searchPlates')}`}
+          onPress={() => router.push('/(tabs)/search')}
+        />
 
-            <CategoriesRow
-              categories={categories.data ?? []}
-              loading={categories.isLoading}
-              onSelect={(cat) =>
-                router.push({ pathname: '/(tabs)/explore', params: { category: cat.code } })
-              }
-            />
+        <CategoriesRow
+          categories={categories.data ?? []}
+          loading={categories.isLoading}
+          onSelect={(cat) =>
+            router.push({
+              pathname: '/(tabs)/search',
+              params: { domain: cat.code === 'PLATE' ? 'PLATE' : 'VEHICLE', category: cat.code },
+            })
+          }
+        />
 
-            <QuickActions
-              actions={[
-                {
-                  key: 'sell',
-                  label: 'Sell a vehicle',
-                  icon: 'add-circle-outline',
-                  onPress: () => router.push('/sell'),
-                },
-                {
-                  key: 'search',
-                  label: 'Search',
-                  icon: 'search-outline',
-                  onPress: () => router.push('/(tabs)/search'),
-                },
-                {
-                  key: 'alerts',
-                  label: 'Alerts',
-                  icon: 'notifications-outline',
-                  onPress: () => router.push('/(tabs)/notifications'),
-                },
-                {
-                  key: 'profile',
-                  label: 'Profile',
-                  icon: 'person-outline',
-                  onPress: () => router.push('/(tabs)/account'),
-                },
-              ]}
-            />
+        <QuickActions
+          actions={[
+            {
+              key: 'vehicles',
+              label: t('vehicles'),
+              icon: 'car-outline',
+              onPress: () =>
+                router.push({ pathname: '/(tabs)/search', params: { domain: 'VEHICLE' } }),
+            },
+            {
+              key: 'plates',
+              label: t('plates'),
+              icon: 'grid-outline',
+              onPress: () =>
+                router.push({ pathname: '/(tabs)/search', params: { domain: 'PLATE' } }),
+            },
+            {
+              key: 'sell',
+              label: t('sell'),
+              icon: 'add-circle-outline',
+              onPress: () => router.push('/sell'),
+            },
+            {
+              key: 'saved',
+              label: t('favorites'),
+              icon: 'heart-outline',
+              onPress: () => router.push('/saved'),
+            },
+          ]}
+        />
 
-            <ListingRail
-              title="Featured"
-              listings={featured.data ?? []}
-              loading={featured.isLoading}
-              emptyTitle="No featured listings"
-              onPressListing={openListing}
-              onSeeAll={() => router.push('/(tabs)/explore')}
-            />
+        <MarketplaceRail
+          title={t('featuredVehicles')}
+          items={featuredVehicles.data ?? []}
+          loading={featuredVehicles.isLoading}
+          emptyTitle={t('emptyTitle')}
+          onPressItem={openItem}
+          onSeeAll={() =>
+            router.push({ pathname: '/(tabs)/search', params: { domain: 'VEHICLE' } })
+          }
+        />
 
-            <ListingRail
-              title="Recently viewed"
-              listings={recentlyViewed.data ?? []}
-              loading={recentlyViewed.isLoading}
-              emptyTitle="No recently viewed listings"
-              emptyBody="Open a listing to see it here"
-              onPressListing={openListing}
-            />
+        <MarketplaceRail
+          title={t('featuredPlates')}
+          items={featuredPlates.data ?? []}
+          loading={featuredPlates.isLoading}
+          emptyTitle={t('emptyTitle')}
+          onPressItem={openItem}
+          onSeeAll={() =>
+            router.push({ pathname: '/(tabs)/search', params: { domain: 'PLATE' } })
+          }
+        />
 
-            <RecommendedPlaceholder />
+        <MarketplaceRail
+          title={t('newestVehicles')}
+          items={newestVehicles.data ?? []}
+          loading={newestVehicles.isLoading}
+          onPressItem={openItem}
+          onSeeAll={() =>
+            router.push({ pathname: '/(tabs)/search', params: { domain: 'VEHICLE' } })
+          }
+        />
 
-            <View
-              style={{
-                paddingHorizontal: theme.layout.gutter,
-                flexDirection: theme.isRTL ? 'row-reverse' : 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <Text variant="h3">Latest listings</Text>
-              <Pressable onPress={() => router.push('/(tabs)/explore')}>
-                <Text variant="label" color="brand">
-                  Explore
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <View style={{ paddingHorizontal: theme.layout.gutter }}>
-            <ListingCard listing={item} onPress={openListing} />
-          </View>
-        )}
-        ListEmptyComponent={
-          !latest.isLoading ? (
-            <EmptyState
-              title="No listings yet"
-              description="Pull to refresh or explore categories."
-              actionLabel="Explore"
-              onAction={() => router.push('/(tabs)/explore')}
-            />
-          ) : null
-        }
-        ListFooterComponent={
-          latest.isFetchingNextPage ? (
-            <ActivityIndicator style={{ marginVertical: theme.spacing.lg }} color={theme.colors.primary} />
-          ) : null
-        }
-      />
+        <MarketplaceRail
+          title={t('newestPlates')}
+          items={newestPlates.data ?? []}
+          loading={newestPlates.isLoading}
+          onPressItem={openItem}
+          onSeeAll={() =>
+            router.push({ pathname: '/(tabs)/search', params: { domain: 'PLATE' } })
+          }
+        />
+
+        <DealersRail
+          title={t('dealers')}
+          dealers={dealers.data ?? []}
+          loading={dealers.isLoading}
+          onPressDealer={(d) => router.push(`/dealer/${d.slug || d.id}` as never)}
+        />
+
+        <View style={{ paddingHorizontal: theme.layout.gutter }}>
+          <Pressable onPress={() => router.push('/(tabs)/explore')}>
+            <Text variant="label" color="brand">
+              Explore all →
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </View>
   );
 }

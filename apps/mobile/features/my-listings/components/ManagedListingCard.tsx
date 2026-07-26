@@ -13,6 +13,7 @@ const STATUS_TONE: Record<
   PENDING: 'warning',
   ACTIVE: 'success',
   RESERVED: 'info',
+  REJECTED: 'error',
   SOLD: 'brand',
   ARCHIVED: 'neutral',
 };

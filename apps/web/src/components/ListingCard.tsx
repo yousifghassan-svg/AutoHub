@@ -4,6 +4,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { formatMileage, formatPrice } from '@/features/listings/domain/mappers';
+import {
+  isPlateListing,
+  marketplaceDetailPath,
+  marketplaceSearchPath,
+} from '@/features/listings/domain/marketplace-path';
 import type { ListingCardModel } from '@/features/listings/domain/types';
 import { useFavorites } from '@/features/favorites/favorites-store';
 import { LicensePlate, licensePlateFromListing } from '@/features/plates';
@@ -20,11 +25,11 @@ export function ListingCard({
   /** Override detail link (e.g. `/plates/[id]`). */
   href?: string;
 }) {
-  const detailHref = href ?? `/listings/${listing.id}`;
+  const detailHref = href ?? marketplaceDetailPath(listing);
   const { isFavorite, toggle } = useFavorites();
   const fav = isFavorite(listing.id);
   const plate = licensePlateFromListing(listing.plateDetails);
-  const showPlate = listing.categoryCode === 'PLATE' && plate;
+  const showPlate = isPlateListing(listing) && plate;
   const images =
     listing.imageUrls.length > 0
       ? listing.imageUrls
@@ -122,7 +127,7 @@ export function ListingCard({
         <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-1.5">
           {listing.isFeatured ? <Badge tone="brand">Featured</Badge> : null}
           {listing.isVerified ? <Badge tone="success">Verified</Badge> : null}
-          {listing.dealerBadge && listing.categoryCode !== 'PLATE' ? (
+          {listing.dealerBadge && !isPlateListing(listing) ? (
             <Badge tone="warning">Dealer</Badge>
           ) : null}
         </div>
@@ -152,7 +157,7 @@ export function ListingCard({
             View details
           </Link>
           <Link
-            href={`/search?category=${listing.categoryCode}`}
+            href={marketplaceSearchPath(listing)}
             className="text-xs font-medium text-ink-secondary hover:text-ink"
           >
             Similar

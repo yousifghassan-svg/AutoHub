@@ -20,6 +20,12 @@ enum ListingCategoryCode {
   RENTAL
 }
 
+/// Top-level marketplace domain — Vehicles vs Plates (Sprint 20)
+enum MarketplaceDomain {
+  VEHICLE
+  PLATE
+}
+
 enum ListingStatus {
   DRAFT
   PENDING
@@ -27,6 +33,13 @@ enum ListingStatus {
   RESERVED
   SOLD
   ARCHIVED
+  REJECTED
+}
+
+enum PlateVerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
   REJECTED
 }
 
@@ -170,13 +183,15 @@ enum SubscriptionStatus {
 
 model Currency {
   id            String   @id @default(cuid())
-  code          String   @unique // IQD, USD, EUR, …
+  code          String   @unique // IQD, USD, EUR, AED, SAR, TRY, GBP, …
   nameEn        String
   nameAr        String
   nameKu        String?
   symbol        String
   decimalPlaces Int      @default(0)
   active        Boolean  @default(true)
+  isDefault     Boolean  @default(false)
+  sortOrder     Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   createdById   String?
@@ -562,6 +577,18 @@ model User {
   listingReportsResolved ListingReport[]     @relation("ListingReportResolver")
   adminAuditLogs         AdminAuditLog[]     @relation("AdminAuditActor")
 
+  // Communication (Sprint 23)
+  conversationParticipants ConversationParticipant[]
+  messagesSent             ChatMessage[]             @relation("ChatMessageSender")
+  blocksInitiated          UserBlock[]               @relation("UserBlocker")
+  blocksReceived           UserBlock[]               @relation("UserBlocked")
+  conversationReportsFiled ConversationReport[]      @relation("ConversationReportReporter")
+  conversationReportsResolved ConversationReport[]   @relation("ConversationReportResolver")
+  dealerFollows            DealerFollow[]
+  devicePushTokens         DevicePushToken[]
+  appNotifications         AppNotification[]
+  presence                 UserPresence?
+
   @@index([role, status])
 }
 
@@ -741,6 +768,8 @@ model Listing {
   sellerId             String?
   categoryId           String
   categoryCode         ListingCategoryCode
+  /// Domain discriminator: VEHICLE (cars/moto/truck/heavy/parts/rental) or PLATE
+  domain               MarketplaceDomain   @default(VEHICLE)
   status               ListingStatus       @default(DRAFT)
   countryId            String
   cityId               String
@@ -806,11 +835,14 @@ model Listing {
   heavyEquipmentDetails HeavyEquipmentDetails?
   plateDetails          PlateDetails?
   reports               ListingReport[]
+  conversations         Conversation[]
 
   auction    Auction?
   orderItems OrderItem[]
 
   @@index([status, categoryCode, cityId])
+  @@index([domain, status, publishedAt(sort: Desc)])
+  @@index([domain, status, cityId])
   @@index([categoryId, status])
   @@index([cityId, status])
   @@index([primaryPrice])
@@ -1013,23 +1045,80 @@ model PlateFormat {
 }
 
 model PlateDetails {
-  listingId       String   @id
-  formatCode      String
-  plateDisplay    String
-  plateNormalized String
-  series          String?
-  number          String?
-  regionCode      String?
+  listingId          String                  @id
+  formatCode         String
+  plateDisplay       String
+  plateNormalized    String
+  series             String?
+  number             String?
+  regionCode         String?
   /// Visual plate class for SVG renderer (Private, Taxi, Government, Commercial, Diplomatic)
-  plateType       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  deletedAt       DateTime?
+  plateType          String?
+  plateCategoryId    String?
+  platePrefixId      String?
+  verificationStatus PlateVerificationStatus @default(UNVERIFIED)
+  verifiedAt         DateTime?
+  verifiedById       String?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  deletedAt          DateTime?
 
-  listing Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  format  PlateFormat @relation(fields: [formatCode], references: [code])
+  listing       Listing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  format        PlateFormat    @relation(fields: [formatCode], references: [code])
+  plateCategory PlateCategory? @relation(fields: [plateCategoryId], references: [id])
+  platePrefix   PlatePrefix?   @relation(fields: [platePrefixId], references: [id])
 
   @@index([formatCode, plateNormalized])
+  @@index([verificationStatus])
+  @@index([plateCategoryId])
+  @@index([platePrefixId])
+}
+
+/// Plate domain catalog — plate usage class (Private, Taxi, …)
+model PlateCategory {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  nameEn    String
+  nameAr    String?
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  plates PlateDetails[]
+
+  @@index([active, sortOrder])
+}
+
+/// Plate domain catalog — letter/series prefix within a governorate format
+model PlatePrefix {
+  id           String   @id @default(cuid())
+  formatCode   String
+  letter       String
+  label        String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  plates PlateDetails[]
+
+  @@unique([formatCode, letter])
+  @@index([formatCode, active])
+}
+
+/// Plate verification audit events (domain-owned history)
+model PlateVerification {
+  id         String                  @id @default(cuid())
+  listingId  String
+  status     PlateVerificationStatus
+  note       String?
+  actorId    String?
+  createdAt  DateTime                @default(now())
+
+  @@index([listingId, createdAt])
+  @@index([status])
 }
 
 // ─── Future: dealers ─────────────────────────────────────────────────────────
@@ -1058,6 +1147,8 @@ model DealerOrganization {
 
   city    City?          @relation(fields: [cityId], references: [id])
   members DealerMember[]
+  follows DealerFollow[]
+  conversations Conversation[]
 
   @@index([verified, deletedAt])
   @@index([cityId])
@@ -1266,4 +1357,214 @@ model SiteSettings {
   socialLinks     Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// ─── Communication platform (Sprint 23) ──────────────────────────────────────
+
+enum ChatMessageType {
+  TEXT
+  IMAGE
+  LOCATION
+  LISTING_CARD
+  DEALER_CARD
+  CONTACT_CARD
+  SYSTEM
+}
+
+enum ChatMessageStatus {
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum ConversationStatus {
+  ACTIVE
+  ARCHIVED
+  BLOCKED
+}
+
+enum AppNotificationType {
+  NEW_MESSAGE
+  LISTING_APPROVED
+  LISTING_REJECTED
+  PRICE_CHANGE
+  FAVOURITE_UPDATE
+  DEALER_REPLY
+  SYSTEM
+}
+
+enum PushPlatform {
+  IOS
+  ANDROID
+  WEB
+  EXPO
+}
+
+/// Listing- or dealer-scoped inquiry thread (shared across Vehicles & Plates).
+model Conversation {
+  id                   String             @id @default(cuid())
+  listingId            String?
+  dealerOrganizationId String?
+  /// Denormalized from listing for inbox filters without join
+  marketplaceDomain    MarketplaceDomain?
+  status               ConversationStatus @default(ACTIVE)
+  lastMessageAt        DateTime?
+  lastMessagePreview   String?
+  createdById          String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  deletedAt            DateTime?
+
+  listing            Listing?                 @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  dealerOrganization DealerOrganization?      @relation(fields: [dealerOrganizationId], references: [id], onDelete: SetNull)
+  participants       ConversationParticipant[]
+  messages           ChatMessage[]
+  reports            ConversationReport[]
+
+  @@index([listingId])
+  @@index([dealerOrganizationId])
+  @@index([marketplaceDomain, lastMessageAt(sort: Desc)])
+  @@index([lastMessageAt(sort: Desc)])
+  @@index([status, lastMessageAt(sort: Desc)])
+}
+
+model ConversationParticipant {
+  id             String    @id @default(cuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime?
+  lastDeliveredAt DateTime?
+  unreadCount    Int       @default(0)
+  mutedUntil     DateTime?
+  archivedAt     DateTime?
+  /// Soft-delete from inbox (conversation retained for other party)
+  hiddenAt       DateTime?
+  joinedAt       DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, archivedAt, lastReadAt])
+  @@index([userId, hiddenAt])
+}
+
+model ChatMessage {
+  id             String            @id @default(cuid())
+  conversationId String
+  senderId       String?
+  type           ChatMessageType   @default(TEXT)
+  body           String?
+  /// Structured payload: image keys, lat/lng, listingId, dealerId, contact fields
+  payload        Json?
+  /// Client-generated id for optimistic dedupe / offline retry
+  clientId       String?
+  status         ChatMessageStatus @default(SENT)
+  /// Spam / moderation flag (hook result)
+  flagged        Boolean           @default(false)
+  flagReason     String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  editedAt       DateTime?
+  deletedAt      DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?        @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@unique([conversationId, clientId])
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@index([senderId, createdAt])
+  @@index([flagged, createdAt])
+}
+
+model UserBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  blocker User @relation("UserBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("UserBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model ConversationReport {
+  id             String       @id @default(cuid())
+  conversationId String
+  reporterId     String
+  reason         ReportReason
+  details        String?
+  status         ReportStatus @default(OPEN)
+  resolution     String?
+  resolvedById   String?
+  resolvedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reporter     User         @relation("ConversationReportReporter", fields: [reporterId], references: [id])
+  resolvedBy   User?        @relation("ConversationReportResolver", fields: [resolvedById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([conversationId, status])
+  @@index([reporterId])
+}
+
+model DealerFollow {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization DealerOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+model UserPresence {
+  userId     String   @id
+  isOnline   Boolean  @default(false)
+  lastSeenAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DevicePushToken {
+  id        String       @id @default(cuid())
+  userId    String
+  token     String
+  platform  PushPlatform @default(EXPO)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  lastUsedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, token])
+  @@index([token])
+}
+
+model AppNotification {
+  id        String              @id @default(cuid())
+  userId    String
+  type      AppNotificationType
+  title     String
+  body      String
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+  @@index([type, createdAt])
 }

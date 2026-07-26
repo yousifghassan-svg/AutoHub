@@ -39,12 +39,20 @@ export class AdminReportsService {
     });
   }
 
-  async list(query: { page?: number; pageSize?: number; status?: ReportStatus }) {
+  async list(query: {
+    page?: number;
+    pageSize?: number;
+    status?: ReportStatus;
+    domain?: 'VEHICLE' | 'PLATE';
+  }) {
     const page = query.page ?? 1;
     const pageSize = Math.min(query.pageSize ?? 20, 100);
     const where: Prisma.ListingReportWhereInput = {
       deletedAt: null,
       status: query.status,
+      ...(query.domain
+        ? { listing: { domain: query.domain, deletedAt: null } }
+        : {}),
     };
 
     const [total, items] = await Promise.all([
@@ -68,7 +76,18 @@ export class AdminReportsService {
     ]);
 
     return {
-      items,
+      items: items.map((item) => ({
+        ...item,
+        listing: item.listing
+          ? {
+              ...item.listing,
+              title:
+                item.listing.translations?.[0]?.title ??
+                item.listing.slug ??
+                item.listing.id,
+            }
+          : null,
+      })),
       page,
       pageSize,
       total,

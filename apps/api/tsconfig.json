@@ -10,6 +10,8 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "noImplicitAny": false,
+    "declaration": false,
+    "declarationMap": false,
     "paths": {
       "@/*": ["src/*"]
     }

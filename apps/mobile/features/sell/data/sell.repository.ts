@@ -1,5 +1,4 @@
 import type { HttpClient } from '@/lib/api/http-client';
-import { MOCK_CURRENCY_IDS } from './catalog';
 import { uploadMediaAsset } from './media-upload';
 import type { CreateListingPayload, WizardDraft } from '../domain/types';
 import type { DraftStore } from './draft-store';
@@ -40,9 +39,7 @@ function toCreatePayload(draft: WizardDraft): CreateListingPayload {
     description: draft.description.trim(),
     language: draft.language,
     primaryPrice,
-    primaryCurrencyId:
-      draft.primaryCurrencyId ??
-      (draft.currencyCode === 'USD' ? MOCK_CURRENCY_IDS.USD : MOCK_CURRENCY_IDS.IQD),
+    currencyCode: draft.currencyCode || 'IQD',
     conditionTypeId: draft.conditionTypeId ?? undefined,
     vehicleDetails,
   };
@@ -79,6 +76,7 @@ export function createApiSellRepository(deps: {
           description: payload.description,
           language: payload.language,
           primaryPrice: payload.primaryPrice,
+          currencyCode: payload.currencyCode,
           primaryCurrencyId: payload.primaryCurrencyId,
           conditionTypeId: payload.conditionTypeId,
           vehicleDetails: payload.vehicleDetails,
@@ -94,6 +92,7 @@ export function createApiSellRepository(deps: {
             description: payload.description,
             language: payload.language,
             primaryPrice: payload.primaryPrice,
+            currencyCode: payload.currencyCode,
             primaryCurrencyId: payload.primaryCurrencyId,
             conditionTypeId: payload.conditionTypeId,
             vehicleDetails: payload.vehicleDetails,

@@ -12,6 +12,7 @@ export type UpdateListingInput = {
   metaTitle?: string;
   metaDescription?: string;
   primaryPrice?: number;
+  currencyCode?: string;
   primaryCurrencyId?: string;
   secondaryPrice?: number;
   secondaryCurrencyId?: string;

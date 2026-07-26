@@ -11,6 +11,8 @@ export type VehicleFormValues = {
   year: string;
   mileageKm: string;
   primaryPrice: string;
+  /** Active currency code (IQD | USD | …). */
+  currencyCode: string;
   primaryCurrencyId: string;
   vin: string;
   engineTypeId: string;
@@ -33,13 +35,6 @@ export type VehicleFormValues = {
   dealerId: string;
   isFeatured: boolean;
   isVerified: boolean;
-  plateEnabled: boolean;
-  plateFormatCode: string;
-  plateRegionCode: string;
-  plateSeries: string;
-  plateNumber: string;
-  plateType: string;
-  plateDisplay: string;
 };
 
 export const emptyVehicleForm = (): VehicleFormValues => ({
@@ -53,7 +48,8 @@ export const emptyVehicleForm = (): VehicleFormValues => ({
   year: String(new Date().getFullYear()),
   mileageKm: '',
   primaryPrice: '',
-  primaryCurrencyId: 'IQD',
+  currencyCode: 'IQD',
+  primaryCurrencyId: '',
   vin: '',
   engineTypeId: '',
   engineSizeCc: '',
@@ -75,13 +71,6 @@ export const emptyVehicleForm = (): VehicleFormValues => ({
   dealerId: '',
   isFeatured: false,
   isVerified: false,
-  plateEnabled: false,
-  plateFormatCode: 'IQ_BAGHDAD',
-  plateRegionCode: '11',
-  plateSeries: 'A',
-  plateNumber: '12345',
-  plateType: 'Private',
-  plateDisplay: '11 A 12345',
 });
 
 export type CatalogFilters = {

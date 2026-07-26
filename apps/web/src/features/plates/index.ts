@@ -31,3 +31,5 @@ export {
 } from './lib/generate-plate-svg';
 export { exportPlatePng, exportPlatePdf } from './lib/export-plate';
 export { clearSvgCache, svgCacheSize } from './lib/svg-cache';
+export { createPlatesRepository, type PlateListQuery } from './data/plates.repository';
+export { usePlateDetail, usePlateSearchInfinite, usePlatesPage } from './hooks/usePlates';

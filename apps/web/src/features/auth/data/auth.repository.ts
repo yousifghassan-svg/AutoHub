@@ -35,9 +35,16 @@ function normalizePhone(phone: string): string {
   return `+964${digits}`;
 }
 
-export function createMockAuthRepository(storage: TokenStorage): AuthRepository {
-  function mockUser(phone: string, displayName: string | null): AuthenticatedUser {
-    return {
+/**
+ * Mock OTP UX that exchanges a verified phone for a real Nest JWT via /v1/auth/dev-login
+ * (non-production). Falls back to a local-only session if the API is unreachable.
+ */
+export function createMockAuthRepository(
+  storage: TokenStorage,
+  http?: HttpClient,
+): AuthRepository {
+  function localSession(phone: string, displayName: string | null): StoredSession {
+    const user: AuthenticatedUser = {
       id: `mock-user-${phone.replace(/\D/g, '')}`,
       firebaseUid: `mock-firebase-${phone}`,
       phone,
@@ -56,6 +63,13 @@ export function createMockAuthRepository(storage: TokenStorage): AuthRepository 
       ],
       status: 'ACTIVE',
     };
+    return {
+      accessToken: `mock-access-${user.id}`,
+      refreshToken: `mock-refresh-${user.id}`,
+      accessExpiresAt: Date.now() + 15 * 60 * 1000,
+      user,
+      profileSetupComplete: Boolean(displayName && displayName.trim().length >= 2),
+    };
   }
 
   return {
@@ -69,33 +83,104 @@ export function createMockAuthRepository(storage: TokenStorage): AuthRepository 
       if (code.trim() !== config.mockOtpCode) {
         throw new Error(`Invalid OTP. Use ${config.mockOtpCode} in mock mode.`);
       }
-      const user = mockUser(session.phoneE164, null);
-      const stored: StoredSession = {
-        accessToken: `mock-access-${user.id}`,
-        refreshToken: `mock-refresh-${user.id}`,
-        accessExpiresAt: Date.now() + 15 * 60 * 1000,
-        user,
-        profileSetupComplete: false,
-      };
+      if (http) {
+        try {
+          const tokens = await http.post<AuthTokens>(
+            '/v1/auth/dev-login',
+            { phone: session.phoneE164 },
+            false,
+          );
+          const stored = toStoredSession(tokens);
+          await storage.save(stored);
+          return stored;
+        } catch {
+          /* offline / API down — local session for OTP UX only */
+        }
+      }
+      const stored = localSession(session.phoneE164, null);
       await storage.save(stored);
       return stored;
     },
     async restoreSession() {
-      return storage.load();
+      const existing = await storage.load();
+      if (!existing) return null;
+      if (existing.accessToken.startsWith('mock-access-')) return existing;
+      if (!http) return existing;
+      if (existing.accessExpiresAt - 30_000 > Date.now()) {
+        try {
+          const user = await http.get<AuthenticatedUser>('/v1/auth/me');
+          const next = { ...existing, user };
+          await storage.save(next);
+          return next;
+        } catch {
+          /* refresh below */
+        }
+      }
+      try {
+        const tokens = await http.post<AuthTokens>(
+          '/v1/auth/refresh',
+          { refreshToken: existing.refreshToken },
+          false,
+        );
+        const stored = toStoredSession(tokens, existing.profileSetupComplete);
+        await storage.save(stored);
+        return stored;
+      } catch (e) {
+        const status =
+          e && typeof e === 'object' && 'statusCode' in e
+            ? Number((e as { statusCode?: number }).statusCode)
+            : 0;
+        // Keep session on network blips; clear only on auth rejection.
+        if (status === 0) return existing;
+        await storage.clear();
+        return null;
+      }
     },
     async refreshSession() {
       const existing = await storage.load();
       if (!existing) return null;
-      const next = {
-        ...existing,
-        accessToken: `mock-access-${existing.user.id}-${Date.now()}`,
-        refreshToken: `mock-refresh-${existing.user.id}-${Date.now()}`,
-        accessExpiresAt: Date.now() + 15 * 60 * 1000,
-      };
-      await storage.save(next);
-      return next;
+      if (existing.accessToken.startsWith('mock-access-') || !http) {
+        const next = {
+          ...existing,
+          accessToken: `mock-access-${existing.user.id}-${Date.now()}`,
+          refreshToken: `mock-refresh-${existing.user.id}-${Date.now()}`,
+          accessExpiresAt: Date.now() + 15 * 60 * 1000,
+        };
+        await storage.save(next);
+        return next;
+      }
+      try {
+        const tokens = await http.post<AuthTokens>(
+          '/v1/auth/refresh',
+          { refreshToken: existing.refreshToken },
+          false,
+        );
+        const stored = toStoredSession(tokens, existing.profileSetupComplete);
+        await storage.save(stored);
+        return stored;
+      } catch (e) {
+        const status =
+          e && typeof e === 'object' && 'statusCode' in e
+            ? Number((e as { statusCode?: number }).statusCode)
+            : 0;
+        if (status === 0) return existing;
+        await storage.clear();
+        return null;
+      }
     },
     async logout() {
+      const existing = await storage.load();
+      if (http && existing?.accessToken && !existing.accessToken.startsWith('mock-access-')) {
+        try {
+          await http.post(
+            '/v1/auth/logout',
+            { refreshToken: existing.refreshToken, revokeAll: false },
+            true,
+          );
+        } catch {
+          /* best effort */
+        }
+      }
       await storage.clear();
     },
     async completeProfileSetup(displayName) {

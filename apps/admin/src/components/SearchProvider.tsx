@@ -12,7 +12,7 @@ type SearchContextValue = {
 
 const SearchContext = createContext<SearchContextValue | null>(null);
 
-const SEARCH_PATHS = ['/listings', '/users', '/plates', '/dealers', '/audit-logs', '/media'];
+const SEARCH_PATHS = ['/vehicles', '/users', '/plates', '/dealers', '/audit-logs', '/media'];
 
 export function SearchProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

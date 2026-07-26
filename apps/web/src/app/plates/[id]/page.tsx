@@ -2,22 +2,23 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { ListingCard } from '@/components/ListingCard';
 import { Badge, Button, Card, EmptyState, Skeleton } from '@/components/ui';
 import { useFavorites } from '@/features/favorites/favorites-store';
 import { formatPrice } from '@/features/listings/domain/mappers';
-import { useListingDetail, useListingsPage } from '@/features/listings/hooks/useListings';
 import { LicensePlate, licensePlateFromListing } from '@/features/plates';
+import { usePlateDetail, usePlatesPage } from '@/features/plates/hooks/usePlates';
 
 export default function PlateDetailPage() {
   const params = useParams<{ id: string }>();
   const id = typeof params.id === 'string' ? params.id : '';
-  const query = useListingDetail(id);
+  const query = usePlateDetail(id);
   const { isFavorite, toggle } = useFavorites();
   const listing = query.data;
 
-  const related = useListingsPage(
-    { categoryCode: 'PLATE', pageSize: 8, sortBy: 'createdAt' },
+  const related = usePlatesPage(
+    { pageSize: 8, sortBy: 'createdAt', sortOrder: 'desc' },
     Boolean(listing),
   );
 
@@ -32,15 +33,17 @@ export default function PlateDetailPage() {
 
   if (query.isError || !listing) {
     return (
-      <EmptyState
-        title="Plate listing not found"
-        description={query.error instanceof Error ? query.error.message : undefined}
-        action={
-          <Link href="/plates">
-            <Button variant="secondary">Back to plates</Button>
-          </Link>
-        }
-      />
+      <div className="page-container py-10">
+        <EmptyState
+          title="Plate listing not found"
+          description={query.error instanceof Error ? query.error.message : undefined}
+          action={
+            <Link href="/plates">
+              <Button variant="secondary">Back to plates</Button>
+            </Link>
+          }
+        />
+      </div>
     );
   }
 
@@ -49,6 +52,14 @@ export default function PlateDetailPage() {
 
   return (
     <div className="page-container space-y-12 py-10">
+      <Breadcrumbs
+        items={[
+          { label: 'Home', href: '/' },
+          { label: 'Plates', href: '/plates' },
+          { label: listing.title },
+        ]}
+      />
+
       <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-4">
           {plate ? (
@@ -70,11 +81,6 @@ export default function PlateDetailPage() {
               <p className="text-ink-secondary">Plate preview unavailable for this listing.</p>
             </Card>
           )}
-          <p className="text-center text-xs text-ink-secondary">
-            <Link href={`/listings/${listing.id}`} className="font-semibold text-brand hover:underline">
-              View full listing page
-            </Link>
-          </p>
         </div>
 
         <div className="space-y-5">
@@ -120,8 +126,8 @@ export default function PlateDetailPage() {
       <section>
         <div className="mb-4 flex items-end justify-between">
           <h2 className="font-display text-2xl font-semibold text-ink">Similar plates</h2>
-          <Link href="/plates" className="text-sm font-semibold text-brand">
-            Browse all
+          <Link href="/plates/search" className="text-sm font-semibold text-brand">
+            Search plates
           </Link>
         </div>
         {relatedItems.length ? (

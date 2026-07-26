@@ -3,22 +3,25 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { useUnreadCounts } from '@/features/chat/hooks/useUnreadCounts';
 import { useFavoriteIds } from '@/features/favorites/favorites-store';
 import { useTheme } from './ThemeProvider';
 import { Button, cn } from './ui';
 
 const nav = [
-  { href: '/search', label: 'Search' },
-  { href: '/dealers', label: 'Dealers' },
+  { href: '/vehicles', label: 'Vehicles' },
   { href: '/plates', label: 'Plates' },
+  { href: '/dealers', label: 'Dealers' },
   { href: '/sell', label: 'Sell' },
-  { href: '/my-listings', label: 'My listings' },
   { href: '/favorites', label: 'Favorites' },
+  { href: '/messages', label: 'Messages', auth: true },
+  { href: '/notifications', label: 'Notifications', auth: true },
 ];
 
 export function SiteHeader() {
   const { status, session, logout } = useAuth();
   const favorites = useFavoriteIds();
+  const { messagesUnread, notificationsUnread } = useUnreadCounts();
   const { theme, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -28,6 +31,17 @@ export function SiteHeader() {
   const favCount = mounted ? favorites.length : 0;
   const showAccount = mounted && (status === 'authenticated' || status === 'needs_profile');
 
+  const badge = (href: string) => {
+    if (href === '/favorites' && favCount > 0) return ` (${favCount})`;
+    if (href === '/messages' && messagesUnread > 0) return ` (${messagesUnread})`;
+    if (href === '/notifications' && notificationsUnread > 0) {
+      return ` (${notificationsUnread})`;
+    }
+    return '';
+  };
+
+  const visibleNav = nav.filter((item) => !('auth' in item && item.auth) || showAccount);
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur">
       <div className="page-container flex h-16 items-center justify-between gap-4">
@@ -35,15 +49,15 @@ export function SiteHeader() {
           Auto<span className="text-brand">Hub</span>
         </Link>
 
-        <nav className="hidden items-center gap-5 lg:flex">
-          {nav.map((item) => (
+        <nav className="hidden items-center gap-5 xl:flex">
+          {visibleNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className="text-sm font-medium text-ink-secondary hover:text-ink"
             >
               {item.label}
-              {item.href === '/favorites' && favCount > 0 ? ` (${favCount})` : ''}
+              {badge(item.href)}
             </Link>
           ))}
         </nav>
@@ -59,6 +73,9 @@ export function SiteHeader() {
           </button>
           {showAccount ? (
             <>
+              <Link href="/my-listings" className="text-sm font-medium text-ink-secondary">
+                My listings
+              </Link>
               <Link href="/profile" className="text-sm font-medium text-ink">
                 {session?.user.displayName ?? session?.user.phone ?? 'Profile'}
               </Link>
@@ -94,9 +111,10 @@ export function SiteHeader() {
 
       <div className={cn('border-t border-border md:hidden', !open && 'hidden')}>
         <div className="page-container flex flex-col gap-3 py-4">
-          {nav.map((item) => (
+          {visibleNav.map((item) => (
             <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>
               {item.label}
+              {badge(item.href)}
             </Link>
           ))}
           <button type="button" onClick={toggleTheme} className="text-left text-sm">
@@ -104,6 +122,9 @@ export function SiteHeader() {
           </button>
           {showAccount ? (
             <>
+              <Link href="/my-listings" onClick={() => setOpen(false)}>
+                My listings
+              </Link>
               <Link href="/profile" onClick={() => setOpen(false)}>
                 Profile
               </Link>

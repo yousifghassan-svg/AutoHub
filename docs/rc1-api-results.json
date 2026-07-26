@@ -1,0 +1,116 @@
+﻿[
+    {
+        "Area":  "API",
+        "Check":  "Nest responding",
+        "Pass":  true,
+        "Detail":  "404 on /v1 as expected"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Staff login SUPER_ADMIN",
+        "Pass":  true,
+        "Detail":  "role=SUPER_ADMIN perms=29"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Staff login ADMIN",
+        "Pass":  true,
+        "Detail":  "role=ADMIN"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Validation rejects empty staff-login",
+        "Pass":  true,
+        "Detail":  "status=400"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Admin requires auth",
+        "Pass":  true,
+        "Detail":  "status=401"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Admin dashboard",
+        "Pass":  true,
+        "Detail":  "users=15 cars=100"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Vehicles pagination",
+        "Pass":  true,
+        "Detail":  "page=1 size=5 items=5 total=100"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Vehicles filter ACTIVE",
+        "Pass":  true,
+        "Detail":  "items=5 statuses=ACTIVE"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Plates list",
+        "Pass":  true,
+        "Detail":  "total=200"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Users list",
+        "Pass":  true,
+        "Detail":  "total=15"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Dealers list",
+        "Pass":  true,
+        "Detail":  "total=5"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Reports list",
+        "Pass":  true,
+        "Detail":  "total=0"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Communication stats",
+        "Pass":  false,
+        "Detail":  "The remote server returned an error: (500) Internal Server Error."
+    },
+    {
+        "Area":  "API",
+        "Check":  "Statistics",
+        "Pass":  true,
+        "Detail":  "listingsCreated=300"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Audit logs",
+        "Pass":  true,
+        "Detail":  "total=3"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Public search",
+        "Pass":  true,
+        "Detail":  "total=15"
+    },
+    {
+        "Area":  "API",
+        "Check":  "SUPPORT denied settings (authz)",
+        "Pass":  true,
+        "Detail":  "status=403 role=SUPPORT"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Token refresh",
+        "Pass":  true,
+        "Detail":  "rotated tokens"
+    },
+    {
+        "Area":  "API",
+        "Check":  "Rate limiting observable",
+        "Pass":  true,
+        "Detail":  "ok=40 blocked429=0 (global limit may be high)"
+    }
+]

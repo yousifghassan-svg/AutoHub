@@ -8,6 +8,7 @@ import {
   LanguageCode,
   ListingCategoryCode,
   ListingStatus,
+  MarketplaceDomain,
   MediaType,
   MediaVariantKind,
   Prisma,
@@ -33,6 +34,8 @@ import { R2StorageService } from '../../../infrastructure/storage/r2-storage.ser
 import { MediaAssetRepository } from '../../media/infrastructure/media-asset.repository';
 import { DOCUMENT_PURPOSES } from '../../media/domain/media.policies';
 import { ListingValidationService } from './listing-validation.service';
+import { NotificationsService } from '../../notifications/application/notifications.service';
+import { CurrenciesService } from '../../currencies/application/currencies.service';
 import type { CreateListingInput } from './types/create-listing.input';
 import type { UpdateListingInput } from './types/update-listing.input';
 import type { SearchListingsInput } from './types/search-listings.input';
@@ -47,6 +50,8 @@ export class ListingsService {
     private readonly thumbnails: ThumbnailService,
     private readonly r2: R2StorageService,
     private readonly mediaAssets: MediaAssetRepository,
+    private readonly notifications: NotificationsService,
+    private readonly currencies: CurrenciesService,
   ) {}
 
   async create(actor: AuthenticatedUser, input: CreateListingInput) {
@@ -57,11 +62,12 @@ export class ListingsService {
     );
     this.validation.assertPrice(input.primaryPrice, input.secondaryPrice);
 
-    if (input.primaryCurrencyId) {
-      await this.validation.assertCurrency(input.primaryCurrencyId);
-    }
+    const primaryCurrency = await this.currencies.resolvePrimaryCurrency({
+      currencyCode: input.currencyCode,
+      primaryCurrencyId: input.primaryCurrencyId,
+    });
     if (input.secondaryCurrencyId) {
-      await this.validation.assertCurrency(input.secondaryCurrencyId);
+      await this.currencies.assertActiveId(input.secondaryCurrencyId);
     }
 
     await this.validation.assertBrandModel({
@@ -77,6 +83,10 @@ export class ListingsService {
       seller: { connect: { id: actor.id } },
       category: { connect: { id: category.id } },
       categoryCode: category.code,
+      domain:
+        category.code === ListingCategoryCode.PLATE
+          ? MarketplaceDomain.PLATE
+          : MarketplaceDomain.VEHICLE,
       status: ListingStatus.DRAFT,
       country: { connect: { id: country.id } },
       city: { connect: { id: city.id } },
@@ -84,9 +94,7 @@ export class ListingsService {
         ? { connect: { id: input.conditionTypeId } }
         : undefined,
       primaryPrice: input.primaryPrice,
-      primaryCurrency: input.primaryCurrencyId
-        ? { connect: { id: input.primaryCurrencyId } }
-        : undefined,
+      primaryCurrency: { connect: { id: primaryCurrency.id } },
       secondaryPrice: input.secondaryPrice,
       secondaryCurrency: input.secondaryCurrencyId
         ? { connect: { id: input.secondaryCurrencyId } }
@@ -162,6 +170,8 @@ export class ListingsService {
       modelId: query.modelId,
       minPrice: query.minPrice,
       maxPrice: query.maxPrice,
+      currencyCode: query.currencyCode,
+      primaryCurrencyId: query.primaryCurrencyId,
       status,
       statuses,
       isFeatured: query.isFeatured,
@@ -200,11 +210,16 @@ export class ListingsService {
         (listing.secondaryPrice != null ? Number(listing.secondaryPrice) : null),
     );
 
-    if (input.primaryCurrencyId) {
-      await this.validation.assertCurrency(input.primaryCurrencyId);
+    let primaryCurrencyId: string | undefined;
+    if (input.currencyCode || input.primaryCurrencyId) {
+      const currency = await this.currencies.resolvePrimaryCurrency({
+        currencyCode: input.currencyCode,
+        primaryCurrencyId: input.primaryCurrencyId,
+      });
+      primaryCurrencyId = currency.id;
     }
     if (input.secondaryCurrencyId) {
-      await this.validation.assertCurrency(input.secondaryCurrencyId);
+      await this.currencies.assertActiveId(input.secondaryCurrencyId);
     }
 
     if (input.categoryId && input.categoryId !== listing.categoryId) {
@@ -235,6 +250,11 @@ export class ListingsService {
           })()
         : undefined;
 
+    const previousPrice =
+      listing.primaryPrice != null ? Number(listing.primaryPrice) : null;
+    const nextPrice =
+      input.primaryPrice !== undefined ? input.primaryPrice : previousPrice;
+
     const updated = await this.listings.updateWithTranslation(
       listing.id,
       {
@@ -247,8 +267,8 @@ export class ListingsService {
               ? { connect: { id: input.conditionTypeId } }
               : undefined,
         primaryPrice: input.primaryPrice,
-        primaryCurrency: input.primaryCurrencyId
-          ? { connect: { id: input.primaryCurrencyId } }
+        primaryCurrency: primaryCurrencyId
+          ? { connect: { id: primaryCurrencyId } }
           : undefined,
         secondaryPrice: input.secondaryPrice,
         secondaryCurrency: input.secondaryCurrencyId
@@ -264,6 +284,14 @@ export class ListingsService {
       },
       translationInput,
     );
+
+    if (
+      nextPrice != null &&
+      previousPrice != null &&
+      nextPrice !== previousPrice
+    ) {
+      await this.notifications.notifyPriceChange(listing.id, previousPrice, nextPrice);
+    }
 
     return this.toResponse(updated);
   }
@@ -311,6 +339,8 @@ export class ListingsService {
       throw new ForbiddenException('Not allowed to submit this listing');
     }
 
+    const previousStatus = listing.status;
+
     const updated = await this.listings.update(listing.id, {
       status,
       publishedAt:
@@ -320,6 +350,18 @@ export class ListingsService {
       soldAt: status === ListingStatus.SOLD ? new Date() : listing.soldAt,
       updatedBy: { connect: { id: actor.id } },
     });
+
+    if (
+      previousStatus === ListingStatus.PENDING &&
+      (status === ListingStatus.ACTIVE || status === ListingStatus.REJECTED) &&
+      listing.sellerId
+    ) {
+      await this.notifications.notifyListingStatus(
+        listing.sellerId,
+        listing.id,
+        status,
+      );
+    }
 
     return this.toResponse(updated);
   }
@@ -814,10 +856,21 @@ export class ListingsService {
       governorateId: listing.city.governorateId,
       conditionTypeId: listing.conditionTypeId,
       primaryPrice: listing.primaryPrice != null ? Number(listing.primaryPrice) : null,
+      price: listing.primaryPrice != null ? Number(listing.primaryPrice) : null,
       primaryCurrencyId: listing.primaryCurrencyId,
+      currencyCode: listing.primaryCurrency?.code ?? null,
+      primaryCurrency: listing.primaryCurrency
+        ? {
+            id: listing.primaryCurrency.id,
+            code: listing.primaryCurrency.code,
+            symbol: listing.primaryCurrency.symbol,
+            decimalPlaces: listing.primaryCurrency.decimalPlaces,
+          }
+        : null,
       secondaryPrice:
         listing.secondaryPrice != null ? Number(listing.secondaryPrice) : null,
       secondaryCurrencyId: listing.secondaryCurrencyId,
+      secondaryCurrencyCode: listing.secondaryCurrency?.code ?? null,
       slug: listing.slug,
       metaTitle: listing.metaTitle,
       metaDescription: listing.metaDescription,

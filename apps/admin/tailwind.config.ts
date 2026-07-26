@@ -22,9 +22,23 @@ const config: Config = {
         },
         border: 'var(--color-border)',
         background: 'var(--color-background)',
-        success: { DEFAULT: '#1F9D6A', soft: '#E8F7F0' },
-        error: { DEFAULT: '#E31937', soft: '#FFE8EC' },
-        warning: { DEFAULT: '#D97706', soft: '#FEF3C7' },
+        sidebar: 'var(--color-sidebar)',
+        success: {
+          DEFAULT: 'var(--color-success)',
+          soft: 'var(--color-success-soft)',
+        },
+        error: {
+          DEFAULT: 'var(--color-error)',
+          soft: 'var(--color-error-soft)',
+        },
+        warning: {
+          DEFAULT: 'var(--color-warning)',
+          soft: 'var(--color-warning-soft)',
+        },
+        info: {
+          DEFAULT: 'var(--color-info)',
+          soft: 'var(--color-info-soft)',
+        },
         skeleton: 'var(--color-skeleton)',
       },
       fontFamily: {
@@ -32,11 +46,25 @@ const config: Config = {
         display: ['var(--font-outfit)', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        card: '0 1px 3px rgba(14, 14, 17, 0.08), 0 4px 12px rgba(14, 14, 17, 0.04)',
-        lift: '0 8px 24px rgba(14, 14, 17, 0.12)',
+        card: 'var(--shadow-card)',
+        lift: 'var(--shadow-lift)',
       },
       borderRadius: {
         md: tokens.radii.md,
+        lg: '12px',
+        xl: '16px',
+      },
+      transitionTimingFunction: {
+        soft: 'cubic-bezier(0.22, 1, 0.36, 1)',
+      },
+      keyframes: {
+        'fade-in': {
+          from: { opacity: '0', transform: 'translateY(4px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'fade-in': 'fade-in 180ms cubic-bezier(0.22, 1, 0.36, 1)',
       },
     },
   },

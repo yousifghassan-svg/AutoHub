@@ -1,0 +1,81 @@
+﻿{
+    "timestamp":  "2026-07-25T18:11:51.788Z",
+    "phone":  "+9647700010006",
+    "typecheck":  {
+                      "web":  "pass",
+                      "api":  "pass",
+                      "webFixes":  [
+                                       "VehicleDetailView: import config, use config.authMode",
+                                       "my-listings: domainOf param uses domain/categoryCode"
+                                   ]
+                  },
+    "listingId":  "cmrxxg7ly01buehtcr7j0hanb",
+    "conversationId":  "cms0orjgq0010eh6w09y4ndoq",
+    "accessTokenPresent":  true,
+    "steps":  {
+                  "devLogin":  {
+                                   "status":  201,
+                                   "ok":  true
+                               },
+                  "getConversations":  {
+                                           "status":  200,
+                                           "ok":  true,
+                                           "note":  "empty inbox initially"
+                                       },
+                  "getNotifications":  {
+                                           "status":  200,
+                                           "ok":  true,
+                                           "note":  "empty list"
+                                       },
+                  "vehiclesSearch":  {
+                                         "status":  200,
+                                         "ok":  true,
+                                         "activeListingId":  "cmrxxg7ly01buehtcr7j0hanb",
+                                         "slug":  "seed-car-100"
+                                     },
+                  "postConversationListing":  {
+                                                  "status":  201,
+                                                  "ok":  true,
+                                                  "firstMessage":  "RC-2 test"
+                                              },
+                  "getMessages":  {
+                                      "status":  200,
+                                      "ok":  true,
+                                      "total":  1
+                                  },
+                  "postMessage":  {
+                                      "status":  201,
+                                      "ok":  true,
+                                      "body":  "RC-2 follow-up"
+                                  },
+                  "postRead":  {
+                                   "status":  201,
+                                   "ok":  true
+                               }
+              },
+    "lifecycleSmoke":  {
+                           "timestamp":  "2026-07-25T18:19:39.4063645Z",
+                           "resultsFile":  "docs/rc2-lifecycle-smoke.json",
+                           "ports":  {
+                                         "port3000":  true,
+                                         "port4000":  true
+                                     },
+                           "steps":  {
+                                         "notifications":  200,
+                                         "activatePending":  400,
+                                         "conversations":  200,
+                                         "vehiclesSearch":  200,
+                                         "pauseArchive":  200,
+                                         "vehiclesMine":  200,
+                                         "updateTitle":  400,
+                                         "staffApprove":  201
+                                     },
+                           "notes":  [
+                                         "ARCHIVE pause succeeded (200)",
+                                         "ARCHIVED -\u003e PENDING invalid transition (400)",
+                                         "Cannot edit ARCHIVED listing title (400)",
+                                         "Staff approved PENDING vehicle via POST /v1/admin/vehicles/:id/approve (201)",
+                                         "GET /v1/vehicles/search returns 200"
+                                     ]
+                       }
+}

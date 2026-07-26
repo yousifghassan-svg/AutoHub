@@ -22,5 +22,6 @@ export const ADMIN_ACCESS_PERMISSION = 'admin:access';
 export function hasAdminAccess(user: AuthenticatedUser | null | undefined): boolean {
   if (!user) return false;
   if (user.role === 'SUPER_ADMIN') return true;
-  return user.permissions.includes(ADMIN_ACCESS_PERMISSION);
+  const permissions = Array.isArray(user.permissions) ? user.permissions : [];
+  return permissions.includes(ADMIN_ACCESS_PERMISSION);
 }

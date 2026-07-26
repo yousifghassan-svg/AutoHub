@@ -63,6 +63,11 @@ export class SearchQueryDto {
   @Min(0)
   maxPrice?: number;
 
+  @ApiPropertyOptional({ example: 'IQD' })
+  @IsOptional()
+  @IsString()
+  currencyCode?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)

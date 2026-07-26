@@ -41,6 +41,8 @@ export type CreateListingInput = {
   metaTitle?: string;
   metaDescription?: string;
   primaryPrice?: number;
+  /** Prefer currencyCode; primaryCurrencyId kept for backward compatibility. */
+  currencyCode?: string;
   primaryCurrencyId?: string;
   secondaryPrice?: number;
   secondaryCurrencyId?: string;

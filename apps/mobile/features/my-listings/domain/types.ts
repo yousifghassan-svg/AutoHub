@@ -4,7 +4,8 @@ export type ListingStatus =
   | 'ACTIVE'
   | 'RESERVED'
   | 'SOLD'
-  | 'ARCHIVED';
+  | 'ARCHIVED'
+  | 'REJECTED';
 
 export type StatusTab = 'ALL' | ListingStatus;
 
@@ -52,14 +53,16 @@ export type EditListingInput = {
   title: string;
   description: string;
   primaryPrice?: number;
+  currencyCode?: 'IQD' | 'USD' | string;
 };
 
 export const STATUS_TABS: Array<{ key: StatusTab; label: string }> = [
   { key: 'ALL', label: 'All' },
   { key: 'DRAFT', label: 'Drafts' },
   { key: 'PENDING', label: 'Pending' },
-  { key: 'ACTIVE', label: 'Active' },
+  { key: 'ACTIVE', label: 'Published' },
   { key: 'RESERVED', label: 'Reserved' },
+  { key: 'REJECTED', label: 'Rejected' },
   { key: 'SOLD', label: 'Sold' },
   { key: 'ARCHIVED', label: 'Archived' },
 ];
@@ -70,6 +73,7 @@ export const OWNER_TRANSITIONS: Record<ListingStatus, ListingStatus[]> = {
   PENDING: ['DRAFT', 'ARCHIVED'],
   ACTIVE: ['RESERVED', 'SOLD', 'ARCHIVED'],
   RESERVED: ['ACTIVE', 'SOLD', 'ARCHIVED'],
+  REJECTED: ['DRAFT', 'PENDING', 'ARCHIVED'],
   SOLD: ['ARCHIVED'],
   ARCHIVED: [],
 };

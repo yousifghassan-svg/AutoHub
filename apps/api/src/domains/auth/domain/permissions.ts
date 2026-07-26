@@ -26,6 +26,10 @@ export enum Permission {
   REPORTS_READ = 'reports:read',
   REPORTS_WRITE = 'reports:write',
 
+  MESSAGES_READ = 'messages:read',
+  MESSAGES_WRITE = 'messages:write',
+  MESSAGES_MODERATE = 'messages:moderate',
+
   SETTINGS_READ = 'settings:read',
   SETTINGS_WRITE = 'settings:write',
 
@@ -46,6 +50,8 @@ const USER_PERMISSIONS: Permission[] = [
   Permission.MEDIA_READ,
   Permission.MEDIA_DELETE,
   Permission.REPORTS_WRITE,
+  Permission.MESSAGES_READ,
+  Permission.MESSAGES_WRITE,
 ];
 
 const DEALER_PERMISSIONS: Permission[] = [
@@ -61,6 +67,8 @@ const SUPPORT_PERMISSIONS: Permission[] = [
   Permission.LISTINGS_READ,
   Permission.REPORTS_READ,
   Permission.REPORTS_WRITE,
+  Permission.MESSAGES_READ,
+  Permission.MESSAGES_MODERATE,
   Permission.STATS_READ,
 ];
 
@@ -83,6 +91,7 @@ const MODERATOR_PERMISSIONS: Permission[] = [
   Permission.PLATES_WRITE,
   Permission.REPORTS_READ,
   Permission.REPORTS_WRITE,
+  Permission.MESSAGES_MODERATE,
   Permission.STATS_READ,
   Permission.MEDIA_READ,
 ];

@@ -14,7 +14,8 @@ function titleFromPath(pathname: string): string {
     (n) => pathname === n.href || pathname.startsWith(`${n.href}/`),
   );
   if (item) return item.label;
-  if (pathname.startsWith('/listings/')) return 'Listing detail';
+  if (pathname.startsWith('/vehicles/')) return 'Vehicle detail';
+  if (pathname.startsWith('/listings/')) return 'Vehicle detail';
   if (pathname.startsWith('/dealers/')) return 'Dealer detail';
   return 'Admin';
 }
@@ -60,7 +61,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
         gPending.current = false;
         const map: Record<string, string> = {
           d: '/dashboard',
-          l: '/listings',
+          v: '/vehicles',
+          l: '/vehicles',
           p: '/plates',
           e: '/dealers',
           u: '/users',
@@ -82,19 +84,20 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [router, searchRef]);
 
-  if (status === 'bootstrapping') {
+  if (status === 'bootstrapping' || !session || !hasAccess) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-8">
         <div className="w-full max-w-sm space-y-3">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-2/3" />
+          {status !== 'bootstrapping' ? (
+            <p className="text-sm text-ink-secondary">Redirecting to sign in…</p>
+          ) : null}
         </div>
       </div>
     );
   }
-
-  if (!session || !hasAccess) return null;
 
   const showSearch = searchEnabled;
 
@@ -109,7 +112,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           searchQuery={query}
           onSearchChange={setQuery}
         />
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

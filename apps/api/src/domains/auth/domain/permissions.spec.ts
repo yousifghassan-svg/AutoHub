@@ -14,6 +14,8 @@ describe('permissionsForRole', () => {
         Permission.MEDIA_UPLOAD,
         Permission.MEDIA_READ,
         Permission.MEDIA_DELETE,
+        Permission.MESSAGES_READ,
+        Permission.MESSAGES_WRITE,
       ]),
     );
     expect(permissions).not.toContain(Permission.LISTINGS_MODERATE);

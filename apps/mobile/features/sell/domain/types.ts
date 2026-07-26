@@ -83,6 +83,7 @@ export type CreateListingPayload = {
   description: string;
   language: 'ar' | 'ku' | 'en';
   primaryPrice?: number;
+  currencyCode?: 'IQD' | 'USD' | string;
   primaryCurrencyId?: string;
   conditionTypeId?: string;
   vehicleDetails?: {

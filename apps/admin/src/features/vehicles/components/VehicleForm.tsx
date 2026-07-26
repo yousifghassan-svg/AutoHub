@@ -1,15 +1,11 @@
 'use client';
 
 import { useMemo } from 'react';
-import { LicensePlate } from '@/features/plates/components/LicensePlate';
-import type { IraqiGovernorate, PlateType } from '@/features/plates/domain/types';
-import { GOVERNORATES } from '@/features/plates/domain/governorates';
 import { Button, Card, Input, Select, TextArea } from '@/components/ui';
 import type { VehicleFormValues } from '../domain/types';
 import { useCatalogFilters } from '../hooks/useCatalogFilters';
 
 const STATUSES = ['DRAFT', 'PENDING', 'ACTIVE', 'SOLD', 'ARCHIVED', 'REJECTED'] as const;
-const PLATE_TYPES: PlateType[] = ['Private', 'Taxi', 'Government', 'Commercial', 'Diplomatic'];
 
 export function VehicleForm({
   values,
@@ -44,11 +40,6 @@ export function VehicleForm({
 
   const carCategoryId =
     catalog.data?.categories.find((c) => c.code === 'CAR')?.id ?? values.categoryId;
-
-  const plateGov =
-    (Object.keys(GOVERNORATES) as IraqiGovernorate[]).find(
-      (g) => GOVERNORATES[g].formatCode === values.plateFormatCode,
-    ) ?? 'Baghdad';
 
   return (
     <form
@@ -273,18 +264,18 @@ export function VehicleForm({
         <h2 className="font-display text-lg font-semibold text-ink">Pricing & seller</h2>
         <div className="grid gap-4 md:grid-cols-3">
           <Input
-            label="Price"
+            label={`Price (${values.currencyCode || 'IQD'})`}
             type="number"
             value={values.primaryPrice}
             onChange={(e) => set('primaryPrice', e.target.value)}
           />
           <Select
             label="Currency"
-            value={values.primaryCurrencyId}
-            onChange={(e) => set('primaryCurrencyId', e.target.value)}
+            value={values.currencyCode}
+            onChange={(e) => set('currencyCode', e.target.value)}
           >
-            <option value="IQD">IQD</option>
-            <option value="USD">USD</option>
+            <option value="IQD">IQD — Iraqi Dinar</option>
+            <option value="USD">USD — US Dollar</option>
           </Select>
           <Input
             label="Seller user ID"
@@ -347,92 +338,6 @@ export function VehicleForm({
             onChange={(e) => set('longitude', e.target.value)}
           />
         </div>
-      </Card>
-
-      <Card className="space-y-4 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-lg font-semibold text-ink">License plate</h2>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={values.plateEnabled}
-              onChange={(e) => set('plateEnabled', e.target.checked)}
-            />
-            Attach Iraqi plate
-          </label>
-        </div>
-        {values.plateEnabled ? (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Select
-                label="Governorate format"
-                value={values.plateFormatCode}
-                onChange={(e) => {
-                  const code = e.target.value;
-                  const gov = (Object.keys(GOVERNORATES) as IraqiGovernorate[]).find(
-                    (g) => GOVERNORATES[g].formatCode === code,
-                  );
-                  onChange({
-                    ...values,
-                    plateFormatCode: code,
-                    plateRegionCode: gov ? GOVERNORATES[gov].defaultCode : values.plateRegionCode,
-                  });
-                }}
-              >
-                {Object.values(GOVERNORATES).map((g) => (
-                  <option key={g.formatCode} value={g.formatCode}>
-                    {g.nameEn}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                label="Code"
-                value={values.plateRegionCode}
-                onChange={(e) => set('plateRegionCode', e.target.value)}
-              />
-              <Input
-                label="Letter"
-                value={values.plateSeries}
-                onChange={(e) => set('plateSeries', e.target.value.toUpperCase())}
-              />
-              <Input
-                label="Number"
-                value={values.plateNumber}
-                onChange={(e) => set('plateNumber', e.target.value)}
-              />
-              <Select
-                label="Plate type"
-                value={values.plateType}
-                onChange={(e) => set('plateType', e.target.value)}
-              >
-                {PLATE_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                label="Display"
-                value={values.plateDisplay}
-                onChange={(e) => set('plateDisplay', e.target.value)}
-                placeholder="Auto from fields if empty"
-              />
-            </div>
-            <div className="rounded-xl bg-surface-muted p-4">
-              <LicensePlate
-                governorate={plateGov}
-                code={values.plateRegionCode}
-                letter={values.plateSeries || 'A'}
-                number={values.plateNumber || '00000'}
-                type={(PLATE_TYPES.includes(values.plateType as PlateType)
-                  ? values.plateType
-                  : 'Private') as PlateType}
-                framed
-                size="fill"
-              />
-            </div>
-          </div>
-        ) : null}
       </Card>
 
       <div className="flex flex-wrap gap-3">

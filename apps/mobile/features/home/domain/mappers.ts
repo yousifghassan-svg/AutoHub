@@ -6,6 +6,8 @@ type ApiListing = {
   slug: string;
   primaryPrice: number | null;
   primaryCurrencyId: string | null;
+  currencyCode?: string | null;
+  primaryCurrency?: { code?: string | null } | null;
   isFeatured: boolean;
   isVerified: boolean;
   categoryCode?: string;
@@ -18,13 +20,35 @@ type ApiListing = {
   category?: { code: string };
 };
 
-/** Known seeded currency IDs are opaque UUIDs — map common codes when env provides them. */
 const CURRENCY_FALLBACK = 'IQD';
+const LOCALE_MAP: Record<string, string> = {
+  ar: 'ar-IQ',
+  ku: 'ckb-IQ',
+  en: 'en-IQ',
+};
 
-export function resolveCurrencyCode(currencyId: string | null | undefined): string {
-  if (!currencyId) return CURRENCY_FALLBACK;
-  // Prefer showing IQD/USD when id looks like a code (tests/mocks); otherwise default IQD.
-  if (currencyId === 'USD' || currencyId === 'IQD') return currencyId;
+export function resolveCurrencyCode(
+  listingOrId:
+    | string
+    | null
+    | undefined
+    | {
+        currencyCode?: string | null;
+        primaryCurrency?: { code?: string | null } | null;
+        primaryCurrencyId?: string | null;
+      },
+): string {
+  if (listingOrId && typeof listingOrId === 'object') {
+    const code =
+      listingOrId.currencyCode ??
+      listingOrId.primaryCurrency?.code ??
+      (listingOrId.primaryCurrencyId === 'USD' || listingOrId.primaryCurrencyId === 'IQD'
+        ? listingOrId.primaryCurrencyId
+        : null);
+    return (code ?? CURRENCY_FALLBACK).toUpperCase();
+  }
+  if (!listingOrId) return CURRENCY_FALLBACK;
+  if (listingOrId === 'USD' || listingOrId === 'IQD') return listingOrId;
   return CURRENCY_FALLBACK;
 }
 
@@ -54,7 +78,7 @@ export function mapListingToCard(
     slug: listing.slug,
     title,
     price: listing.primaryPrice,
-    currencyCode: resolveCurrencyCode(listing.primaryCurrencyId),
+    currencyCode: resolveCurrencyCode(listing),
     location,
     mileageKm: details?.mileageKm ?? null,
     year: details?.year ?? null,
@@ -66,16 +90,24 @@ export function mapListingToCard(
   };
 }
 
-export function formatPrice(price: number | null, currencyCode: string): string {
+export function formatPrice(
+  price: number | null,
+  currencyCode: string,
+  locale: 'ar' | 'ku' | 'en' = 'en',
+): string {
   if (price == null) return '—';
+  const code = currencyCode || 'IQD';
+  const fraction = code === 'IQD' ? 0 : 2;
+  const bcp47 = LOCALE_MAP[locale] ?? locale;
   try {
-    return new Intl.NumberFormat(undefined, {
+    return new Intl.NumberFormat(bcp47, {
       style: 'currency',
-      currency: currencyCode === 'IQD' ? 'IQD' : currencyCode,
-      maximumFractionDigits: currencyCode === 'IQD' ? 0 : 0,
+      currency: code,
+      minimumFractionDigits: fraction,
+      maximumFractionDigits: fraction,
     }).format(price);
   } catch {
-    return `${price.toLocaleString()} ${currencyCode}`;
+    return `${code} ${price.toLocaleString(bcp47)}`;
   }
 }
 

@@ -1,0 +1,56 @@
+﻿{
+    "timestamp":  "2026-07-25T18:24:17.0186916Z",
+    "baseUrl":  "http://localhost:4000",
+    "phone":  "+9647700010006",
+    "steps":  {
+                  "devLogin":  {
+                                   "ok":  true,
+                                   "status":  201,
+                                   "tokenPresent":  true,
+                                   "error":  null
+                               },
+                  "vehiclesMine":  {
+                                       "ok":  true,
+                                       "status":  200,
+                                       "count":  10,
+                                       "pickedId":  "cmrxxg7910179ehtcms46944q",
+                                       "pickedStatus":  "ACTIVE",
+                                       "pickedTitle":  null,
+                                       "error":  null
+                                   },
+                  "pauseArchive":  {
+                                       "ok":  true,
+                                       "status":  200,
+                                       "error":  null,
+                                       "responseSnippet":  "{\"success\":true,\"data\":{\"id\":\"cmrxxg7910179ehtcms46944q\",\"sellerId\":\"cmrxxg3xv005rehtcwke15ywf\",\"categoryId\":\"cmrxj7f7z0002ehjg5b68l7io\",\"categoryCode\":\"CAR\",\"status\":\"ARCHIVED\",\"countryId\":\"cmrxj7fc30013ehjgl5r82dmg\",\"cityId\":\"cmrxj7fed0023ehjgikq3yr8s\",\"governorateId\":\"cmrxj7fea0021ehjg6ryghkox\",\""
+                                   },
+                  "unarchiveToDraft":  {
+                                           "ok":  true,
+                                           "status":  200,
+                                           "error":  null,
+                                           "responseSnippet":  "{\"success\":true,\"data\":{\"id\":\"cmrxxg7910179ehtcms46944q\",\"sellerId\":\"cmrxxg3xv005rehtcwke15ywf\",\"categoryId\":\"cmrxj7f7z0002ehjg5b68l7io\",\"categoryCode\":\"CAR\",\"status\":\"DRAFT\",\"countryId\":\"cmrxj7fc30013ehjgl5r82dmg\",\"cityId\":\"cmrxj7fed0023ehjgikq3yr8s\",\"governorateId\":\"cmrxj7fea0021ehjg6ryghkox\",\"con"
+                                       },
+                  "activateToPending":  {
+                                            "ok":  true,
+                                            "status":  200,
+                                            "error":  null,
+                                            "responseSnippet":  "{\"success\":true,\"data\":{\"id\":\"cmrxxg7910179ehtcms46944q\",\"sellerId\":\"cmrxxg3xv005rehtcwke15ywf\",\"categoryId\":\"cmrxj7f7z0002ehjg5b68l7io\",\"categoryCode\":\"CAR\",\"status\":\"PENDING\",\"countryId\":\"cmrxj7fc30013ehjgl5r82dmg\",\"cityId\":\"cmrxj7fed0023ehjgikq3yr8s\",\"governorateId\":\"cmrxj7fea0021ehjg6ryghkox\",\"c"
+                                        },
+                  "editTitle":  {
+                                    "ok":  true,
+                                    "status":  200,
+                                    "vehicleId":  "cmrxxg70y014cehtcij67wfv7",
+                                    "vehicleStatusBeforeEdit":  "ACTIVE",
+                                    "title":  "RC-2 Edited Title",
+                                    "error":  null,
+                                    "responseSnippet":  "{\"success\":true,\"data\":{\"id\":\"cmrxxg70y014cehtcij67wfv7\",\"sellerId\":\"cmrxxg3xv005rehtcwke15ywf\",\"categoryId\":\"cmrxj7f7z0002ehjg5b68l7io\",\"categoryCode\":\"CAR\",\"status\":\"ACTIVE\",\"countryId\":\"cmrxj7fc30013ehjgl5r82dmg\",\"cityId\":\"cmrxj7fda001jehjgpwe6rjcm\",\"governorateId\":\"cmrxj7fd6001hehjg2gf5s4hv\",\"co"
+                                }
+              },
+    "summary":  {
+                    "pause":  "pass",
+                    "activateRepublish":  "pass",
+                    "edit":  "pass",
+                    "vehicleId":  "cmrxxg7910179ehtcms46944q",
+                    "editVehicleId":  "cmrxxg70y014cehtcij67wfv7"
+                }
+}

@@ -7,6 +7,7 @@ import {
   LanguageCode,
   ListingCategoryCode,
   ListingStatus,
+  MarketplaceDomain,
   Prisma,
 } from '@autohub/database';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
@@ -16,6 +17,7 @@ import type {
   PlateDetailsInput,
   VehicleDetailsInput,
 } from '../../listings/application/types/create-listing.input';
+import { NotificationsService } from '../../notifications/application/notifications.service';
 import { AdminAuditService } from './admin-audit.service';
 import type { AuthenticatedUser } from '../../auth/domain/auth.types';
 
@@ -31,9 +33,11 @@ export type AdminListingsQuery = {
   dealerId?: string;
   minPrice?: number;
   maxPrice?: number;
+  currencyCode?: string;
   year?: number;
   plate?: string;
   categoryCode?: ListingCategoryCode;
+  domain?: MarketplaceDomain;
   includeDeleted?: boolean;
   sortBy?: 'createdAt' | 'updatedAt' | 'primaryPrice' | 'viewsCount';
   sortOrder?: 'asc' | 'desc';
@@ -49,6 +53,7 @@ export type AdminCreateListingData = {
   sellerId?: string;
   conditionTypeId?: string;
   primaryPrice?: number;
+  currencyCode?: string;
   primaryCurrencyId?: string;
   status?: ListingStatus;
   isFeatured?: boolean;
@@ -71,6 +76,7 @@ export type AdminUpdateListingData = {
   status?: ListingStatus;
   sellerId?: string;
   conditionTypeId?: string;
+  currencyCode?: string;
   primaryCurrencyId?: string;
   categoryId?: string;
   locationText?: string;
@@ -94,6 +100,7 @@ export class AdminListingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async list(query: AdminListingsQuery) {
@@ -143,9 +150,10 @@ export class AdminListingsService {
     const category = await this.assertCategory(dto.categoryId);
     const { city, country } = await this.assertLocation(dto.cityId, dto.countryId);
 
-    if (dto.primaryCurrencyId) {
-      await this.assertCurrency(dto.primaryCurrencyId);
-    }
+    const primaryCurrency = await this.resolveCurrency({
+      currencyCode: dto.currencyCode,
+      primaryCurrencyId: dto.primaryCurrencyId,
+    });
     if (dto.sellerId) {
       await this.assertSeller(dto.sellerId);
     }
@@ -169,6 +177,10 @@ export class AdminListingsService {
         seller: { connect: { id: sellerId } },
         category: { connect: { id: category.id } },
         categoryCode: category.code,
+        domain:
+          category.code === ListingCategoryCode.PLATE
+            ? MarketplaceDomain.PLATE
+            : MarketplaceDomain.VEHICLE,
         status,
         country: { connect: { id: country.id } },
         city: { connect: { id: city.id } },
@@ -176,9 +188,7 @@ export class AdminListingsService {
           ? { connect: { id: dto.conditionTypeId } }
           : undefined,
         primaryPrice: dto.primaryPrice,
-        primaryCurrency: dto.primaryCurrencyId
-          ? { connect: { id: dto.primaryCurrencyId } }
-          : undefined,
+        primaryCurrency: { connect: { id: primaryCurrency.id } },
         slug,
         metaTitle: title,
         isFeatured: dto.isFeatured ?? false,
@@ -238,7 +248,14 @@ export class AdminListingsService {
     }
     if (data.sellerId) await this.assertSeller(data.sellerId);
     if (data.conditionTypeId) await this.assertConditionType(data.conditionTypeId);
-    if (data.primaryCurrencyId) await this.assertCurrency(data.primaryCurrencyId);
+    let primaryCurrencyId: string | undefined;
+    if (data.currencyCode || data.primaryCurrencyId) {
+      const currency = await this.resolveCurrency({
+        currencyCode: data.currencyCode,
+        primaryCurrencyId: data.primaryCurrencyId,
+      });
+      primaryCurrencyId = currency.id;
+    }
     if (data.cityId) await this.assertCity(data.cityId);
 
     const translation = before.translations[0];
@@ -268,8 +285,8 @@ export class AdminListingsService {
       conditionType: data.conditionTypeId
         ? { connect: { id: data.conditionTypeId } }
         : undefined,
-      primaryCurrency: data.primaryCurrencyId
-        ? { connect: { id: data.primaryCurrencyId } }
+      primaryCurrency: primaryCurrencyId
+        ? { connect: { id: primaryCurrencyId } }
         : undefined,
       city: data.cityId ? { connect: { id: data.cityId } } : undefined,
     };
@@ -699,6 +716,16 @@ export class AdminListingsService {
       before,
       after: updated,
     });
+
+    // Same seller notify path as ListingsService.changeStatus (PENDING → ACTIVE/REJECTED).
+    if (
+      before.status === ListingStatus.PENDING &&
+      (to === ListingStatus.ACTIVE || to === ListingStatus.REJECTED) &&
+      before.sellerId
+    ) {
+      await this.notifications.notifyListingStatus(before.sellerId, id, to);
+    }
+
     return updated;
   }
 
@@ -811,7 +838,15 @@ export class AdminListingsService {
     if (query.cityId) and.push({ cityId: query.cityId });
     if (query.sellerId) and.push({ sellerId: query.sellerId });
     if (query.categoryCode) and.push({ categoryCode: query.categoryCode });
+    if (query.domain) and.push({ domain: query.domain });
     if (query.featured != null) and.push({ isFeatured: query.featured });
+    if (query.currencyCode) {
+      and.push({
+        primaryCurrency: { code: query.currencyCode.toUpperCase() },
+      });
+    } else if (query.minPrice != null || query.maxPrice != null) {
+      and.push({ primaryCurrency: { code: 'IQD' } });
+    }
     if (query.minPrice != null || query.maxPrice != null) {
       and.push({
         primaryPrice: {
@@ -948,6 +983,37 @@ export class AdminListingsService {
     });
     if (!currency) throw new BadRequestException('Invalid or inactive currency');
     return currency;
+  }
+
+  private async resolveCurrency(input: {
+    currencyCode?: string | null;
+    primaryCurrencyId?: string | null;
+  }) {
+    if (input.currencyCode?.trim()) {
+      const byCode = await this.prisma.currency.findFirst({
+        where: {
+          code: input.currencyCode.trim().toUpperCase(),
+          active: true,
+          deletedAt: null,
+        },
+      });
+      if (!byCode) {
+        throw new BadRequestException(
+          `Invalid or inactive currency: ${input.currencyCode}`,
+        );
+      }
+      return byCode;
+    }
+    if (input.primaryCurrencyId?.trim()) {
+      return this.assertCurrency(input.primaryCurrencyId);
+    }
+    const fallback = await this.prisma.currency.findFirst({
+      where: { isDefault: true, active: true, deletedAt: null },
+    });
+    if (fallback) return fallback;
+    return this.prisma.currency.findFirstOrThrow({
+      where: { code: 'IQD', active: true, deletedAt: null },
+    });
   }
 
   private async assertSeller(sellerId: string) {

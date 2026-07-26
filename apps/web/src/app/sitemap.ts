@@ -1,14 +1,16 @@
 import type { MetadataRoute } from 'next';
-import { fetchSitemapDealers, fetchSitemapListings } from '@/lib/seo/fetch';
+import { fetchSitemapDealers, fetchSitemapMarketItems } from '@/lib/seo/fetch';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     '',
-    '/search',
+    '/vehicles',
+    '/vehicles/search',
     '/dealers',
     '/plates',
+    '/plates/search',
     '/sell',
     '/favorites',
     '/login',
@@ -16,23 +18,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ].map((path) => ({
     url: `${siteUrl}${path}`,
     lastModified: new Date(),
-    changeFrequency: path === '' || path === '/search' ? 'hourly' : 'daily',
+    changeFrequency: path === '' ? 'hourly' : 'daily',
     priority: path === '' ? 1 : 0.7,
   }));
 
-  const [listings, dealers] = await Promise.all([
-    fetchSitemapListings(100),
+  const [marketItems, dealers] = await Promise.all([
+    fetchSitemapMarketItems(100),
     fetchSitemapDealers(),
   ]);
 
-  const listingRoutes: MetadataRoute.Sitemap = listings.map((item) => ({
-    url: `${siteUrl}/listings/${item.id}`,
+  const listingRoutes: MetadataRoute.Sitemap = marketItems.map((item) => ({
+    url: `${siteUrl}/${item.domain === 'PLATE' ? 'plates' : 'vehicles'}/${item.id}`,
     lastModified: item.updatedAt
       ? new Date(item.updatedAt)
       : item.publishedAt
         ? new Date(item.publishedAt)
         : new Date(),
-    changeFrequency: 'daily',
+    changeFrequency: 'daily' as const,
     priority: 0.8,
   }));
 

@@ -1,3 +1,4 @@
+import { formatMoney } from '@/features/currencies/lib/format-money';
 import { mediaPublicUrl } from '@/lib/media/url';
 import type { ListingCardModel, ListingCategoryCode, ListingDetailModel } from './types';
 
@@ -8,12 +9,15 @@ export type ApiListing = {
   status?: string;
   primaryPrice: number | null;
   primaryCurrencyId: string | null;
+  currencyCode?: string | null;
+  primaryCurrency?: { code?: string | null } | null;
   isFeatured: boolean;
   isVerified: boolean;
   viewsCount?: number;
   favoritesCount?: number;
   publishedAt?: string | null;
   categoryCode?: string;
+  domain?: 'VEHICLE' | 'PLATE';
   thumbnailKey?: string | null;
   translations?: Array<{ language: string; title: string; description?: string }>;
   media?: Array<{
@@ -93,9 +97,29 @@ export type ApiListing = {
   category?: { code: string };
 };
 
-export function resolveCurrencyCode(currencyId: string | null | undefined): string {
-  if (!currencyId) return 'IQD';
-  if (currencyId === 'USD' || currencyId === 'IQD') return currencyId;
+export function resolveCurrencyCode(
+  listingOrId:
+    | string
+    | null
+    | undefined
+    | {
+        currencyCode?: string | null;
+        primaryCurrency?: { code?: string | null } | null;
+        primaryCurrencyId?: string | null;
+      },
+): string {
+  if (listingOrId && typeof listingOrId === 'object') {
+    const code =
+      listingOrId.currencyCode ??
+      listingOrId.primaryCurrency?.code ??
+      (listingOrId.primaryCurrencyId === 'USD' || listingOrId.primaryCurrencyId === 'IQD'
+        ? listingOrId.primaryCurrencyId
+        : null);
+    if (code) return code.toUpperCase();
+    return 'IQD';
+  }
+  if (!listingOrId) return 'IQD';
+  if (listingOrId === 'USD' || listingOrId === 'IQD') return listingOrId;
   return 'IQD';
 }
 
@@ -131,7 +155,7 @@ export function mapListingToCard(
     slug: listing.slug,
     title,
     price: listing.primaryPrice,
-    currencyCode: resolveCurrencyCode(listing.primaryCurrencyId),
+    currencyCode: resolveCurrencyCode(listing),
     location,
     mileageKm: details?.mileageKm ?? null,
     year: details?.year ?? null,
@@ -141,6 +165,9 @@ export function mapListingToCard(
     imageUrl: mediaPublicUrl(thumb),
     imageUrls,
     categoryCode: (listing.categoryCode ?? listing.category?.code ?? 'CAR') as ListingCategoryCode,
+    domain:
+      listing.domain ??
+      ((listing.categoryCode ?? listing.category?.code) === 'PLATE' ? 'PLATE' : 'VEHICLE'),
     status: listing.status,
     viewsCount: listing.viewsCount,
     favoritesCount: listing.favoritesCount,
@@ -219,17 +246,12 @@ export function mapListingToDetail(listing: ApiListing): ListingDetailModel {
   };
 }
 
-export function formatPrice(price: number | null, currencyCode: string): string {
-  if (price == null) return '—';
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: currencyCode === 'IQD' ? 'IQD' : currencyCode,
-      maximumFractionDigits: 0,
-    }).format(price);
-  } catch {
-    return `${price.toLocaleString()} ${currencyCode}`;
-  }
+export function formatPrice(
+  price: number | null,
+  currencyCode: string,
+  locale: 'ar' | 'ku' | 'en' = 'en',
+): string {
+  return formatMoney(price, currencyCode || 'IQD', locale);
 }
 
 export function formatMileage(km: number | null | undefined): string | null {

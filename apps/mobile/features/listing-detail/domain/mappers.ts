@@ -188,8 +188,8 @@ export function mapListingDetail(
     title,
     description,
     price: listing.primaryPrice,
-    currencyCode: resolveCurrencyCode(listing.primaryCurrencyId),
-    secondaryPrice: listing.secondaryPrice,
+    currencyCode: resolveCurrencyCode(listing as never),
+       secondaryPrice: listing.secondaryPrice,
     secondaryCurrencyCode: listing.secondaryCurrencyId
       ? resolveCurrencyCode(listing.secondaryCurrencyId)
       : null,
@@ -247,7 +247,7 @@ export function mapSimilarFromListItem(
     id: item.id,
     title,
     price: item.primaryPrice,
-    currencyCode: resolveCurrencyCode(item.primaryCurrencyId),
+    currencyCode: resolveCurrencyCode(item as never),
     location: locale === 'en' ? (item.city?.nameEn ?? '') : (item.city?.nameAr ?? item.city?.nameEn ?? ''),
     imageUrl: mediaPublicUrl(key),
     year: item.carDetails?.year ?? null,

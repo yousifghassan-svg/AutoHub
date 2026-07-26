@@ -102,6 +102,16 @@ export class AdminCreatePlateDto {
   @IsString()
   plateType?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  plateCategoryId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  platePrefixId?: string;
+
   @ApiPropertyOptional({ enum: ListingStatus })
   @IsOptional()
   @IsEnum(ListingStatus)
@@ -154,6 +164,16 @@ export class AdminUpdatePlateDto {
   @IsOptional()
   @IsString()
   plateType?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  plateCategoryId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  platePrefixId?: string;
 
   @ApiPropertyOptional({ enum: ListingStatus })
   @IsOptional()

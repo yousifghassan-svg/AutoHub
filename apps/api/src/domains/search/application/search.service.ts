@@ -268,7 +268,9 @@ export class SearchService {
       categoryCode: listing.categoryCode,
       primaryPrice:
         listing.primaryPrice != null ? Number(listing.primaryPrice) : null,
+      price: listing.primaryPrice != null ? Number(listing.primaryPrice) : null,
       primaryCurrencyId: listing.primaryCurrencyId,
+      currencyCode: listing.primaryCurrency?.code ?? null,
       cityId: listing.cityId,
       governorateId: listing.city.governorateId,
       isFeatured: listing.isFeatured,

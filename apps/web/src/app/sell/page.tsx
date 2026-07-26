@@ -9,7 +9,7 @@ import {
   CATEGORIES,
   type ListingCategoryCode,
 } from '@/features/listings/domain/types';
-import { useListingMutations } from '@/features/listings/hooks/useListings';
+import { useDomainMutations } from '@/features/listings/hooks/useDomainMutations';
 import { mediaRepository } from '@/features/media';
 import { MediaUploader } from '@/features/media';
 import {
@@ -19,6 +19,8 @@ import {
   plateFormToApiDetails,
   type PlateFormState,
 } from '@/features/plates';
+import { CurrencySelect } from '@/features/currencies/components/CurrencySelect';
+import { formatMoney } from '@/features/currencies/lib/format-money';
 import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch';
 import { mediaPublicUrl } from '@/lib/media/url';
 import { config } from '@/lib/config';
@@ -43,6 +45,7 @@ type SellFormState = {
   title: string;
   description: string;
   primaryPrice: string;
+  currencyCode: string;
   year: string;
   mileageKm: string;
   brandId: string;
@@ -66,6 +69,7 @@ const DEFAULT_FORM: SellFormState = {
   title: '',
   description: '',
   primaryPrice: '',
+  currencyCode: 'IQD',
   year: String(new Date().getFullYear()),
   mileageKm: '',
   brandId: '',
@@ -113,13 +117,7 @@ function stepIsValid(
   }
 }
 
-function buildCreateBody(
-  form: SellFormState,
-  plate: PlateFormState,
-  isPlate: boolean,
-): Record<string, unknown> {
-  const title =
-    form.title.trim() || (isPlate ? plateTitle(plate) : form.title.trim());
+function buildCreateVehicleBody(form: SellFormState): Record<string, unknown> {
   const vehicleDetails = {
     year: Number(form.year) || undefined,
     mileageKm: form.mileageKm ? Number(form.mileageKm) : undefined,
@@ -127,31 +125,44 @@ function buildCreateBody(
     modelId: form.modelId || undefined,
   };
 
-  const body: Record<string, unknown> = {
+  return {
     categoryId: form.categoryId,
     cityId: form.cityId,
-    title,
+    title: form.title.trim(),
     description: form.description.trim(),
     primaryPrice: Number(form.primaryPrice),
+    currencyCode: form.currencyCode || 'IQD',
     language: 'ar',
+    vehicleDetails,
   };
+}
 
-  if (isPlate) {
-    body.plateDetails = plateFormToApiDetails(plate);
-  } else if (form.categoryCode === 'CAR') {
-    body.carDetails = vehicleDetails;
-  } else {
-    body.vehicleDetails = vehicleDetails;
-  }
-
-  return body;
+function buildCreatePlateBody(
+  form: SellFormState,
+  plate: PlateFormState,
+): Record<string, unknown> {
+  const details = plateFormToApiDetails(plate);
+  return {
+    categoryId: form.categoryId,
+    cityId: form.cityId,
+    title: form.title.trim() || plateTitle(plate),
+    description: form.description.trim(),
+    primaryPrice: Number(form.primaryPrice),
+    currencyCode: form.currencyCode || 'IQD',
+    language: 'ar',
+    formatCode: details.formatCode,
+    regionCode: details.regionCode,
+    series: details.series,
+    number: details.number,
+    plateType: details.plateType,
+  };
 }
 
 export default function SellWizardPage() {
   const router = useRouter();
   const { status, authMode } = useAuth();
   const catalog = useCatalogFilters();
-  const { create, changeStatus, addMedia } = useListingMutations();
+  const { createVehicle, createPlate, changeStatus, addMedia } = useDomainMutations();
 
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -167,7 +178,10 @@ export default function SellWizardPage() {
   const pct = useMemo(() => ((step + 1) / STEPS.length) * 100, [step]);
   const canNext = stepIsValid(step, form, plate, isPlate);
   const busy =
-    create.isPending || changeStatus.isPending || addMedia.isPending;
+    createVehicle.isPending ||
+    createPlate.isPending ||
+    changeStatus.isPending ||
+    addMedia.isPending;
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login');
@@ -319,12 +333,18 @@ export default function SellWizardPage() {
       }
 
       try {
-        const created = await create.mutateAsync(buildCreateBody(form, plate, isPlate));
+        const created = isPlate
+          ? await createPlate.mutateAsync(buildCreatePlateBody(form, plate))
+          : await createVehicle.mutateAsync(buildCreateVehicleBody(form));
         if (imageAssetIds.length || videoAssetIds.length) {
           await attachMedia(created.id);
         }
         if (submitForReview) {
-          await changeStatus.mutateAsync({ id: created.id, status: 'PENDING' });
+          await changeStatus.mutateAsync({
+            id: created.id,
+            status: 'PENDING',
+            domain: isPlate ? 'PLATE' : 'VEHICLE',
+          });
         }
         clearDraft();
         router.push('/my-listings');
@@ -337,7 +357,8 @@ export default function SellWizardPage() {
       authMode,
       changeStatus,
       clearDraft,
-      create,
+      createPlate,
+      createVehicle,
       form,
       imageAssetIds.length,
       isPlate,
@@ -561,14 +582,21 @@ export default function SellWizardPage() {
         ) : null}
 
         {step === 3 ? (
-          <Input
-            label="Price (IQD)"
-            type="number"
-            min={0}
-            value={form.primaryPrice}
-            onChange={(e) => setForm((f) => ({ ...f, primaryPrice: e.target.value }))}
-            required
-          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <CurrencySelect
+              value={form.currencyCode}
+              onChange={(currencyCode) => setForm((f) => ({ ...f, currencyCode }))}
+            />
+            <Input
+              label={`Price (${form.currencyCode || 'IQD'})`}
+              type="number"
+              min={0}
+              step={form.currencyCode === 'USD' ? '0.01' : '1'}
+              value={form.primaryPrice}
+              onChange={(e) => setForm((f) => ({ ...f, primaryPrice: e.target.value }))}
+              required
+            />
+          </div>
         ) : null}
 
         {step === 4 ? (
@@ -594,7 +622,7 @@ export default function SellWizardPage() {
               ) : null}
               <p className="text-lg font-semibold text-brand">
                 {form.primaryPrice
-                  ? `${Number(form.primaryPrice).toLocaleString()} IQD`
+                  ? formatMoney(Number(form.primaryPrice), form.currencyCode || 'IQD', 'en')
                   : '—'}
               </p>
               <p className="whitespace-pre-wrap text-ink-secondary">{form.description}</p>

@@ -70,11 +70,15 @@ export class CreateListingDto {
   @Min(0)
   primaryPrice?: number;
 
+  @ApiPropertyOptional({ example: 'IQD', description: 'Active currency code (preferred)' })
+  @IsOptional()
+  @IsString()
+  currencyCode?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   primaryCurrencyId?: string;
-
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)

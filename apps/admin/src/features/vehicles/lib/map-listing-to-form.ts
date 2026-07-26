@@ -5,7 +5,6 @@ import { emptyVehicleForm, type VehicleFormValues } from '../domain/types';
 export function mapListingToForm(listing: AdminListing): VehicleFormValues {
   const base = emptyVehicleForm();
   const car = listing.carDetails;
-  const plate = listing.plateDetails;
   const cityGovId = listing.city?.governorateId ?? listing.city?.governorate?.id ?? '';
 
   return {
@@ -21,7 +20,8 @@ export function mapListingToForm(listing: AdminListing): VehicleFormValues {
     year: car?.year != null ? String(car.year) : base.year,
     mileageKm: car?.mileageKm != null ? String(car.mileageKm) : '',
     primaryPrice: listing.primaryPrice != null ? String(listing.primaryPrice) : '',
-    primaryCurrencyId: listing.primaryCurrencyId ?? listing.primaryCurrency?.code ?? 'IQD',
+    currencyCode: listing.primaryCurrency?.code ?? listing.currencyCode ?? 'IQD',
+    primaryCurrencyId: listing.primaryCurrencyId ?? '',
     vin: car?.vin ?? '',
     engineTypeId: car?.engineTypeId ?? '',
     engineSizeCc: car?.engineSizeCc != null ? String(car.engineSizeCc) : '',
@@ -43,13 +43,6 @@ export function mapListingToForm(listing: AdminListing): VehicleFormValues {
     dealerId: '',
     isFeatured: listing.isFeatured,
     isVerified: listing.isVerified,
-    plateEnabled: Boolean(plate?.plateDisplay || plate?.number),
-    plateFormatCode: plate?.formatCode ?? 'IQ_BAGHDAD',
-    plateRegionCode: plate?.regionCode ?? '11',
-    plateSeries: plate?.series ?? 'A',
-    plateNumber: plate?.number ?? '12345',
-    plateType: plate?.plateType ?? 'Private',
-    plateDisplay: plate?.plateDisplay ?? '',
   };
 }
 
@@ -74,22 +67,6 @@ export function formToPayload(values: VehicleFormValues) {
     interiorColor: values.interiorColor || undefined,
   };
 
-  const plateDisplay =
-    values.plateDisplay.trim() ||
-    `${values.plateRegionCode} ${values.plateSeries} ${values.plateNumber}`.trim();
-
-  const plateDetails = values.plateEnabled
-    ? {
-        formatCode: values.plateFormatCode,
-        plateDisplay,
-        plateNormalized: plateDisplay.replace(/\s+/g, '').toUpperCase(),
-        series: values.plateSeries,
-        number: values.plateNumber,
-        regionCode: values.plateRegionCode,
-        plateType: values.plateType,
-      }
-    : undefined;
-
   return {
     title: values.title.trim(),
     description: values.description.trim(),
@@ -98,7 +75,7 @@ export function formToPayload(values: VehicleFormValues) {
     sellerId: values.sellerId || undefined,
     conditionTypeId: values.conditionTypeId || undefined,
     primaryPrice: values.primaryPrice ? Number(values.primaryPrice) : undefined,
-    primaryCurrencyId: values.primaryCurrencyId || undefined,
+    currencyCode: values.currencyCode || 'IQD',
     status: values.status,
     isFeatured: values.isFeatured,
     isVerified: values.isVerified,
@@ -106,6 +83,5 @@ export function formToPayload(values: VehicleFormValues) {
     latitude: values.latitude ? Number(values.latitude) : undefined,
     longitude: values.longitude ? Number(values.longitude) : undefined,
     carDetails,
-    plateDetails,
   };
 }

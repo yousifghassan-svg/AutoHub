@@ -14,6 +14,7 @@ import { Permission } from '../domain/permissions';
 import type { AuthenticatedUser } from '../domain/auth.types';
 import { LoginDto } from './dto/login.dto';
 import { StaffLoginDto } from './dto/staff-login.dto';
+import { DevLoginDto } from './dto/dev-login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { AuthTokensDto, AuthenticatedUserDto } from './dto/auth-response.dto';
@@ -45,6 +46,18 @@ export class AuthController {
   @ApiOkResponse({ type: AuthTokensDto })
   staffLogin(@Body() body: StaffLoginDto, @Req() req: Request) {
     return this.auth.staffLogin(body.phone, requestContext(req));
+  }
+
+  @Public()
+  @Post('dev-login')
+  @ApiOperation({
+    summary: 'Dev phone login (non-production)',
+    description:
+      'Issues JWT for any phone without Firebase. Finds or creates USER. Same gate as staff-login (ALLOW_STAFF_DEV_LOGIN / non-production).',
+  })
+  @ApiOkResponse({ type: AuthTokensDto })
+  devLogin(@Body() body: DevLoginDto, @Req() req: Request) {
+    return this.auth.devLogin(body.phone, requestContext(req));
   }
 
   @Public()

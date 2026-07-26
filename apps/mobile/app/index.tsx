@@ -3,13 +3,16 @@ import { Loading, Screen, Text, useTheme } from '@autohub/mobile-ui';
 import { View } from 'react-native';
 import { useAuth } from '@/features/auth/context/AuthProvider';
 import { config } from '@/lib/config';
+import { usePreferencesStore } from '@/src/features/preferences/preferences.store';
 
-/** Splash + session restore gate. */
+/** Splash + session restore + onboarding gate. */
 export default function IndexScreen() {
   const { status } = useAuth();
   const theme = useTheme();
+  const prefsHydrated = usePreferencesStore((s) => s.hydrated);
+  const onboardingCompleted = usePreferencesStore((s) => s.onboardingCompleted);
 
-  if (status === 'bootstrapping') {
+  if (status === 'bootstrapping' || !prefsHydrated) {
     return (
       <Screen>
         <View
@@ -32,6 +35,10 @@ export default function IndexScreen() {
         </View>
       </Screen>
     );
+  }
+
+  if (!onboardingCompleted && status === 'unauthenticated') {
+    return <Redirect href="/(auth)/onboarding" />;
   }
 
   if (status === 'authenticated') {

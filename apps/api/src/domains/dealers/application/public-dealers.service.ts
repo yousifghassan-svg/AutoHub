@@ -182,7 +182,10 @@ export class PublicDealersService {
 
   async getBySlug(slug: string) {
     const dealer = await this.prisma.dealerOrganization.findFirst({
-      where: { slug, deletedAt: null },
+      where: {
+        deletedAt: null,
+        OR: [{ slug }, { id: slug }],
+      },
       include: {
         city: {
           select: {

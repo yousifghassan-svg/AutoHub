@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
-import { fetchListingForSeo } from '@/lib/seo/fetch';
+import { fetchPlateForSeo } from '@/lib/seo/fetch';
 
 type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const listing = await fetchListingForSeo(id);
+  const listing = await fetchPlateForSeo(id);
   if (!listing) {
     return { title: 'Plate not found' };
   }

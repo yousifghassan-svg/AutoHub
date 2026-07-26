@@ -16,6 +16,11 @@ import {
   createMockAuthRepository,
   type AuthRepository,
 } from './data/auth.repository';
+import {
+  clearVerification,
+  loadVerification,
+  saveVerification,
+} from './data/verification-storage';
 import type { AuthStatus, PhoneVerificationSession, StoredSession } from './domain/types';
 
 type AuthContextValue = {
@@ -42,9 +47,10 @@ function deriveStatus(session: StoredSession | null, bootstrapping: boolean): Au
 
 function createRepo(): AuthRepository {
   const storage = getTokenStorage();
+  const http = getHttpClient();
   if (config.authMode === 'api') {
     return createApiAuthRepository({
-      http: getHttpClient(),
+      http,
       storage,
       getIdToken: async () => {
         throw new Error(
@@ -53,7 +59,7 @@ function createRepo(): AuthRepository {
       },
     });
   }
-  return createMockAuthRepository(storage);
+  return createMockAuthRepository(storage, http);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -69,7 +75,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void (async () => {
       try {
         const restored = await repo.restoreSession();
-        if (!cancelled) setSession(restored);
+        if (!cancelled) {
+          setSession(restored);
+          const pending = loadVerification();
+          if (pending) setVerification(pending);
+        }
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'Session restore failed');
@@ -82,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const onFail = () => {
       setSession(null);
       setVerification(null);
+      clearVerification();
       queryClient.clear();
     };
     window.addEventListener('autohub:auth-failure', onFail);
@@ -96,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       const next = await repo.sendOtp(phone);
       setVerification(next);
+      saveVerification(next);
       return next;
     },
     [repo],
@@ -104,10 +116,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const verifyOtp = useCallback(
     async (code: string) => {
       setError(null);
-      if (!verification) throw new Error('Start phone verification first');
-      const next = await repo.verifyOtpAndLogin(verification, code);
+      const active = verification ?? loadVerification();
+      if (!active) throw new Error('Start phone verification first');
+      const next = await repo.verifyOtpAndLogin(active, code);
       setSession(next);
       setVerification(null);
+      clearVerification();
       await queryClient.invalidateQueries();
       return next;
     },
@@ -128,6 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await repo.logout();
     setSession(null);
     setVerification(null);
+    clearVerification();
     queryClient.clear();
   }, [repo, queryClient]);
 

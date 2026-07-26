@@ -1,0 +1,315 @@
+﻿{
+    "meta":  {
+                 "generatedAt":  "2026-07-25T17:36:38.7622279Z",
+                 "baseUrl":  "http://localhost:4000/v1",
+                 "staffLoginShape":  {
+                                         "phone":  "string (E.164)"
+                                     },
+                 "responseEnvelope":  "success/data wrapper; staff-login returns 201",
+                 "phonesUsed":  {
+                                    "SUPER_ADMIN":  "+9647700090001",
+                                    "ADMIN":  "+9647700090002",
+                                    "SUPPORT":  "+9647700090005"
+                                },
+                 "note":  "Seed SUPER_ADMIN is +9647700090001; +9647700090002 is ADMIN per seed.ts"
+             },
+    "summary":  {
+                    "total":  36,
+                    "pass":  36,
+                    "fail":  0,
+                    "http500Count":  0,
+                    "prismaMigrateExit":  0,
+                    "schemaDiffMissingTablesEmpty":  true,
+                    "rateLimit429Count":  0
+                },
+    "results":  [
+                    {
+                        "Area":  "AUTH",
+                        "Check":  "POST /auth/staff-login SUPER_ADMIN (+9647700090001)",
+                        "Pass":  true,
+                        "Status":  201,
+                        "Detail":  "hasAccess=True hasRefresh=True; {\"success\":true,\"data\":{\"accessToken\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbXJ4eGczdWEwMDUyZWh0YzNzdXp3ZHQ4..."
+                    },
+                    {
+                        "Area":  "AUTH",
+                        "Check":  "POST /auth/staff-login ADMIN (+9647700090002)",
+                        "Pass":  true,
+                        "Status":  201,
+                        "Detail":  "hasAccess=True; {\"success\":true,\"data\":{\"accessToken\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJz..."
+                    },
+                    {
+                        "Area":  "AUTH",
+                        "Check":  "POST /auth/staff-login empty body → 400",
+                        "Pass":  true,
+                        "Status":  400,
+                        "Detail":  "{\"success\":false,\"error\":{\"statusCode\":400,\"message\":[\"phone must be longer than or equal to 8 characters\",\"phone must be a string\"],\"code\":\"Bad Request\"},\"meta\":{\"requestId\":\"8de3cf70-8f2f-41fc-bbe4-..."
+                    },
+                    {
+                        "Area":  "AUTH",
+                        "Check":  "GET /admin/dashboard without auth → 401",
+                        "Pass":  true,
+                        "Status":  401,
+                        "Detail":  "{\"success\":false,\"error\":{\"statusCode\":401,\"message\":\"Missing access token\",\"code\":\"Unauthorized\"},\"meta\":{\"requestId\":\"295a44d1-9112-4be7-8ed3-d7085756294a\",\"timestamp\":\"2026-07-25T17:36:17.636Z\"}}"
+                    },
+                    {
+                        "Area":  "AUTH",
+                        "Check":  "POST /auth/refresh with refresh token → 200",
+                        "Pass":  true,
+                        "Status":  201,
+                        "Detail":  "{\"success\":true,\"data\":{\"accessToken\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbXJ4eGczdWEwMDUyZWh0YzNzdXp3ZHQ4..."
+                    },
+                    {
+                        "Area":  "AUTH",
+                        "Check":  "SUPPORT role GET /admin/settings → 403",
+                        "Pass":  true,
+                        "Status":  403,
+                        "Detail":  "{\"success\":false,\"error\":{\"statusCode\":403,\"message\":\"Insufficient permissions\",\"code\":\"Forbidden\"},\"meta\":{\"requestId\":\"0790d6b8-6a1f-4235-8ba3-6e68974451c0\",\"timestamp\":\"2026-07-25T17:36:17.821Z\"}}"
+                    },
+                    {
+                        "Area":  "COMMUNICATION",
+                        "Check":  "GET /admin/communication/stats → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"conversationCount\":0,\"messageCount\":0,\"openReports\":0,\"blocks\":0},\"meta\":{\"requestId\":\"ab15af35-5574-45c1-9ac9-1bb2b0e9228f\",\"timestamp\":\"2026-07-25T17:36:17.847Z\"}}"
+                    },
+                    {
+                        "Area":  "COMMUNICATION",
+                        "Check":  "GET /admin/communication/reports → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"page\":1,\"pageSize\":20,\"total\":0,\"items\":[]},\"meta\":{\"requestId\":\"0be6b131-2fc8-48a4-9376-29e0ba86aa79\",\"timestamp\":\"2026-07-25T17:36:17.936Z\"}}"
+                    },
+                    {
+                        "Area":  "COMMUNICATION",
+                        "Check":  "GET /admin/communication/blocks → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"page\":1,\"pageSize\":20,\"total\":0,\"items\":[]},\"meta\":{\"requestId\":\"3f695ec1-b6d9-4f1e-93e1-89e5d2915680\",\"timestamp\":\"2026-07-25T17:36:18.010Z\"}}"
+                    },
+                    {
+                        "Area":  "COMMUNICATION",
+                        "Check":  "GET /conversations → 200 (Bearer)",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"page\":1,\"pageSize\":20,\"total\":0,\"totalUnread\":0,\"items\":[]},\"meta\":{\"requestId\":\"6dc2ba6b-1c7f-462e-999f-c74fb934e1a2\",\"timestamp\":\"2026-07-25T17:36:18.111Z\"}}"
+                    },
+                    {
+                        "Area":  "COMMUNICATION",
+                        "Check":  "GET /users/me/blocks → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"items\":[]},\"meta\":{\"requestId\":\"0313a85b-dcbe-4e51-af59-0e3ce096350f\",\"timestamp\":\"2026-07-25T17:36:18.206Z\"}}"
+                    },
+                    {
+                        "Area":  "COMMUNICATION",
+                        "Check":  "POST /conversations/listing (dummy id) documented",
+                        "Pass":  true,
+                        "Status":  404,
+                        "Detail":  "{\"success\":false,\"error\":{\"statusCode\":404,\"message\":\"Listing not found\",\"code\":\"Not Found\"},\"meta\":{\"requestId\":\"a1dbe931-ea24-45c8-aff1-67946d70c2bc\",\"timestamp\":\"2026-07-25T17:36:18.262Z\"}}"
+                    },
+                    {
+                        "Area":  "COMMUNICATION",
+                        "Check":  "POST /conversations/listing (real listing from search)",
+                        "Pass":  true,
+                        "Status":  201,
+                        "Detail":  "{\"success\":true,\"data\":{\"id\":\"cms0nhtrk0038ehm8z0y4krsc\",\"listingId\":\"cmrxxgfba03ilehtcqxlizxc0\",\"dealerOrganizationId\":null,\"marketplaceDomain\":\"PLATE\",\"status\":\"ACTIVE\",\"lastMessageAt\":null,\"lastMes..."
+                    },
+                    {
+                        "Area":  "COMMUNICATION",
+                        "Check":  "GET /conversations/:id/messages",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"page\":1,\"pageSize\":30,\"total\":0,\"items\":[]},\"meta\":{\"requestId\":\"f3af8681-8143-4929-af1e-39260874ca04\",\"timestamp\":\"2026-07-25T17:36:18.543Z\"}}"
+                    },
+                    {
+                        "Area":  "NOTIFICATIONS",
+                        "Check":  "GET /notifications → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"page\":1,\"pageSize\":20,\"total\":0,\"items\":[]},\"meta\":{\"requestId\":\"a0466969-a8ac-4a34-b6c4-52527a644a04\",\"timestamp\":\"2026-07-25T17:36:18.604Z\"}}"
+                    },
+                    {
+                        "Area":  "NOTIFICATIONS",
+                        "Check":  "POST /notifications/devices dummy → 200/201/400",
+                        "Pass":  true,
+                        "Status":  201,
+                        "Detail":  "{\"success\":true,\"data\":{\"id\":\"cms0nhtya003dehm8s8mmi4xj\",\"userId\":\"cmrxxg3ua0052ehtc3suzwdt8\",\"token\":\"rc1-dummy-expo-token-probe\",\"platform\":\"EXPO\",\"createdAt\":\"2026-07-25T17:36:18.658Z\",\"updatedAt\":..."
+                    },
+                    {
+                        "Area":  "NOTIFICATIONS",
+                        "Check":  "PATCH /notifications mark-all",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"ok\":true},\"meta\":{\"requestId\":\"ede4b3ce-4b24-4850-940f-cd887b5f0012\",\"timestamp\":\"2026-07-25T17:36:18.738Z\"}}"
+                    },
+                    {
+                        "Area":  "ADMIN_LISTS",
+                        "Check":  "GET /admin/dashboard → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"totalUsers\":15,\"totalDealers\":5,\"totalCars\":100,\"totalPlates\":200,\"activeListings\":300,\"soldListings\":0,\"pendingListings\":0,\"archivedListings\":0,\"todaysListings\":0,\"thisMonthL..."
+                    },
+                    {
+                        "Area":  "ADMIN_LISTS",
+                        "Check":  "GET /admin/vehicles → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"items\":[{\"id\":\"cmrxxg7ly01buehtcr7j0hanb\",\"sellerId\":\"cmrxxg3vs005cehtcwywbw5ve\",\"categoryId\":\"cmrxj7f7z0002ehjg5b68l7io\",\"categoryCode\":\"CAR\",\"domain\":\"VEHICLE\",\"status\":\"ACT..."
+                    },
+                    {
+                        "Area":  "ADMIN_LISTS",
+                        "Check":  "GET /admin/plates → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"items\":[{\"id\":\"cmrxxgfba03ilehtcqxlizxc0\",\"sellerId\":\"cmrxxg3ya005uehtcrnp6k9su\",\"categoryId\":\"cmrxj7f870003ehjgwzrcscjn\",\"categoryCode\":\"PLATE\",\"domain\":\"PLATE\",\"status\":\"ACT..."
+                    },
+                    {
+                        "Area":  "ADMIN_LISTS",
+                        "Check":  "GET /admin/users → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"items\":[{\"id\":\"cmrxxg3zg0063ehtcnsetn747\",\"firebaseUid\":\"seed:user-10\",\"phone\":\"+9647700010010\",\"email\":\"seller10@seed.autohub.iq\",\"displayName\":\"Private Seller 10\",\"role\":\"US..."
+                    },
+                    {
+                        "Area":  "ADMIN_LISTS",
+                        "Check":  "GET /admin/dealers → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"items\":[{\"id\":\"cmrxxg41y006hehtcolzmcfw3\",\"name\":\"Nineveh Motors\",\"slug\":\"seed-dealer-05\",\"verified\":false,\"bio\":null,\"phone\":null,\"whatsapp\":null,\"address\":null,\"coverImageUr..."
+                    },
+                    {
+                        "Area":  "ADMIN_LISTS",
+                        "Check":  "GET /admin/reports → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"items\":[],\"page\":1,\"pageSize\":20,\"total\":0,\"totalPages\":0},\"meta\":{\"requestId\":\"f2d8241e-ee5c-4409-8cea-48b9764a660c\",\"timestamp\":\"2026-07-25T17:36:20.366Z\"}}"
+                    },
+                    {
+                        "Area":  "ADMIN_LISTS",
+                        "Check":  "GET /admin/stats → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"range\":\"monthly\",\"since\":\"2026-06-25T17:36:20.420Z\",\"listingsCreated\":300,\"usersCreated\":15,\"searchEvents\":28,\"sold\":0,\"topBrands\":[{\"brandId\":\"cmrxj7fgi0036ehjgyqtw2n7t\",\"nam..."
+                    },
+                    {
+                        "Area":  "ADMIN_LISTS",
+                        "Check":  "GET /admin/audit-logs → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"items\":[{\"id\":\"cmrz0p2dn000oeh5cc7ltm2v9\",\"actorId\":\"cmrxxg3ua0052ehtc3suzwdt8\",\"action\":\"plate.update\",\"module\":\"plates\",\"entityId\":\"cmrxxgfoa03mcehtci5jj82uk\",\"ip\":\"::1\",\"us..."
+                    },
+                    {
+                        "Area":  "ADMIN_LISTS",
+                        "Check":  "GET /admin/listings → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"items\":[{\"id\":\"cmrxxgfr403n6ehtc6go4bxq1\",\"sellerId\":\"cmrxxg3wq005iehtcqgr31ize\",\"categoryId\":\"cmrxj7f870003ehjgwzrcscjn\",\"categoryCode\":\"PLATE\",\"domain\":\"PLATE\",\"status\":\"ACT..."
+                    },
+                    {
+                        "Area":  "ADMIN_LISTS",
+                        "Check":  "GET /admin/settings → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"id\":\"default\",\"siteName\":\"AutoHub\",\"maintenanceMode\":false,\"featuredLimit\":12,\"maxImages\":20,\"defaultCurrency\":\"IQD\",\"contactInfo\":{\"email\":\"support@autohub.iq\",\"phone\":\"+9647..."
+                    },
+                    {
+                        "Area":  "PUBLIC",
+                        "Check":  "GET /search → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"items\":[{\"id\":\"cmrxxg6lk00yxehtciwlma66m\",\"slug\":\"seed-car-069\",\"status\":\"ACTIVE\",\"categoryCode\":\"CAR\",\"primaryPrice\":51264819,\"primaryCurrencyId\":\"cmrxj7f7k0000ehjgajgaoq3g\",..."
+                    },
+                    {
+                        "Area":  "PUBLIC",
+                        "Check":  "GET /search/suggestions → 200",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":[{\"type\":\"BRAND\",\"id\":\"cmrxj7fir0042ehjglaqvt0d7\",\"label\":\"Honda\",\"meta\":{\"nameAr\":\"هوندا\",\"slug\":\"honda-moto\",\"category\":\"MOTORCYCLE\"}},{\"type\":\"BRAND\",\"id\":\"cmrxj7fgi0036ehjgy..."
+                    },
+                    {
+                        "Area":  "PREVIOUSLY_FAILED",
+                        "Check":  "Confirm communication stats NOT 500",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"conversationCount\":1,\"messageCount\":0,\"openReports\":0,\"blocks\":0},\"meta\":{\"requestId\":\"5ee3ea91-ae3e-458c-aecc-b6df05d567b7\",\"timestamp\":\"2026-07-25T17:36:21.529Z\"}}"
+                    },
+                    {
+                        "Area":  "PREVIOUSLY_FAILED",
+                        "Check":  "Confirm notifications NOT 500",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"page\":1,\"pageSize\":20,\"total\":0,\"items\":[]},\"meta\":{\"requestId\":\"5d14e99d-b1a5-4613-83f0-0fce7d8810cb\",\"timestamp\":\"2026-07-25T17:36:21.586Z\"}}"
+                    },
+                    {
+                        "Area":  "PREVIOUSLY_FAILED",
+                        "Check":  "Confirm conversations NOT 500",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "{\"success\":true,\"data\":{\"page\":1,\"pageSize\":20,\"total\":1,\"totalUnread\":0,\"items\":[{\"id\":\"cms0nhtrk0038ehm8z0y4krsc\",\"listingId\":\"cmrxxgfba03ilehtcqxlizxc0\",\"dealerOrganizationId\":null,\"marketplaceDoma..."
+                    },
+                    {
+                        "Area":  "SWEEP",
+                        "Check":  "No HTTP 500 in unauth+auth probe of key GETs",
+                        "Pass":  true,
+                        "Status":  200,
+                        "Detail":  "500_count=0"
+                    },
+                    {
+                        "Area":  "RATE_LIMIT",
+                        "Check":  "40 burst to public /search/suggestions; record 429 count",
+                        "Pass":  true,
+                        "Status":  429,
+                        "Detail":  "429_count=0; distribution={\"200\":40}"
+                    },
+                    {
+                        "Area":  "SCHEMA",
+                        "Check":  "npx prisma migrate status exit 0",
+                        "Pass":  true,
+                        "Status":  0,
+                        "Detail":  "node.exe : npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options. At line:1 char:1 + \u0026 \"C:\\Program Files\\nodejs/node.exe\" \"C:\\Program Files\\nodejs/node_mo ... + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ + CategoryInfo : NotSpecified: (npm warn Unknow...config options.:String) [], ..."
+                    },
+                    {
+                        "Area":  "SCHEMA",
+                        "Check":  "schema-diff.mjs missingTables empty",
+                        "Pass":  true,
+                        "Status":  0,
+                        "Detail":  "{ \"prismaModelCount\": 57, \"dbTableCount\": 58, \"missingModels\": [], \"communication\": { \"expectedTables\": [ \"Conversation\", \"ConversationParticipant\", \"ChatMessage\", \"UserBlock\", \"ConversationReport\", \"DealerFollow\", \"UserPresence\", \"DevicePushToken\", \"AppNotification\" ], \"missingTables\": [], \"missingEnums\": [], \"presentIndexes\": [ \"AppNotification_pkey\", \"AppNotification_type_createdAt_idx\", \"AppNotification_userId_createdAt_idx\", \"AppNotification_userId_readAt_idx\", \"ChatMessage_conversationId_c..."
+                    }
+                ],
+    "http500s":  [
+
+                 ],
+    "sweep500":  [
+
+                 ],
+    "schema":  {
+                   "migrateStatus":  {
+                                         "output":  "node.exe : npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm \r\nhelp npmrc` for supported config options.\r\nAt line:1 char:1\r\n+ \u0026 \"C:\\Program Files\\nodejs/node.exe\" \"C:\\Program Files\\nodejs/node_mo ...\r\n+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : NotSpecified: (npm warn Unknow...config options.:String) [], RemoteException\r\n    + FullyQualifiedErrorId : NativeCommandError\r\n \r\nwarn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to \r\na Prisma config file (e.g., `prisma.config.ts`).\r\nFor more information, see: https://pris.ly/prisma-config\r\n\r\nPrisma schema loaded from prisma\\schema.prisma\r\nDatasource \"db\": PostgreSQL database \"autohub\", schema \"public\" at \"localhost:5433\"\r\n\r\n13 migrations found in prisma/migrations\r\n\r\nDatabase schema is up to date!\r\n",
+                                         "exitCode":  0
+                                     },
+                   "schemaDiff":  {
+                                      "output":  "{\r\n  \"prismaModelCount\": 57,\r\n  \"dbTableCount\": 58,\r\n  \"missingModels\": [],\r\n  \"communication\": {\r\n    \"expectedTables\": [\r\n      \"Conversation\",\r\n      \"ConversationParticipant\",\r\n      \"ChatMessage\",\r\n      \"UserBlock\",\r\n      \"ConversationReport\",\r\n      \"DealerFollow\",\r\n      \"UserPresence\",\r\n      \"DevicePushToken\",\r\n      \"AppNotification\"\r\n    ],\r\n    \"missingTables\": [],\r\n    \"missingEnums\": [],\r\n    \"presentIndexes\": [\r\n      \"AppNotification_pkey\",\r\n      \"AppNotification_type_createdAt_idx\",\r\n      \"AppNotification_userId_createdAt_idx\",\r\n      \"AppNotification_userId_readAt_idx\",\r\n      \"ChatMessage_conversationId_clientId_key\",\r\n      \"ChatMessage_conversationId_createdAt_idx\",\r\n      \"ChatMessage_flagged_createdAt_idx\",\r\n      \"ChatMessage_pkey\",\r\n      \"ChatMessage_senderId_createdAt_idx\",\r\n      \"ConversationParticipant_conversationId_userId_key\",\r\n      \"ConversationParticipant_pkey\",\r\n      \"ConversationParticipant_userId_archivedAt_lastReadAt_idx\",\r\n      \"ConversationParticipant_userId_hiddenAt_idx\",\r\n      \"ConversationReport_conversationId_status_idx\",\r\n      \"ConversationReport_pkey\",\r\n      \"ConversationReport_reporterId_idx\",\r\n      \"ConversationReport_status_createdAt_idx\",\r\n      \"Conversation_dealerOrganizationId_idx\",\r\n      \"Conversation_lastMessageAt_idx\",\r\n      \"Conversation_listingId_idx\",\r\n      \"Conversation_marketplaceDomain_lastMessageAt_idx\",\r\n      \"Conversation_pkey\",\r\n      \"Conversation_status_lastMessageAt_idx\",\r\n      \"DealerFollow_organizationId_idx\",\r\n      \"DealerFollow_pkey\",\r\n      \"DealerFollow_userId_organizationId_key\",\r\n      \"DevicePushToken_pkey\",\r\n      \"DevicePushToken_token_idx\",\r\n      \"DevicePushToken_userId_token_key\",\r\n      \"UserBlock_blockedId_idx\",\r\n      \"UserBlock_blockerId_blockedId_key\",\r\n      \"UserBlock_pkey\",\r\n      \"UserPresence_pkey\"\r\n    ],\r\n    \"presentForeignKeys\": []\r\n  },\r\n  \"appliedMigrations\": [\r\n    {\r\n      \"name\": \"20260723160000_listing_hub_revisions\",\r\n      \"finished\": true,\r\n      \"rolledBack\": false,\r\n      \"steps\": 1\r\n    },\r\n    {\r\n      \"name\": \"20260723162813_auth_rbac_foundation\",\r\n      \"finished\": true,\r\n      \"rolledBack\": false,\r\n      \"steps\": 1\r\n    },\r\n    {\r\n      \"name\": \"20260723163800_listings_lifecycle_status\",\r\n      \"finished\": true,\r\n      \"rolledBack\": false,\r\n      \"steps\": 1\r\n    },\r\n    {\r\n      \"name\": \"20260723164854_search_discovery_engine\",\r\n      \"finished\": true,\r\n      \"rolledBack\": false,\r\n      \"steps\": 1\r\n    },\r\n    {\r\n      \"name\": ",
+                                      "exitCode":  0,
+                                      "missingTables":  null
+                                  }
+               },
+    "communicationNotes":  [
+                               "conversations list status=200; count=1; firstId=",
+                               "POST /conversations/listing dummy: status=404 body={\"success\":false,\"error\":{\"statusCode\":404,\"message\":\"Listing not found\",\"code\":\"Not Found\"},\"meta\":{\"requestId\":\"a1dbe931-ea24-45c8-aff1-67946d70c2bc\",\"timestamp\":\"2026-07-25T17:36:18.262Z\"}}",
+                               "POST /conversations/listing real=cmrxxgfba03ilehtcqxlizxc0 status=201 body={\"success\":true,\"data\":{\"id\":\"cms0nhtrk0038ehm8z0y4krsc\",\"listingId\":\"cmrxxgfba03ilehtcqxlizxc0\",\"dealerOrganizationId\":null,\"marketplaceDomain\":\"PLATE\",\"status\":\"ACTIVE\",\"lastMessageAt\":null,\"lastMes...",
+                               "messages list convId=cms0nhtrk0038ehm8z0y4krsc status=200"
+                           ],
+    "prismaLogScan":  [
+                          "105798.txt:154: [Nest] 27412  - 07/23/2026, 11:01:20 PM    WARN [AllExceptionsFilter] Prisma error [req-1] P2002 GET /v1/test",
+                          "105799.txt:203: [Nest] 39032  - 07/23/2026, 11:09:44 PM    WARN [AllExceptionsFilter] Prisma error [req-1] P2002 GET /v1/test",
+                          "105802.txt:98: [Nest] 30228  - 07/23/2026, 11:22:16 PM    WARN [AllExceptionsFilter] Prisma error [req-1] P2002 GET /v1/test",
+                          "325283.txt:665: PrismaClientKnownRequestError:",
+                          "325283.txt:681: PrismaClientKnownRequestError:",
+                          "325283.txt:698: PrismaClientKnownRequestError:",
+                          "325283.txt:714: PrismaClientKnownRequestError:",
+                          "325283.txt:730: PrismaClientKnownRequestError:",
+                          "325283.txt:746: PrismaClientKnownRequestError:",
+                          "325283.txt:762: PrismaClientKnownRequestError:",
+                          "325283.txt:778: PrismaClientKnownRequestError:"
+                      ]
+}

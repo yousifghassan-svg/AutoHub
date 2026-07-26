@@ -1,7 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Chip, Input, Text, useTheme } from '@autohub/mobile-ui';
-import { MOCK_CURRENCY_IDS } from '../../data/catalog';
 import { useWizard } from '../../context/WizardProvider';
 
 export function StepPrice() {
@@ -24,7 +23,7 @@ export function StepPrice() {
                 type: 'PATCH',
                 patch: {
                   currencyCode: code,
-                  primaryCurrencyId: MOCK_CURRENCY_IDS[code],
+                  primaryCurrencyId: null,
                 },
               })
             }

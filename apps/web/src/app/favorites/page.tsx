@@ -46,9 +46,14 @@ export default function FavoritesPage() {
           title="No favorites yet"
           description="Tap the heart on any listing card to save it here."
           action={
-            <Link href="/search">
-              <Button>Browse listings</Button>
-            </Link>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link href="/vehicles/search">
+                <Button>Browse vehicles</Button>
+              </Link>
+              <Link href="/plates/search">
+                <Button variant="secondary">Browse plates</Button>
+              </Link>
+            </div>
           }
         />
       ) : (

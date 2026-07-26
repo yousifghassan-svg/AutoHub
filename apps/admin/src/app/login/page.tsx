@@ -37,17 +37,28 @@ export default function LoginPage() {
   if (status === 'bootstrapping') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-ink-secondary">Loading…</p>
+        <p className="text-sm text-ink-secondary">Loading…</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md rounded-xl border border-border bg-surface p-8 shadow-card">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--color-primary-soft),_transparent_55%)]"
+        aria-hidden
+      />
+      <div className="relative w-full max-w-md animate-fade-in rounded-2xl border border-border bg-surface p-8 shadow-lift">
         <div className="mb-8 text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-brand">Staff portal</p>
-          <h1 className="mt-2 font-display text-3xl font-bold text-ink">AutoHub Admin</h1>
+          <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-sm font-bold text-white shadow-card">
+            AH
+          </span>
+          <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
+            Staff portal
+          </p>
+          <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink">
+            AutoHub Admin
+          </h1>
           <p className="mt-2 text-sm text-ink-secondary">
             Sign in with your staff phone number.
           </p>
@@ -61,20 +72,16 @@ export default function LoginPage() {
             placeholder="+9647700090001"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            error={localError || error || undefined}
             required
           />
-          {(localError || error) && (
-            <p className="text-sm text-error" role="alert">
-              {localError ?? error}
-            </p>
-          )}
-          <Button type="submit" className="w-full" disabled={submitting}>
+          <Button type="submit" className="w-full" loading={submitting}>
             {submitting ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
 
         <div className="mt-8">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-secondary">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-secondary">
             Seed accounts (local dev)
           </p>
           <div className="flex flex-wrap gap-2">
@@ -82,7 +89,7 @@ export default function LoginPage() {
               <button
                 key={acc.phone}
                 type="button"
-                className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:border-brand hover:text-brand"
+                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-ink-secondary transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand"
                 onClick={() => setPhone(acc.phone)}
               >
                 {acc.label}
