@@ -1,20 +1,89 @@
-node_modules
-dist
-.next
-.expo
-.turbo
-coverage
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.expo/
+.turbo/
+web-build/
+apps/mobile/dist/
+apps/api/uploads/
+
+# Test / coverage
+coverage/
+*.lcov
+playwright-report/
+test-results/
+
+# Logs & temporary / local scratch
 *.log
+*.err
+.tmp*
+.tmp/
+tmp/
+temp/
+ts-out.txt
+*.tmp.json
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Environment & secrets (keep examples)
 .env
 .env.*
 !.env.example
 !.env.*.example
-.DS_Store
-*.tsbuildinfo
-apps/mobile/.expo
-apps/mobile/dist
-apps/api/uploads
-.vercel
-.idea
+!.env.example.*
+!.env.production.example
+
+# Private keys / certs / store credentials
+*.pem
+*.p12
+*.p8
+*.mobileprovision
+*.jks
+*.keystore
+**/credentials/
+**/secrets/
+**/service-account*.json
+**/play-service-account.json
+
+# Firebase native configs — supply via EAS / secure local copy
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Expo / EAS local
+apps/mobile/expo-env.d.ts
+.eas/.cache/
+apps/mobile/android/
+apps/mobile/ios/
+
+# IDE
+.idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Deploy platform caches
+.vercel/
+.netlify/
+
+# Local audit / bundle dumps / sprint scratch under docs/
+docs/_metro-*.js
+docs/_react-*.js
+docs/_*.bundle.js
+docs/_s*.err
+docs/_s*_*.err
+docs/_gate_*
+docs/_mod_*
+docs/_*.err
+docs/_*.txt
+docs/_*.json
+
+# OS / misc
+*.swp
+*~

@@ -1,8 +1,0 @@
-﻿UPDATED_PENDING	cmrxxg70y014cehtcij67wfv7	2015 Kia Sportage
-UPDATED_PENDING	cmrxxg7jo01b0ehtcql1llzdt	2019 Mercedes C-Class
-UPDATED_PENDING	cmrxxg7ly01buehtcr7j0hanb	2017 Audi A6
-PENDING_COUNT	4
-PENDING	cmrxxg7ly01buehtcr7j0hanb	2017 Audi A6
-PENDING	cmrxxg7jo01b0ehtcql1llzdt	2019 Mercedes C-Class
-PENDING	cmrxxg70y014cehtcij67wfv7	2015 Kia Sportage
-PENDING	cmrxxg7910179ehtcms46944q	2025 Toyota Land Cruiser
