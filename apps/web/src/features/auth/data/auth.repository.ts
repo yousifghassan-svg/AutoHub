@@ -97,7 +97,7 @@ export function createMockAuthRepository(
           /* offline / API down — local session for OTP UX only */
         }
       }
-      const stored = localSession(session.phoneE164, null);
+      const stored = localSession(session.phoneE164, 'Demo User');
       await storage.save(stored);
       return stored;
     },

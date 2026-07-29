@@ -75,6 +75,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void (async () => {
       try {
         const restored = await repo.restoreSession();
+
+console.log('RESTORED SESSION:', restored);
+
         if (!cancelled) {
           setSession(restored);
           const pending = loadVerification();
@@ -119,6 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const active = verification ?? loadVerification();
       if (!active) throw new Error('Start phone verification first');
       const next = await repo.verifyOtpAndLogin(active, code);
+      console.log('LOGIN SESSION:', next);
       setSession(next);
       setVerification(null);
       clearVerification();

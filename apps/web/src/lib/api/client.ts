@@ -25,11 +25,18 @@ export function getHttpClient(): HttpClient {
       });
     },
     onAuthFailure: async () => {
-      await storage.clear();
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('autohub:auth-failure'));
-      }
-    },
+  if (config.authMode === 'mock') {
+    console.warn('Mock mode: ignoring auth failure');
+    return;
+  }
+
+  await storage.clear();
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('autohub:auth-failure'));
+  }
+},    
+
   });
   return http;
 }

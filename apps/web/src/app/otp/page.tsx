@@ -114,13 +114,15 @@ export default function OtpPage() {
         const phone = readQuery('phone');
         if (phone) await sendOtp(phone);
       }
-      const session = await verifyOtp(trimmed);
-      const next = readQuery('next');
-      if (!session.profileSetupComplete || next === 'profile-setup') {
-        router.replace('/profile-setup');
-      } else {
-        router.replace(next && next.startsWith('/') ? next : '/');
-      }
+       await verifyOtp(trimmed);
+
+const next = readQuery('next');
+
+router.replace(
+  next && next.startsWith('/') && next !== '/profile-setup'
+    ? next
+    : '/'
+);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code');
       setCode('');

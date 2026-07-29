@@ -21,6 +21,8 @@ async function bootstrap(): Promise<void> {
 
   const appConfig = app.get(AppConfigService);
   const { port, corsOrigins, nodeEnv } = appConfig.app;
+console.log('process.env.CORS_ORIGINS =', process.env.CORS_ORIGINS);
+console.log('corsOrigins =', corsOrigins);
 
   app.use(
     helmet({

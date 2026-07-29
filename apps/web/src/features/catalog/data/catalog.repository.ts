@@ -46,7 +46,42 @@ export type CatalogFilters = {
 export function createCatalogRepository(http: HttpClient) {
   return {
     filters() {
-      return http.get<CatalogFilters>('/v1/catalog/filters', false);
-    },
+  return Promise.resolve({
+    categories: [
+      { id: 'car', code: 'CAR', slug: 'cars', nameEn: 'Cars', nameAr: 'سيارات' },
+      { id: 'plate', code: 'PLATE', slug: 'plates', nameEn: 'Plates', nameAr: 'لوحات' },
+      { id: 'motorcycle', code: 'MOTORCYCLE', slug: 'motorcycles', nameEn: 'Motorcycles', nameAr: 'دراجات' },
+      { id: 'truck', code: 'TRUCK', slug: 'trucks', nameEn: 'Trucks', nameAr: 'شاحنات' },
+      { id: 'equipment', code: 'HEAVY_EQUIPMENT', slug: 'equipment', nameEn: 'Heavy Equipment', nameAr: 'معدات ثقيلة' },
+    ],
+    governorates: [
+      { id: 'erbil', code: 'ERBIL', nameEn: 'Erbil', nameAr: 'أربيل' },
+      { id: 'baghdad', code: 'BAGHDAD', nameEn: 'Baghdad', nameAr: 'بغداد' },
+      { id: 'basra', code: 'BASRA', nameEn: 'Basra', nameAr: 'البصرة' },
+    ],
+    cities: [
+      { id: 'erbil-city', governorateId: 'erbil', slug: 'erbil', nameEn: 'Erbil', nameAr: 'أربيل' },
+      { id: 'baghdad-city', governorateId: 'baghdad', slug: 'baghdad', nameEn: 'Baghdad', nameAr: 'بغداد' },
+      { id: 'basra-city', governorateId: 'basra', slug: 'basra', nameEn: 'Basra', nameAr: 'البصرة' },
+    ],
+    brands: [
+      { id: 'toyota', slug: 'toyota', nameEn: 'Toyota', nameAr: 'تويوتا' },
+      { id: 'bmw', slug: 'bmw', nameEn: 'BMW', nameAr: 'بي إم دبليو' },
+      { id: 'mercedes', slug: 'mercedes', nameEn: 'Mercedes-Benz', nameAr: 'مرسيدس' },
+    ],
+    models: [
+      { id: 'camry', brandId: 'toyota', slug: 'camry', nameEn: 'Camry', nameAr: 'كامري' },
+      { id: 'land-cruiser', brandId: 'toyota', slug: 'land-cruiser', nameEn: 'Land Cruiser', nameAr: 'لاند كروزر' },
+      { id: 'x5', brandId: 'bmw', slug: 'x5', nameEn: 'X5', nameAr: 'X5' },
+    ],
+    fuelTypes: [] as CatalogFilters['fuelTypes'],
+    transmissionTypes: [] as CatalogFilters['transmissionTypes'],
+    colors: [] as CatalogFilters['colors'],
+    bodyTypes: [] as CatalogFilters['bodyTypes'],
+    driveTypes: [] as NonNullable<CatalogFilters['driveTypes']>,
+    engineTypes: [] as NonNullable<CatalogFilters['engineTypes']>,
+    conditionTypes: [] as NonNullable<CatalogFilters['conditionTypes']>,
+  });
+},
   };
 }
