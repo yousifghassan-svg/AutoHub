@@ -2,31 +2,40 @@
 
 **Source review:** [`RELEASE_0.4_RC_GO_NO_GO.md`](./RELEASE_0.4_RC_GO_NO_GO.md)  
 **Evidence tags:** CODE = confirmed in source · RUNTIME = needs live re-verify · PRIOR = earlier RC evidence  
-**Rule:** No fixes until product/eng approval.
+**Reassessment:** 2026-08-01 — BUG-001 and BUG-008 closed; closed-beta marketplace P0 = 0.
 
 Effort key: **S** ≤ 0.5 day · **M** 0.5–2 days · **L** 2–5 days · **XL** > 5 days
 
 ---
 
-## Critical (P0)
+## Closed
 
 ### BUG-001 — Plate PENDING has no admin approve/reject path
 | Field | Detail |
 | --- | --- |
 | Class | P0 |
-| Impact | Plate sellers cannot complete publish→live. Blocks closed/public plate marketplace. |
-| Reproduction | Create plate → Submit for review (PENDING). Open Admin → Plates. No Approve/Reject. Admin Vehicles APIs reject non-vehicle domain. |
-| Root cause | Admin plates UI/API expose CRUD only; approve/reject exist for `/v1/admin/vehicles` (and listings vehicle path), not plates. |
-| Recommended fix | Add plate (or domain-agnostic listing) approve/reject/publish admin endpoints + UI parity with vehicles; wire seller notifications. |
-| Owner | API + Admin |
-| Effort | L |
-| Evidence | CODE |
+| Status | **CLOSED** |
+| Fix | `7c52aac` — `fix(admin): add plate listing approve and reject moderation` |
+| Notes | Thin admin plates approve/reject → `AdminListingsService`; UI Approve/Reject when PENDING. |
+
+### BUG-008 — Admin-created plates default to ACTIVE
+| Field | Detail |
+| --- | --- |
+| Class | P1 |
+| Status | **CLOSED** |
+| Fix | `a8869f1` — `fix(api): align admin plate creation with moderation workflow` |
+| Notes | Default `PENDING`; `publishedAt` only when status is `ACTIVE`. Policy: Create does not imply Publish. |
+
+---
+
+## Critical (P0)
 
 ### BUG-002 — Production consumer authentication incomplete
 | Field | Detail |
 | --- | --- |
-| Class | P0 (for public beta) |
-| Impact | Cannot safely onboard real public users on Firebase phone auth; risk of shipping with non-prod auth modes. |
+| Class | P0 (for **public** beta only) |
+| Status | OPEN |
+| Impact | Cannot safely onboard real public users on Firebase phone auth; risk of shipping with non-prod auth modes. Does **not** block closed beta when staging auth is agreed. |
 | Reproduction | Review `RELEASE_0.2` phase table: C/D/E not started; local QA depends on `AUTH_ALLOW_DEV_LOGIN` / staff. |
 | Root cause | Release 0.2 Phases C–E unfinished (deferred from 0.4 product scope but blocks public). |
 | Recommended fix | Complete Firebase web/mobile production paths + route-protection polish under 0.2 before public beta. |
@@ -97,18 +106,6 @@ Effort key: **S** ≤ 0.5 day · **M** 0.5–2 days · **L** 2–5 days · **XL*
 | Owner | Admin |
 | Effort | M |
 | Evidence | CODE |
-
-### BUG-008 — Admin-created plates default to ACTIVE
-| Field | Detail |
-| --- | --- |
-| Class | P1 |
-| Impact | Staff-created plates bypass PENDING review, inconsistent with seller submit flow. |
-| Reproduction | Admin create plate → status ACTIVE + publishedAt (per admin plates create path). |
-| Root cause | Admin plate create defaults published/active rather than draft/pending policy. |
-| Recommended fix | Align create defaults with moderation policy (DRAFT/PENDING) or explicit “Publish now” staff action. |
-| Owner | Admin + API |
-| Effort | S–M |
-| Evidence | CODE (admin explore) |
 
 ---
 

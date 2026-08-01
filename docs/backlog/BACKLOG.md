@@ -12,8 +12,8 @@ This file tracks engineering sprints against release trains. Full epic files may
 | Sprint | Focus | Status | Summary |
 | --- | --- | --- | --- |
 | 4 | Marketplace UX & Owner Experience (web) | **Completed** | Owner vs visitor listing detail; full Preview Mode; Action Registry; status badge + help; shared listing UI (`ListingSellerCard`, `ListingStats`, `ListingDescription`, breadcrumbs, share, recommendation strategies); My Listings wired to the same registry. No API/DB changes. Deferred: seller member-since, listing count, MediaAsset avatars. |
-| RC | Release 0.4 Go / No-Go readiness | **Completed (docs)** | Formal gates, checklist, risk register, coverage matrix, bug backlog. **Decision: GO FOR INTERNAL TESTING** (62% overall). Not closed/public beta. |
-| 5 | P0/P1 remediation (after approval) | Not started | Plate moderation, sell login `next`, search URL sync, delete confirm, favorites strategy, admin redirects — see bug backlog. **Do not start until fix approval.** |
+| RC | Release 0.4 Go / No-Go readiness | **Completed (docs)** | Reassessment after BUG-008: **GO FOR CLOSED BETA** (75% overall). Closed-beta marketplace P0 = 0. Public beta still blocked by auth (BUG-002). |
+| 5 | P0/P1 remediation | **In progress** | Closed: plate approve/reject (BUG-001), admin plate create PENDING (BUG-008), lifecycle content-update hardening. Open P1: sell `next`, search URL, delete confirm, admin listing redirect, favorites strategy. |
 
 Evidence: `apps/web/src/features/listings/shared/`, vehicle/plate detail pages, `my-listings`.  
 Release notes: [`../releases/RELEASE_0.4_MARKETPLACE.md`](../releases/RELEASE_0.4_MARKETPLACE.md).  

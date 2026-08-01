@@ -38,7 +38,7 @@ Launch a trusted Iraq marketplace for **vehicles and plates** as classifieds, wi
 | Priority | Item | Outcome |
 | --- | --- | --- |
 | P0 | Keep production classifieds stable | No drive-by refactors; one feature at a time |
-| P1 | Release 0.4 RC follow-up | Go/No-Go: **GO FOR INTERNAL TESTING**; P0/P1 remediation blocked on approval — see `docs/releases/RELEASE_0.4_RC_GO_NO_GO.md` |
+| P1 | Release 0.4 RC follow-up | Go/No-Go: **GO FOR CLOSED BETA** (75%); remaining P1 polish + staging smoke before invites — see `docs/releases/RELEASE_0.4_RC_GO_NO_GO.md` |
 | P1 | Media attach unification | Close `r2Key` trust gap; single validated attach path |
 | P1 | Auth 0.2 remaining phases | Web/Mobile Firebase production paths; route-protection polish |
 | P2 | Outbox / async workers | Replace Alpha in-process timers where needed |

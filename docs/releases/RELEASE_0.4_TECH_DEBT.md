@@ -7,7 +7,7 @@
 | --- | --- | --- | --- | --- | --- |
 | TD-01 | Extract shared `ListingVisitorActions` (vehicle/plate parity) | Medium | Stops feature drift (message/report/analytics) | Next marketplace polish sprint | Web |
 | TD-02 | Action Registry + recommendation unit tests | Medium | Prevents status-matrix regressions | With polish or CI hardening | Web |
-| TD-03 | Domain-agnostic admin listing moderation | High | One path for vehicle/plate approve/reject | Before closed beta (plates) | API + Admin |
+| TD-03 | Domain-agnostic admin listing moderation | Medium | Plate approve/reject shipped via thin plates → listings bridge; full domain-agnostic surface still nicer long-term | Post–closed-beta polish | API + Admin |
 | TD-04 | Search state ↔ URL sync utility | Medium | Shareable filtered searches | P1 fix sprint | Web |
 | TD-05 | Owner-only analytics gating | Medium | Privacy + clearer seller dashboard later | P2 fix or 0.4.x | API/Web |
 | TD-06 | Status copy variants (owner vs visitor) | Low | Cleaner public UX | P3 | Web |
