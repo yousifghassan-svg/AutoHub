@@ -22,7 +22,7 @@ export default function NewVehiclePage() {
 
   const create = useMutation({
     mutationFn: async () => {
-      const payload = formToPayload(values);
+      const payload = formToPayload(values, 'create');
       const carCategory =
         catalog.data?.categories.find((c) => c.code === 'CAR')?.id ?? payload.categoryId;
       if (!payload.cityId) throw new Error('City is required');

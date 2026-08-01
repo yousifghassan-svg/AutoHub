@@ -99,7 +99,6 @@ export class PlateRepository {
         cityId?: string;
         primaryPrice?: number | null;
         primaryCurrencyId?: string | null;
-        status?: ListingStatus;
         updatedById: string;
       };
       plateDetails?: Prisma.PlateDetailsUpdateInput;
@@ -141,7 +140,6 @@ export class PlateRepository {
           cityId: input.listing.cityId,
           primaryPrice: input.listing.primaryPrice,
           primaryCurrencyId: input.listing.primaryCurrencyId,
-          status: input.listing.status,
           updatedById: input.listing.updatedById,
         },
         include: plateListingInclude,

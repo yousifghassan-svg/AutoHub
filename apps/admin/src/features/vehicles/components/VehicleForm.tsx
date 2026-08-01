@@ -58,17 +58,27 @@ export function VehicleForm({
             value={values.title}
             onChange={(e) => set('title', e.target.value)}
           />
-          <Select
-            label="Status"
-            value={values.status}
-            onChange={(e) => set('status', e.target.value as VehicleFormValues['status'])}
-          >
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </Select>
+          {mode === 'create' ? (
+            <Select
+              label="Status"
+              value={values.status}
+              onChange={(e) => set('status', e.target.value as VehicleFormValues['status'])}
+            >
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <Input
+              label="Status"
+              value={values.status}
+              disabled
+              readOnly
+              hint="Use Approve / Reject / Archive on the detail page to change status."
+            />
+          )}
         </div>
         <TextArea
           label="Description"

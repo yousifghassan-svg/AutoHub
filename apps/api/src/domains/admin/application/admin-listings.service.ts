@@ -73,7 +73,6 @@ export type AdminUpdateListingData = {
   isFeatured?: boolean;
   isVerified?: boolean;
   cityId?: string;
-  status?: ListingStatus;
   sellerId?: string;
   conditionTypeId?: string;
   currencyCode?: string;
@@ -233,14 +232,6 @@ export class AdminListingsService {
   ) {
     const before = await this.findById(id);
 
-    if (data.status && data.status !== before.status) {
-      if (!canTransitionStatus(before.status, data.status)) {
-        throw new BadRequestException(
-          `Cannot transition from ${before.status} to ${data.status}`,
-        );
-      }
-    }
-
     let categoryCode: ListingCategoryCode | undefined;
     if (data.categoryId && data.categoryId !== before.categoryId) {
       const category = await this.assertCategory(data.categoryId);
@@ -270,16 +261,11 @@ export class AdminListingsService {
       secondaryPrice: data.secondaryPrice,
       isFeatured: data.isFeatured,
       isVerified: data.isVerified,
-      status: data.status,
       categoryCode,
       locationText: data.locationText?.trim(),
       latitude: data.latitude,
       longitude: data.longitude,
       updatedBy: { connect: { id: actor.id } },
-      publishedAt:
-        data.status === ListingStatus.ACTIVE && !before.publishedAt
-          ? new Date()
-          : undefined,
       seller: data.sellerId ? { connect: { id: data.sellerId } } : undefined,
       category: data.categoryId ? { connect: { id: data.categoryId } } : undefined,
       conditionType: data.conditionTypeId

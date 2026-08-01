@@ -20,6 +20,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { VehicleDetailsDto } from '../../../listings/presentation/dto/vehicle-details.dto';
+import { ForbidListingStatusOnContentUpdate } from '../../../../shared/validators/forbid-listing-status-on-content-update';
 import { AdminPaginationDto } from './admin-common.dto';
 
 function toBool(value: unknown): boolean | undefined {
@@ -235,10 +236,8 @@ export class AdminUpdateListingDto {
   @IsString()
   cityId?: string;
 
-  @ApiPropertyOptional({ enum: ListingStatus })
-  @IsOptional()
-  @IsEnum(ListingStatus)
-  status?: ListingStatus;
+  @ForbidListingStatusOnContentUpdate()
+  status?: never;
 
   @ApiPropertyOptional()
   @IsOptional()

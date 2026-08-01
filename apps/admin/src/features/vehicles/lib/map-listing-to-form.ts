@@ -46,7 +46,10 @@ export function mapListingToForm(listing: AdminListing): VehicleFormValues {
   };
 }
 
-export function formToPayload(values: VehicleFormValues) {
+export function formToPayload(
+  values: VehicleFormValues,
+  mode: 'create' | 'edit' = 'edit',
+) {
   const year = Number(values.year);
   const carDetails = {
     brandId: values.brandId || undefined,
@@ -67,7 +70,7 @@ export function formToPayload(values: VehicleFormValues) {
     interiorColor: values.interiorColor || undefined,
   };
 
-  return {
+  const payload = {
     title: values.title.trim(),
     description: values.description.trim(),
     categoryId: values.categoryId || undefined,
@@ -76,7 +79,6 @@ export function formToPayload(values: VehicleFormValues) {
     conditionTypeId: values.conditionTypeId || undefined,
     primaryPrice: values.primaryPrice ? Number(values.primaryPrice) : undefined,
     currencyCode: values.currencyCode || 'IQD',
-    status: values.status,
     isFeatured: values.isFeatured,
     isVerified: values.isVerified,
     locationText: values.locationText || undefined,
@@ -84,4 +86,10 @@ export function formToPayload(values: VehicleFormValues) {
     longitude: values.longitude ? Number(values.longitude) : undefined,
     carDetails,
   };
+
+  // Create may set initial status; content edit must never send lifecycle fields.
+  if (mode === 'create') {
+    return { ...payload, status: values.status };
+  }
+  return payload;
 }

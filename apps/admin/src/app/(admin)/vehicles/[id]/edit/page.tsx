@@ -39,7 +39,7 @@ export default function EditVehiclePage() {
   }, [query.data, ready]);
 
   const save = useMutation({
-    mutationFn: () => adminApi.vehicles.update(params.id, formToPayload(values)),
+    mutationFn: () => adminApi.vehicles.update(params.id, formToPayload(values, 'edit')),
     onSuccess: () => {
       setDirty(false);
       toast('Vehicle saved', 'success');
