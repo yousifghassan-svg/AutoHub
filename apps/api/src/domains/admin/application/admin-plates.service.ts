@@ -194,7 +194,6 @@ export class AdminPlatesService {
       listing: {
         cityId: input.cityId,
         primaryPrice: input.primaryPrice,
-        status: input.status,
         updatedById: actor.id,
       },
       plateDetails: before.plateDetails

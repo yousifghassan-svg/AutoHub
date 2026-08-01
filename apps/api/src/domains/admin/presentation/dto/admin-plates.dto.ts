@@ -8,6 +8,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
+import { ForbidListingStatusOnContentUpdate } from '../../../../shared/validators/forbid-listing-status-on-content-update';
 import { AdminPaginationDto } from './admin-common.dto';
 
 export class AdminPlatesQueryDto extends AdminPaginationDto {
@@ -180,8 +181,6 @@ export class AdminUpdatePlateDto {
   @IsString()
   platePrefixId?: string;
 
-  @ApiPropertyOptional({ enum: ListingStatus })
-  @IsOptional()
-  @IsEnum(ListingStatus)
-  status?: ListingStatus;
+  @ForbidListingStatusOnContentUpdate()
+  status?: never;
 }

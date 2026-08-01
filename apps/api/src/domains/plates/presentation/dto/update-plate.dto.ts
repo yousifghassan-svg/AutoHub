@@ -1,13 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ListingStatus } from '@autohub/database';
 import { Type } from 'class-transformer';
-import {
-  IsEnum,
-  IsNumber,
-  IsOptional,
-  IsString,
-  MinLength,
-} from 'class-validator';
+import { IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
+import { ForbidListingStatusOnContentUpdate } from '../../../../shared/validators/forbid-listing-status-on-content-update';
 
 export class UpdatePlateDto {
   @ApiPropertyOptional()
@@ -78,8 +72,6 @@ export class UpdatePlateDto {
   @IsString()
   platePrefixId?: string;
 
-  @ApiPropertyOptional({ enum: ListingStatus })
-  @IsOptional()
-  @IsEnum(ListingStatus)
-  status?: ListingStatus;
+  @ForbidListingStatusOnContentUpdate()
+  status?: never;
 }

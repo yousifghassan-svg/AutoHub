@@ -40,9 +40,7 @@ export type CreatePlateInput = {
   platePrefixId?: string;
 };
 
-export type UpdatePlateInput = Partial<
-  Omit<CreatePlateInput, 'categoryId'> & { status?: ListingStatus }
->;
+export type UpdatePlateInput = Partial<Omit<CreatePlateInput, 'categoryId'>>;
 
 export type VerifyPlateInput = {
   status: PlateVerificationStatus;
@@ -172,7 +170,6 @@ export class PlatesService {
         cityId: input.cityId,
         primaryPrice: input.primaryPrice,
         primaryCurrencyId,
-        status: input.status,
         updatedById: actor.id,
       },
       plateDetails: existing.plateDetails

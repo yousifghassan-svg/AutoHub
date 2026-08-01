@@ -124,6 +124,24 @@ describe('PlatesService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('does not write listing status on content update', async () => {
+    plates.findById.mockResolvedValue(plateListing);
+    plates.updateWithDetails.mockResolvedValue({
+      ...plateListing,
+      translations: plateListing.translations,
+    });
+
+    await service.update('P1', owner, { title: 'Updated title' });
+
+    expect(plates.updateWithDetails).toHaveBeenCalledWith(
+      'P1',
+      expect.objectContaining({
+        listing: expect.not.objectContaining({ status: expect.anything() }),
+      }),
+    );
+    expect(listings.changeStatus).not.toHaveBeenCalled();
+  });
+
   it('lists only ACTIVE plates for anonymous callers', async () => {
     plates.search.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20, totalPages: 0 });
 
