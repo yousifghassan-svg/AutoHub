@@ -19,7 +19,7 @@ import {
   type PlateType,
 } from '@/features/plates/domain/types';
 import { adminApi } from '@/lib/api/admin.repository';
-import { listingTitle } from '@/lib/api/types';
+import { listingTitle, type ListingStatus } from '@/lib/api/types';
 import {
   Badge,
   Button,
@@ -41,6 +41,16 @@ import {
   useConfirm,
   useToast,
 } from '@/components/ui';
+
+const LISTING_STATUSES: ListingStatus[] = [
+  'DRAFT',
+  'PENDING',
+  'ACTIVE',
+  'RESERVED',
+  'SOLD',
+  'ARCHIVED',
+  'REJECTED',
+];
 
 type PlateForm = {
   title: string;
@@ -85,13 +95,14 @@ export default function PlatesPage() {
   const letter = searchParams.get('letter') ?? '';
   const number = searchParams.get('number') ?? '';
   const plateType = searchParams.get('plateType') ?? '';
+  const status = searchParams.get('status') ?? '';
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<PlateForm>(emptyForm);
 
   const query = useQuery({
-    queryKey: ['admin', 'plates', { page, q, code, letter, number, plateType }],
+    queryKey: ['admin', 'plates', { page, q, code, letter, number, plateType, status }],
     queryFn: () =>
       adminApi.plates.list({
         page,
@@ -101,8 +112,30 @@ export default function PlatesPage() {
         letter: letter || undefined,
         number: number || undefined,
         plateType: plateType || undefined,
+        status: status || undefined,
       }),
   });
+
+  const runModeration = async (
+    label: string,
+    fn: () => Promise<unknown>,
+    options?: { danger?: boolean },
+  ) => {
+    const ok = await confirm({
+      title: label,
+      description: 'Confirm this admin action.',
+      variant: options?.danger ? 'danger' : 'primary',
+      confirmLabel: 'Confirm',
+    });
+    if (!ok) return;
+    try {
+      await fn();
+      toast(`${label} succeeded`, 'success');
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'plates'] });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Action failed', 'error');
+    }
+  };
 
   const save = useMutation({
     mutationFn: async () => {
@@ -215,6 +248,18 @@ export default function PlatesPage() {
               </option>
             ))}
           </Select>
+          <Select
+            label="Status"
+            value={status}
+            onChange={(e) => setParam('status', e.target.value)}
+          >
+            <option value="">All statuses</option>
+            {LISTING_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </Select>
         </div>
       </Card>
 
@@ -256,7 +301,35 @@ export default function PlatesPage() {
                   </Td>
                   <Td>{formatDate(item.createdAt)}</Td>
                   <Td>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      {item.status === 'PENDING' ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              void runModeration('Approve', () =>
+                                adminApi.plates.approve(item.id),
+                              )
+                            }
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              void runModeration(
+                                'Reject',
+                                () => adminApi.plates.reject(item.id),
+                                { danger: true },
+                              )
+                            }
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      ) : null}
                       <Button size="sm" variant="ghost" onClick={() => openEdit(item.id)}>
                         Edit
                       </Button>

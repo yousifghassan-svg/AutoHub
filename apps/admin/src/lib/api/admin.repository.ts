@@ -42,6 +42,7 @@ export const adminApi = {
         letter?: string;
         number?: string;
         plateType?: string;
+        status?: string;
       },
     ) => http().get<Paginated<AdminPlate>>(`/v1/admin/plates${buildQuery(params)}`),
     get: (id: string) => http().get<AdminPlate>(`/v1/admin/plates/${id}`),
@@ -50,6 +51,8 @@ export const adminApi = {
     update: (id: string, body: Record<string, unknown>) =>
       http().patch<AdminPlate>(`/v1/admin/plates/${id}`, body),
     delete: (id: string) => http().delete<AdminPlate>(`/v1/admin/plates/${id}`),
+    approve: (id: string) => http().post<AdminPlate>(`/v1/admin/plates/${id}/approve`),
+    reject: (id: string) => http().post<AdminPlate>(`/v1/admin/plates/${id}/reject`),
     catalog: {
       categories: {
         list: () => http().get<PlateCategory[]>('/v1/admin/plates/catalog/categories'),

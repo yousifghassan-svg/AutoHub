@@ -40,6 +40,11 @@ export class AdminPlatesQueryDto extends AdminPaginationDto {
   @IsOptional()
   @IsString()
   formatCode?: string;
+
+  @ApiPropertyOptional({ enum: ListingStatus })
+  @IsOptional()
+  @IsEnum(ListingStatus)
+  status?: ListingStatus;
 }
 
 export class AdminCreatePlateDto {

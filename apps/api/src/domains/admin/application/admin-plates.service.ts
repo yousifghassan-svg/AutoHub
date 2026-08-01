@@ -5,9 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  ListingCategoryCode,
   ListingStatus,
+  MarketplaceDomain,
 } from '@autohub/database';
 import { AdminAuditService } from './admin-audit.service';
+import { AdminListingsService } from './admin-listings.service';
 import type { AuthenticatedUser } from '../../auth/domain/auth.types';
 import { PlateRepository } from '../../plates/infrastructure/plate.repository';
 
@@ -21,6 +24,7 @@ export type AdminPlatesQuery = {
   plateType?: string;
   formatCode?: string;
   q?: string;
+  status?: ListingStatus;
 };
 
 export type UpsertPlateInput = {
@@ -47,6 +51,7 @@ export class AdminPlatesService {
   constructor(
     private readonly audit: AdminAuditService,
     private readonly plates: PlateRepository,
+    private readonly listings: AdminListingsService,
   ) {}
 
   async list(query: AdminPlatesQuery) {
@@ -60,6 +65,7 @@ export class AdminPlatesService {
       number: query.number,
       plateType: query.plateType,
       keyword: query.q,
+      status: query.status,
     });
   }
 
@@ -67,6 +73,35 @@ export class AdminPlatesService {
     const listing = await this.plates.findById(id);
     if (!listing) throw new NotFoundException('Plate listing not found');
     return listing;
+  }
+
+  async approve(
+    id: string,
+    actor: AuthenticatedUser,
+    ctx?: { ip?: string; userAgent?: string },
+  ): Promise<unknown> {
+    await this.assertPlateListing(id);
+    return this.listings.approve(id, actor, ctx);
+  }
+
+  async reject(
+    id: string,
+    actor: AuthenticatedUser,
+    ctx?: { ip?: string; userAgent?: string },
+  ): Promise<unknown> {
+    await this.assertPlateListing(id);
+    return this.listings.reject(id, actor, ctx);
+  }
+
+  private async assertPlateListing(id: string) {
+    const listing = await this.listings.findById(id);
+    if (
+      listing.domain === MarketplaceDomain.PLATE ||
+      listing.categoryCode === ListingCategoryCode.PLATE
+    ) {
+      return;
+    }
+    throw new NotFoundException('Plate listing not found');
   }
 
   async create(

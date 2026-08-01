@@ -121,6 +121,28 @@ export class AdminPlatesController {
     return this.plates.findById(id);
   }
 
+  @Post(':id/approve')
+  @Permissions(Permission.ADMIN_ACCESS, Permission.LISTINGS_MODERATE)
+  @ApiOperation({ summary: 'Approve plate listing → ACTIVE' })
+  approve(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+  ): Promise<unknown> {
+    return this.plates.approve(id, user, adminRequestContext(req));
+  }
+
+  @Post(':id/reject')
+  @Permissions(Permission.ADMIN_ACCESS, Permission.LISTINGS_MODERATE)
+  @ApiOperation({ summary: 'Reject plate listing → REJECTED' })
+  reject(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+  ): Promise<unknown> {
+    return this.plates.reject(id, user, adminRequestContext(req));
+  }
+
   @Post()
   @Permissions(Permission.ADMIN_ACCESS, Permission.PLATES_WRITE)
   @ApiOperation({ summary: 'Create plate listing (admin)' })
