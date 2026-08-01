@@ -10,6 +10,7 @@ import { MediaModule } from './media/media.module';
 import { SearchModule } from './search/search.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { DealersModule } from './dealers/dealers.module';
+import { SellersModule } from './sellers/sellers.module';
 import { PlatesModule } from './plates/plates.module';
 import { CommunicationModule } from './communication/communication.module';
 import { AdminModule } from './admin/admin.module';
@@ -19,7 +20,7 @@ import { PaymentsModule } from './payments/payments.module';
 
 /**
  * Aggregates all domain modules for AppModule composition.
- * Active domains: Auth, Users, Listings, Vehicles, Search, Media, Plates, Currencies. Other domains remain shells.
+ * Active domains: Auth, Users, Listings, Vehicles, Search, Media, Plates, Currencies, Sellers.
  */
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { PaymentsModule } from './payments/payments.module';
     SearchModule,
     NotificationsModule,
     DealersModule,
+    SellersModule,
     PlatesModule,
     CommunicationModule,
     AdminModule,

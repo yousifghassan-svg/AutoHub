@@ -1,6 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { LanguageCode } from '@autohub/database';
+import { LanguageCode, SellerType } from '@autohub/database';
+import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsDateString,
   IsEmail,
   IsEnum,
@@ -10,7 +12,60 @@ import {
   MaxLength,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
+
+export class NotificationPreferencesDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  pushEnabled?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  emailEnabled?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  smsEnabled?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  newMessage?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  listingApproved?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  listingRejected?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  priceChange?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  favouriteUpdate?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  dealerReply?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  system?: boolean;
+}
 
 /**
  * PATCH /v1/auth/me body.
@@ -26,6 +81,22 @@ export class UpdateProfileDto {
   @MinLength(2)
   @MaxLength(80)
   displayName?: string;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Given name (1–80).' })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  firstName?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Family name (1–80).' })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  lastName?: string | null;
 
   @ApiPropertyOptional({
     description: 'City catalog id. Governorate is derived. Cannot be cleared with null.',
@@ -57,13 +128,25 @@ export class UpdateProfileDto {
 
   @ApiPropertyOptional({
     nullable: true,
-    description: 'Profile image URL (MediaAsset deferred to 0.3). Pass null to clear.',
+    description:
+      'Legacy/direct avatar URL. Prefer avatarMediaId from MediaAsset upload. Pass null to clear when not using media id.',
   })
   @IsOptional()
   @ValidateIf((_, v) => v !== null)
   @IsUrl({ require_protocol: true, protocols: ['http', 'https'] })
   @MaxLength(2048)
   avatarUrl?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'MediaAsset id (READY, owned by caller). Sets avatarUrl from public/signed URL. Pass null to clear media link.',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @MinLength(1)
+  avatarMediaId?: string | null;
 
   @ApiPropertyOptional({
     nullable: true,
@@ -74,4 +157,39 @@ export class UpdateProfileDto {
   @ValidateIf((_, v) => v !== null)
   @IsDateString({ strict: true })
   dateOfBirth?: string | null;
+
+  @ApiPropertyOptional({
+    enum: SellerType,
+    description: 'Upserts SellerProfile.type (INDIVIDUAL | DEALER).',
+  })
+  @IsOptional()
+  @IsEnum(SellerType)
+  sellerType?: SellerType;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Seller bio (SellerProfile). Max 2000. Pass null to clear.',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @MaxLength(2000)
+  bio?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Public seller display name override (SellerProfile).',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @MinLength(2)
+  @MaxLength(80)
+  sellerDisplayName?: string | null;
+
+  @ApiPropertyOptional({ type: NotificationPreferencesDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => NotificationPreferencesDto)
+  notificationPreferences?: NotificationPreferencesDto;
 }

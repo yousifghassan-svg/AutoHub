@@ -1,7 +1,24 @@
-import type { LanguageCode, UserRole } from '@autohub/database';
-import type { AuthenticatedUser } from '../domain/auth.types';
+import type { LanguageCode, SellerType, UserRole } from '@autohub/database';
+import type {
+  AuthenticatedUser,
+  NotificationPreferences,
+} from '../domain/auth.types';
 import { identityStatusForUser } from '../domain/identity-status';
+import { profileCompletionPercent } from '../domain/profile-completion';
 import { permissionsForRole } from '../domain/permissions';
+
+export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  pushEnabled: true,
+  emailEnabled: true,
+  smsEnabled: false,
+  newMessage: true,
+  listingApproved: true,
+  listingRejected: true,
+  priceChange: true,
+  favouriteUpdate: true,
+  dealerReply: true,
+  system: true,
+};
 
 export type UserRowForAuth = {
   id: string;
@@ -9,11 +26,14 @@ export type UserRowForAuth = {
   phone: string | null;
   email: string | null;
   displayName: string | null;
+  firstName: string | null;
+  lastName: string | null;
   role: UserRole;
   status: string;
   preferredLanguage: LanguageCode | null;
   cityId: string | null;
   avatarUrl: string | null;
+  avatarMediaId: string | null;
   dateOfBirth: Date | null;
   city?: {
     id: string;
@@ -28,6 +48,12 @@ export type UserRowForAuth = {
       nameKu: string | null;
     } | null;
   } | null;
+  sellerProfile?: {
+    type: SellerType;
+    displayName: string;
+    bio: string | null;
+  } | null;
+  notificationPreference?: NotificationPreferences | null;
 };
 
 export function mapAuthenticatedUser(user: UserRowForAuth): AuthenticatedUser {
@@ -50,12 +76,25 @@ export function mapAuthenticatedUser(user: UserRowForAuth): AuthenticatedUser {
       }
     : null;
 
+  const notificationPreferences =
+    user.notificationPreference ?? DEFAULT_NOTIFICATION_PREFERENCES;
+
+  const sellerProfile = user.sellerProfile
+    ? {
+        type: user.sellerProfile.type,
+        displayName: user.sellerProfile.displayName,
+        bio: user.sellerProfile.bio,
+      }
+    : null;
+
   return {
     id: user.id,
     firebaseUid: user.firebaseUid,
     phone: user.phone,
     email: user.email,
     displayName: user.displayName,
+    firstName: user.firstName,
+    lastName: user.lastName,
     role: user.role,
     permissions: permissionsForRole(user.role),
     status: user.status,
@@ -64,6 +103,7 @@ export function mapAuthenticatedUser(user: UserRowForAuth): AuthenticatedUser {
     city,
     governorate,
     avatarUrl: user.avatarUrl,
+    avatarMediaId: user.avatarMediaId,
     dateOfBirth: user.dateOfBirth
       ? user.dateOfBirth.toISOString().slice(0, 10)
       : null,
@@ -71,5 +111,21 @@ export function mapAuthenticatedUser(user: UserRowForAuth): AuthenticatedUser {
       displayName: user.displayName,
       cityId: user.cityId,
     }),
+    profileCompletionPercent: profileCompletionPercent({
+      displayName: user.displayName,
+      cityId: user.cityId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+      avatarMediaId: user.avatarMediaId,
+      dateOfBirth: user.dateOfBirth,
+      preferredLanguage: user.preferredLanguage,
+      sellerType: user.sellerProfile?.type ?? null,
+      bio: user.sellerProfile?.bio ?? null,
+      hasNotificationPreferences: Boolean(user.notificationPreference),
+    }),
+    sellerProfile,
+    notificationPreferences,
   };
 }

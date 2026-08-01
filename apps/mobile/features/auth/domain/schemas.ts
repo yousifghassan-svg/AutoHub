@@ -28,8 +28,15 @@ export const otpFormSchema = z.object({
   code: otpSchema,
 });
 
+const optionalName = z.union([
+  z.literal(''),
+  z.string().trim().min(1).max(80),
+]);
+
 export const profileFormSchema = z.object({
   displayName: displayNameSchema,
+  firstName: optionalName,
+  lastName: optionalName,
   governorateId: z.string().min(1, { message: 'Select a governorate' }),
   cityId: z.string().min(1, { message: 'Select a city' }),
   preferredLanguage: z.enum(['', 'ar', 'ku', 'en']),
@@ -42,6 +49,13 @@ export const profileFormSchema = z.object({
     z.literal(''),
     z.string().trim().url({ message: 'Enter a valid URL' }),
   ]),
+  avatarMediaId: z.string(),
+  sellerType: z.enum(['INDIVIDUAL', 'DEALER']),
+  bio: z.string().max(2000),
+  pushEnabled: z.boolean(),
+  emailEnabled: z.boolean(),
+  newMessage: z.boolean(),
+  listingApproved: z.boolean(),
 });
 
 export type PhoneFormValues = z.infer<typeof phoneFormSchema>;

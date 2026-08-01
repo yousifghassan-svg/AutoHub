@@ -507,12 +507,16 @@ model User {
   phone             String?       @unique
   email             String?       @unique
   displayName       String?
+  firstName         String?
+  lastName          String?
   role              UserRole      @default(USER)
   status            UserStatus    @default(ACTIVE)
   preferredLanguage LanguageCode? @default(ar)
   cityId            String?
-  /// Optional profile image URL (MediaAsset linkage deferred to Release 0.3)
+  /// Denormalized public avatar URL (kept in sync with avatarMedia when set)
   avatarUrl         String?
+  /// Optional MediaAsset used as profile avatar (R2 pipeline)
+  avatarMediaId     String?       @unique
   dateOfBirth       DateTime?     @db.Date
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -520,22 +524,24 @@ model User {
   updatedById       String?
   deletedAt         DateTime?
 
-  city              City?              @relation(fields: [cityId], references: [id])
-  createdBy         User?              @relation("UserCreatedBy", fields: [createdById], references: [id])
-  updatedBy         User?              @relation("UserUpdatedBy", fields: [updatedById], references: [id])
-  createdUsers      User[]             @relation("UserCreatedBy")
-  updatedUsers      User[]             @relation("UserUpdatedBy")
-  sellerProfile     SellerProfile?
-  listings          Listing[]          @relation("ListingSeller")
-  dealerMemberships DealerMember[]
-  auctionBids       AuctionBid[]
-  ordersAsBuyer     Order[]            @relation("BuyerOrders")
-  subscriptions     Subscription[]
-  refreshTokens     RefreshToken[]
-  authAuditLogs     AuthAuditLog[]
-  savedSearches     SavedSearch[]
-  searchEvents      SearchEvent[]
-  mediaAssets       MediaAsset[]
+  city                   City?                         @relation(fields: [cityId], references: [id])
+  avatarMedia            MediaAsset?                   @relation("UserAvatarMedia", fields: [avatarMediaId], references: [id], onDelete: SetNull)
+  createdBy              User?                         @relation("UserCreatedBy", fields: [createdById], references: [id])
+  updatedBy              User?                         @relation("UserUpdatedBy", fields: [updatedById], references: [id])
+  createdUsers           User[]                        @relation("UserCreatedBy")
+  updatedUsers           User[]                        @relation("UserUpdatedBy")
+  sellerProfile          SellerProfile?
+  notificationPreference UserNotificationPreference?
+  listings               Listing[]                     @relation("ListingSeller")
+  dealerMemberships      DealerMember[]
+  auctionBids            AuctionBid[]
+  ordersAsBuyer          Order[]                       @relation("BuyerOrders")
+  subscriptions          Subscription[]
+  refreshTokens          RefreshToken[]
+  authAuditLogs          AuthAuditLog[]
+  savedSearches          SavedSearch[]
+  searchEvents           SearchEvent[]
+  mediaAssets            MediaAsset[]
 
   // Audit reverse relations
   currenciesCreated      Currency[]          @relation("CurrencyCreatedBy")
@@ -718,11 +724,12 @@ model MediaAsset {
   updatedById     String?
   deletedAt       DateTime?
 
-  owner        User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
-  createdBy    User?          @relation("MediaAssetCreatedBy", fields: [createdById], references: [id])
-  updatedBy    User?          @relation("MediaAssetUpdatedBy", fields: [updatedById], references: [id])
-  variants     MediaVariant[]
-  listingMedia ListingMedia[]
+  owner         User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  avatarForUser User?          @relation("UserAvatarMedia")
+  createdBy     User?          @relation("MediaAssetCreatedBy", fields: [createdById], references: [id])
+  updatedBy     User?          @relation("MediaAssetUpdatedBy", fields: [updatedById], references: [id])
+  variants      MediaVariant[]
+  listingMedia  ListingMedia[]
 
   @@index([ownerId, deletedAt])
   @@index([status, mediaType])
@@ -760,6 +767,28 @@ model SellerProfile {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   deletedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Per-user notification channel + category preferences (defaults applied on first access).
+model UserNotificationPreference {
+  id      String @id @default(cuid())
+  userId  String @unique
+  /// Master toggles
+  pushEnabled  Boolean @default(true)
+  emailEnabled Boolean @default(true)
+  smsEnabled   Boolean @default(false)
+  /// Category toggles (aligned with AppNotificationType groups)
+  newMessage       Boolean @default(true)
+  listingApproved  Boolean @default(true)
+  listingRejected  Boolean @default(true)
+  priceChange      Boolean @default(true)
+  favouriteUpdate  Boolean @default(true)
+  dealerReply      Boolean @default(true)
+  system           Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

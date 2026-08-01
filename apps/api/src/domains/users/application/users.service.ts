@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { MediaAssetStatus, MediaType, MediaVisibility } from '@autohub/database';
+import { R2StorageService } from '../../../infrastructure/storage/r2-storage.service';
 import type { FirebasePhoneIdentity, UpdateProfileInput } from '../../auth/domain/auth.types';
 import {
   UserRepository,
@@ -11,13 +13,24 @@ import {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly users: UserRepository) {}
+  constructor(
+    private readonly users: UserRepository,
+    private readonly r2: R2StorageService,
+  ) {}
 
   findActiveById(id: string): Promise<UserWithProfile | null> {
     return this.users.findById(id).then((user) => {
       if (!user || user.status !== 'ACTIVE') return null;
       return user;
     });
+  }
+
+  /** Loads active user and ensures notification preference defaults exist. */
+  async findActiveByIdWithDefaults(id: string): Promise<UserWithProfile | null> {
+    const user = await this.findActiveById(id);
+    if (!user) return null;
+    if (user.notificationPreference) return user;
+    return this.users.ensureNotificationPreferences(id);
   }
 
   findActiveByPhone(phone: string): Promise<UserWithProfile | null> {
@@ -72,11 +85,29 @@ export class UsersService {
       patch.displayName = trimmed;
     }
 
+    for (const key of ['firstName', 'lastName'] as const) {
+      if (Object.prototype.hasOwnProperty.call(patch, key)) {
+        const value = patch[key];
+        if (value === null) continue;
+        if (value !== undefined) {
+          const trimmed = value.trim();
+          if (trimmed.length < 1 || trimmed.length > 80) {
+            throw new BadRequestException(`${key} must be between 1 and 80 characters`);
+          }
+          patch[key] = trimmed;
+        }
+      }
+    }
+
     if (patch.cityId !== undefined) {
       const city = await this.users.findCityById(patch.cityId);
       if (!city) {
         throw new BadRequestException('Invalid cityId');
       }
+    }
+
+    if (patch.bio !== undefined && patch.bio !== null && patch.bio.length > 2000) {
+      throw new BadRequestException('bio must be at most 2000 characters');
     }
 
     let dateOfBirth: Date | null | undefined;
@@ -88,8 +119,63 @@ export class UsersService {
       }
     }
 
+    let avatarUrl: string | null | undefined;
+    let avatarMediaId: string | null | undefined;
+
+    if (Object.prototype.hasOwnProperty.call(patch, 'avatarMediaId')) {
+      if (patch.avatarMediaId === null) {
+        avatarMediaId = null;
+        // Clear denormalized URL unless a new avatarUrl is also provided
+        if (!Object.prototype.hasOwnProperty.call(patch, 'avatarUrl')) {
+          avatarUrl = null;
+        }
+      } else if (patch.avatarMediaId !== undefined) {
+        const media = await this.users.findOwnedReadyMedia(userId, patch.avatarMediaId);
+        if (!media) {
+          throw new BadRequestException(
+            'avatarMediaId must reference a READY media asset you own',
+          );
+        }
+        if (media.mediaType !== MediaType.IMAGE) {
+          throw new BadRequestException('Avatar media must be an IMAGE');
+        }
+        avatarMediaId = media.id;
+        avatarUrl = (await this.resolveAvatarUrl(media)) ?? patch.avatarUrl ?? null;
+        // Local/dev without R2: still link the MediaAsset; URL may be filled later.
+        if (!avatarUrl && !this.r2.isConfigured()) {
+          avatarUrl = undefined;
+        } else if (!avatarUrl) {
+          throw new BadRequestException(
+            'Unable to resolve avatar URL from media asset',
+          );
+        }
+      }
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(patch, 'avatarUrl') &&
+      avatarMediaId === undefined
+    ) {
+      avatarUrl = patch.avatarUrl ?? null;
+      if (patch.avatarUrl === null) {
+        avatarMediaId = null;
+      }
+    } else if (
+      Object.prototype.hasOwnProperty.call(patch, 'avatarUrl') &&
+      patch.avatarUrl &&
+      avatarMediaId === undefined
+    ) {
+      avatarUrl = patch.avatarUrl;
+    }
+
     const data: Parameters<UserRepository['updateProfile']>[1] = {};
     if (patch.displayName !== undefined) data.displayName = patch.displayName;
+    if (Object.prototype.hasOwnProperty.call(patch, 'firstName')) {
+      data.firstName = patch.firstName ?? null;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'lastName')) {
+      data.lastName = patch.lastName ?? null;
+    }
     if (patch.cityId !== undefined) data.cityId = patch.cityId;
     if (Object.prototype.hasOwnProperty.call(patch, 'preferredLanguage')) {
       data.preferredLanguage = patch.preferredLanguage ?? null;
@@ -97,11 +183,41 @@ export class UsersService {
     if (Object.prototype.hasOwnProperty.call(patch, 'email')) {
       data.email = patch.email ?? null;
     }
-    if (Object.prototype.hasOwnProperty.call(patch, 'avatarUrl')) {
-      data.avatarUrl = patch.avatarUrl ?? null;
+    if (avatarUrl !== undefined) data.avatarUrl = avatarUrl;
+    if (avatarMediaId !== undefined) data.avatarMediaId = avatarMediaId;
+    if (dateOfBirth !== undefined) data.dateOfBirth = dateOfBirth;
+
+    const sellerTouch =
+      patch.sellerType !== undefined ||
+      Object.prototype.hasOwnProperty.call(patch, 'bio') ||
+      Object.prototype.hasOwnProperty.call(patch, 'sellerDisplayName');
+
+    if (sellerTouch) {
+      data.sellerProfile = {
+        ...(patch.sellerType !== undefined ? { type: patch.sellerType } : {}),
+        ...(Object.prototype.hasOwnProperty.call(patch, 'bio')
+          ? { bio: patch.bio ?? null }
+          : {}),
+        ...(Object.prototype.hasOwnProperty.call(patch, 'sellerDisplayName')
+          ? {
+              displayName:
+                patch.sellerDisplayName === null
+                  ? undefined
+                  : patch.sellerDisplayName?.trim(),
+            }
+          : {}),
+      };
+      if (
+        patch.sellerDisplayName === null &&
+        data.sellerProfile &&
+        'displayName' in data.sellerProfile
+      ) {
+        delete data.sellerProfile.displayName;
+      }
     }
-    if (dateOfBirth !== undefined) {
-      data.dateOfBirth = dateOfBirth;
+
+    if (patch.notificationPreferences) {
+      data.notificationPreferences = patch.notificationPreferences;
     }
 
     if (Object.keys(data).length === 0) {
@@ -111,6 +227,20 @@ export class UsersService {
     }
 
     return this.users.updateProfile(userId, data);
+  }
+
+  private async resolveAvatarUrl(media: {
+    originalKey: string;
+    visibility: MediaVisibility;
+    status: MediaAssetStatus | string;
+  }): Promise<string | null> {
+    if (!this.r2.isConfigured()) {
+      return null;
+    }
+    if (media.visibility === MediaVisibility.PUBLIC) {
+      return this.r2.getPublicUrl(media.originalKey);
+    }
+    return this.r2.createPresignedDownloadUrl({ key: media.originalKey });
   }
 }
 

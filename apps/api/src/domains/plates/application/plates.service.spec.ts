@@ -47,8 +47,25 @@ describe('PlatesService', () => {
     city: null,
     governorate: null,
     avatarUrl: null,
+    avatarMediaId: null,
+    firstName: null,
+    lastName: null,
     dateOfBirth: null,
     identityStatus: 'needs_profile' as const,
+    profileCompletionPercent: 0,
+    sellerProfile: null,
+    notificationPreferences: {
+      pushEnabled: true,
+      emailEnabled: true,
+      smsEnabled: false,
+      newMessage: true,
+      listingApproved: true,
+      listingRejected: true,
+      priceChange: true,
+      favouriteUpdate: true,
+      dealerReply: true,
+      system: true,
+    },
   };
 
   const plateListing = {

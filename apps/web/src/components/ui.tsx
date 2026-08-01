@@ -50,7 +50,7 @@ export function Input({
       {label ? <span className="font-medium text-ink-secondary">{label}</span> : null}
       <input
         className={cn(
-          'h-11 rounded-md border border-border bg-surface px-3 text-ink outline-none ring-brand focus:ring-2',
+          'h-11 rounded-md border border-border bg-surface px-3 text-ink outline-none ring-brand focus:ring-2 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-80',
           className,
         )}
         {...props}
@@ -90,7 +90,7 @@ export function Select({
       {label ? <span className="font-medium text-ink-secondary">{label}</span> : null}
       <select
         className={cn(
-          'h-11 rounded-md border border-border bg-surface px-3 text-ink outline-none ring-brand focus:ring-2',
+          'h-11 rounded-md border border-border bg-surface px-3 text-ink outline-none ring-brand focus:ring-2 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-80',
           className,
         )}
         {...props}

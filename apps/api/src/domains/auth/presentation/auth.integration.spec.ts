@@ -25,6 +25,7 @@ describe('Auth HTTP integration', () => {
   const users = {
     findOrCreateFromFirebase: jest.fn(),
     findActiveById: jest.fn(),
+    findActiveByIdWithDefaults: jest.fn(),
     findActiveByPhone: jest.fn(),
     updateProfile: jest.fn(),
   };
@@ -55,11 +56,14 @@ describe('Auth HTTP integration', () => {
     phone: '+9647700000000',
     email: null,
     displayName: 'Test User',
+    firstName: null as string | null,
+    lastName: null as string | null,
     role: 'USER' as const,
     status: 'ACTIVE',
     preferredLanguage: 'ar' as const,
     cityId: null as string | null,
     avatarUrl: null as string | null,
+    avatarMediaId: null as string | null,
     dateOfBirth: null as Date | null,
     city: null as null | {
       id: string;
@@ -73,6 +77,23 @@ describe('Auth HTTP integration', () => {
         nameAr: string;
         nameKu: string | null;
       };
+    },
+    sellerProfile: null as null | {
+      type: 'INDIVIDUAL' | 'DEALER';
+      displayName: string;
+      bio: string | null;
+    },
+    notificationPreference: {
+      pushEnabled: true,
+      emailEnabled: true,
+      smsEnabled: false,
+      newMessage: true,
+      listingApproved: true,
+      listingRejected: true,
+      priceChange: true,
+      favouriteUpdate: true,
+      dealerReply: true,
+      system: true,
     },
   };
 
@@ -184,6 +205,9 @@ describe('Auth HTTP integration', () => {
     refreshStore.clear();
     appConfigState.allowStaffLogin = true;
     appConfigState.allowDevLogin = true;
+    users.findActiveByIdWithDefaults.mockImplementation(async (id: string) =>
+      id === activeUser.id ? activeUser : null,
+    );
     users.findActiveById.mockImplementation(async (id: string) =>
       id === activeUser.id ? activeUser : null,
     );
@@ -272,6 +296,7 @@ describe('Auth HTTP integration', () => {
     };
     users.updateProfile.mockResolvedValue(updated);
     users.findActiveById.mockResolvedValue(updated);
+    users.findActiveByIdWithDefaults.mockResolvedValue(updated);
 
     const patched = await request(app.getHttpServer())
       .patch('/v1/auth/me')

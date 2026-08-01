@@ -1,4 +1,4 @@
-import type { LanguageCode, UserRole } from '@autohub/database';
+import type { LanguageCode, SellerType, UserRole } from '@autohub/database';
 import type { Permission } from './permissions';
 import type { IdentityStatus } from './identity-status';
 
@@ -17,12 +17,33 @@ export type AuthenticatedUserGovernorate = {
   nameKu: string | null;
 };
 
+export type AuthenticatedSellerProfile = {
+  type: SellerType;
+  displayName: string;
+  bio: string | null;
+};
+
+export type NotificationPreferences = {
+  pushEnabled: boolean;
+  emailEnabled: boolean;
+  smsEnabled: boolean;
+  newMessage: boolean;
+  listingApproved: boolean;
+  listingRejected: boolean;
+  priceChange: boolean;
+  favouriteUpdate: boolean;
+  dealerReply: boolean;
+  system: boolean;
+};
+
 export type AuthenticatedUser = {
   id: string;
   firebaseUid: string | null;
   phone: string | null;
   email: string | null;
   displayName: string | null;
+  firstName: string | null;
+  lastName: string | null;
   role: UserRole;
   permissions: Permission[];
   status: string;
@@ -31,8 +52,12 @@ export type AuthenticatedUser = {
   city: AuthenticatedUserCity | null;
   governorate: AuthenticatedUserGovernorate | null;
   avatarUrl: string | null;
+  avatarMediaId: string | null;
   dateOfBirth: string | null;
   identityStatus: IdentityStatus;
+  profileCompletionPercent: number;
+  sellerProfile: AuthenticatedSellerProfile | null;
+  notificationPreferences: NotificationPreferences;
 };
 
 export type AccessTokenPayload = {
@@ -57,9 +82,17 @@ export type RequestContext = {
 
 export type UpdateProfileInput = {
   displayName?: string;
+  firstName?: string | null;
+  lastName?: string | null;
   cityId?: string;
   preferredLanguage?: LanguageCode | null;
   email?: string | null;
   avatarUrl?: string | null;
+  avatarMediaId?: string | null;
   dateOfBirth?: string | null;
+  /** Nested seller profile upsert fields */
+  sellerType?: SellerType;
+  bio?: string | null;
+  sellerDisplayName?: string | null;
+  notificationPreferences?: Partial<NotificationPreferences>;
 };

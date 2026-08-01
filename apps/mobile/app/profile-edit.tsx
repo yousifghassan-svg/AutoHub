@@ -1,10 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, Stack } from 'expo-router';
 import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
-import { ScrollView, View } from 'react-native';
-import { Button, Text, useTheme } from '@autohub/mobile-ui';
-import { AuthScaffold } from '@/features/auth/components/AuthScaffold';
+import { View } from 'react-native';
+import { Button, Screen, Text, useTheme } from '@autohub/mobile-ui';
+import { OfflineBanner } from '@/features/auth/components/OfflineBanner';
 import { useAuth } from '@/features/auth/context/AuthProvider';
 import {
   mapAuthError,
@@ -15,11 +15,12 @@ import { ProfileFields } from '@/features/profile/components/ProfileFields';
 import { profileFormToUpdateInput } from '@/features/profile/domain/to-update-input';
 import { useCatalogFilters } from '@/src/features/catalog/hooks/useCatalog';
 
-export default function ProfileSetupScreen() {
+export default function ProfileEditScreen() {
   const theme = useTheme();
   const { session, status } = useAuth();
   const catalog = useCatalogFilters();
   const completeProfile = useCompleteProfileMutation();
+
   const {
     control,
     handleSubmit,
@@ -75,57 +76,66 @@ export default function ProfileSetupScreen() {
   if (status === 'unauthenticated') {
     return <Redirect href="/(auth)/welcome" />;
   }
-
-  if (status === 'authenticated') {
-    return <Redirect href="/(tabs)" />;
+  if (status === 'needs_profile') {
+    return <Redirect href="/(auth)/profile-setup" />;
   }
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await completeProfile.mutateAsync(profileFormToUpdateInput(values));
-      router.replace('/(tabs)');
+      await completeProfile.mutateAsync(
+        profileFormToUpdateInput(values, { clearOptionalEmpty: true }),
+      );
+      router.back();
     } catch {
       // surfaced below
     }
   });
 
+  const completion = session?.user.profileCompletionPercent;
+
   return (
-    <AuthScaffold
-      title="Set up your profile"
-      subtitle="Choose how other buyers and sellers will see you. You can change this later."
-    >
-      <ScrollView contentContainerStyle={{ gap: theme.spacing.lg }}>
-        {session?.user.phone ? (
-          <Text variant="caption" color="secondary">
-            Signed in as {session.user.phone}
-          </Text>
-        ) : null}
+    <>
+      <Stack.Screen options={{ title: 'Edit profile' }} />
+      <Screen scroll>
+        <OfflineBanner />
+        <View style={{ gap: theme.spacing.lg, paddingBottom: theme.spacing.xl }}>
+          <Text variant="h1">Edit profile</Text>
+          {typeof completion === 'number' ? (
+            <Text variant="body" color="secondary">
+              Profile {completion}% complete
+            </Text>
+          ) : null}
+          {session?.user.phone ? (
+            <Text variant="caption" color="secondary">
+              Phone {session.user.phone} (read-only)
+            </Text>
+          ) : null}
 
-        <ProfileFields
-          control={control}
-          errors={errors}
-          setValue={setValue}
-          watch={watch}
-          governorates={governorates}
-          cities={cities}
-          userId={session?.user.id}
-        />
+          <ProfileFields
+            control={control}
+            errors={errors}
+            setValue={setValue}
+            watch={watch}
+            governorates={governorates}
+            cities={cities}
+            userId={session?.user.id}
+          />
 
-        {completeProfile.isError ? (
-          <Text variant="caption" color="error">
-            {mapAuthError(completeProfile.error)}
-          </Text>
-        ) : null}
+          {completeProfile.isError ? (
+            <Text variant="caption" color="error">
+              {mapAuthError(completeProfile.error)}
+            </Text>
+          ) : null}
 
-        <Button
-          fullWidth
-          loading={completeProfile.isPending || catalog.isLoading}
-          onPress={onSubmit}
-        >
-          Save & continue
-        </Button>
-        <View />
-      </ScrollView>
-    </AuthScaffold>
+          <Button
+            fullWidth
+            loading={completeProfile.isPending || catalog.isLoading}
+            onPress={onSubmit}
+          >
+            Save changes
+          </Button>
+        </View>
+      </Screen>
+    </>
   );
 }

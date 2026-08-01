@@ -33,10 +33,21 @@ export default function ProfileScreen() {
             <Text variant="body" color="secondary">
               {session?.user.phone}
             </Text>
+            {typeof session?.user.profileCompletionPercent === 'number' ? (
+              <Text variant="caption" color="secondary">
+                Profile {session.user.profileCompletionPercent}% complete
+              </Text>
+            ) : null}
           </View>
         </Card>
 
         <View style={{ gap: theme.spacing.sm }}>
+          <MenuRow
+            icon="person-outline"
+            label="Edit profile"
+            subtitle="Name · location · seller type · notifications"
+            onPress={() => router.push('/profile-edit' as never)}
+          />
           <MenuRow
             icon="car-outline"
             label={t('myVehicles')}

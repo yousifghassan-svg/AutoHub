@@ -11,6 +11,7 @@ describe('AuthService', () => {
   const users = {
     findOrCreateFromFirebase: jest.fn(),
     findActiveById: jest.fn(),
+    findActiveByIdWithDefaults: jest.fn(),
     findActiveByPhone: jest.fn(),
     updateProfile: jest.fn(),
   };
@@ -55,13 +56,29 @@ describe('AuthService', () => {
     phone: '+9647700000000',
     email: null,
     displayName: null,
+    firstName: null,
+    lastName: null,
     role: 'USER' as const,
     status: 'ACTIVE',
     preferredLanguage: 'ar' as const,
     cityId: null,
     avatarUrl: null,
+    avatarMediaId: null,
     dateOfBirth: null,
     city: null,
+    sellerProfile: null,
+    notificationPreference: {
+      pushEnabled: true,
+      emailEnabled: true,
+      smsEnabled: false,
+      newMessage: true,
+      listingApproved: true,
+      listingRejected: true,
+      priceChange: true,
+      favouriteUpdate: true,
+      dealerReply: true,
+      system: true,
+    },
   };
 
   const staffUser = {
@@ -76,6 +93,10 @@ describe('AuthService', () => {
     jest.clearAllMocks();
     appConfig.app.allowStaffLogin = true;
     appConfig.app.allowDevLogin = true;
+    users.findActiveByIdWithDefaults.mockImplementation(async (id: string) => ({
+      ...activeUser,
+      id,
+    }));
   });
 
   it('logs in, creates tokens, and audits LOGIN', async () => {
@@ -131,6 +152,8 @@ describe('AuthService', () => {
         phone: '+9647700000000',
         email: null,
         displayName: null,
+        firstName: null,
+        lastName: null,
         role: 'USER',
         permissions: [Permission.PROFILE_READ, Permission.PROFILE_WRITE],
         status: 'ACTIVE',
@@ -139,8 +162,23 @@ describe('AuthService', () => {
         city: null,
         governorate: null,
         avatarUrl: null,
+        avatarMediaId: null,
         dateOfBirth: null,
         identityStatus: 'needs_profile',
+        profileCompletionPercent: 0,
+        sellerProfile: null,
+        notificationPreferences: {
+          pushEnabled: true,
+          emailEnabled: true,
+          smsEnabled: false,
+          newMessage: true,
+          listingApproved: true,
+          listingRejected: true,
+          priceChange: true,
+          favouriteUpdate: true,
+          dealerReply: true,
+          system: true,
+        },
       },
       { displayName: 'Sara Ali', cityId: 'city-1' },
     );

@@ -63,7 +63,7 @@ export class AuthService {
 
     return {
       ...tokens,
-      user: this.toAuthenticatedUser(user),
+      user: this.toAuthenticatedUser(await this.withProfileDefaults(user.id, user)),
     };
   }
 
@@ -102,7 +102,7 @@ export class AuthService {
 
     return {
       ...tokens,
-      user: this.toAuthenticatedUser(user),
+      user: this.toAuthenticatedUser(await this.withProfileDefaults(user.id, user)),
     };
   }
 
@@ -153,7 +153,7 @@ export class AuthService {
 
     return {
       ...tokens,
-      user: this.toAuthenticatedUser(user),
+      user: this.toAuthenticatedUser(await this.withProfileDefaults(user.id, user)),
     };
   }
 
@@ -200,7 +200,7 @@ export class AuthService {
 
     return {
       ...next,
-      user: this.toAuthenticatedUser(user),
+      user: this.toAuthenticatedUser(await this.withProfileDefaults(user.id, user)),
     };
   }
 
@@ -233,7 +233,7 @@ export class AuthService {
   }
 
   async me(user: AuthenticatedUser): Promise<AuthenticatedUser> {
-    const fresh = await this.users.findActiveById(user.id);
+    const fresh = await this.users.findActiveByIdWithDefaults(user.id);
     if (!fresh) throw new UnauthorizedException('User not found or inactive');
     return this.toAuthenticatedUser(fresh);
   }
@@ -245,7 +245,12 @@ export class AuthService {
     const fresh = await this.users.findActiveById(user.id);
     if (!fresh) throw new UnauthorizedException('User not found or inactive');
     const updated = await this.users.updateProfile(user.id, input);
-    return this.toAuthenticatedUser(updated);
+    const withPrefs =
+      updated.notificationPreference
+        ? updated
+        : await this.users.findActiveByIdWithDefaults(updated.id);
+    if (!withPrefs) throw new UnauthorizedException('User not found or inactive');
+    return this.toAuthenticatedUser(withPrefs);
   }
 
   private async issueTokens(
@@ -299,6 +304,14 @@ export class AuthService {
       tokenType: 'Bearer',
       expiresIn: accessTtlSeconds,
     };
+  }
+
+  private async withProfileDefaults<T extends { id: string }>(
+    userId: string,
+    fallback: T,
+  ): Promise<T> {
+    const withDefaults = await this.users.findActiveByIdWithDefaults(userId);
+    return (withDefaults ?? fallback) as T;
   }
 
   private toAuthenticatedUser(

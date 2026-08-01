@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { LanguageCode, UserRole } from '@autohub/database';
+import { LanguageCode, SellerType, UserRole } from '@autohub/database';
 import { Permission } from '../../domain/permissions';
 
 export class AuthenticatedUserCityDto {
@@ -33,6 +33,49 @@ export class AuthenticatedUserGovernorateDto {
   nameKu!: string | null;
 }
 
+export class AuthenticatedSellerProfileDto {
+  @ApiProperty({ enum: SellerType })
+  type!: SellerType;
+
+  @ApiProperty()
+  displayName!: string;
+
+  @ApiProperty({ nullable: true })
+  bio!: string | null;
+}
+
+export class NotificationPreferencesDto {
+  @ApiProperty()
+  pushEnabled!: boolean;
+
+  @ApiProperty()
+  emailEnabled!: boolean;
+
+  @ApiProperty()
+  smsEnabled!: boolean;
+
+  @ApiProperty()
+  newMessage!: boolean;
+
+  @ApiProperty()
+  listingApproved!: boolean;
+
+  @ApiProperty()
+  listingRejected!: boolean;
+
+  @ApiProperty()
+  priceChange!: boolean;
+
+  @ApiProperty()
+  favouriteUpdate!: boolean;
+
+  @ApiProperty()
+  dealerReply!: boolean;
+
+  @ApiProperty()
+  system!: boolean;
+}
+
 export class AuthenticatedUserDto {
   @ApiProperty()
   id!: string;
@@ -48,6 +91,12 @@ export class AuthenticatedUserDto {
 
   @ApiProperty({ nullable: true })
   displayName!: string | null;
+
+  @ApiProperty({ nullable: true })
+  firstName!: string | null;
+
+  @ApiProperty({ nullable: true })
+  lastName!: string | null;
 
   @ApiProperty({ enum: UserRole })
   role!: UserRole;
@@ -73,6 +122,9 @@ export class AuthenticatedUserDto {
   @ApiProperty({ nullable: true })
   avatarUrl!: string | null;
 
+  @ApiProperty({ nullable: true })
+  avatarMediaId!: string | null;
+
   @ApiProperty({
     nullable: true,
     description: 'ISO date YYYY-MM-DD',
@@ -85,6 +137,19 @@ export class AuthenticatedUserDto {
       'Client auth gate. /auth/me returns needs_profile | authenticated; unauthenticated is client-only (no session).',
   })
   identityStatus!: 'unauthenticated' | 'needs_profile' | 'authenticated';
+
+  @ApiProperty({
+    description: '0–100 profile completeness across required and optional fields.',
+    minimum: 0,
+    maximum: 100,
+  })
+  profileCompletionPercent!: number;
+
+  @ApiProperty({ type: AuthenticatedSellerProfileDto, nullable: true })
+  sellerProfile!: AuthenticatedSellerProfileDto | null;
+
+  @ApiProperty({ type: NotificationPreferencesDto })
+  notificationPreferences!: NotificationPreferencesDto;
 }
 
 export class AuthTokensDto {
