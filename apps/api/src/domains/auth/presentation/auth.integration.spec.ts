@@ -26,6 +26,7 @@ describe('Auth HTTP integration', () => {
     findOrCreateFromFirebase: jest.fn(),
     findActiveById: jest.fn(),
     findActiveByPhone: jest.fn(),
+    updateProfile: jest.fn(),
   };
   const appConfigState = {
     jwt: {
@@ -56,6 +57,23 @@ describe('Auth HTTP integration', () => {
     displayName: 'Test User',
     role: 'USER' as const,
     status: 'ACTIVE',
+    preferredLanguage: 'ar' as const,
+    cityId: null as string | null,
+    avatarUrl: null as string | null,
+    dateOfBirth: null as Date | null,
+    city: null as null | {
+      id: string;
+      nameEn: string;
+      nameAr: string;
+      nameKu: string | null;
+      governorateId: string;
+      governorate: {
+        id: string;
+        nameEn: string;
+        nameAr: string;
+        nameKu: string | null;
+      };
+    },
   };
 
   beforeAll(async () => {
@@ -213,6 +231,98 @@ describe('Auth HTTP integration', () => {
 
     expect(me.body.data.id).toBe('user-1');
     expect(me.body.data.phone).toBe('+9647700000000');
+    expect(me.body.data.identityStatus).toBe('needs_profile');
+    expect(me.body.data.cityId).toBeNull();
+  });
+
+  it('PATCH /v1/auth/me updates profile and derives governorate', async () => {
+    firebase.verifyPhoneIdToken.mockResolvedValue({
+      firebaseUid: 'fb-1',
+      phone: '+9647700000000',
+    });
+    users.findOrCreateFromFirebase.mockResolvedValue({ user: activeUser, created: false });
+
+    const login = await request(app.getHttpServer())
+      .post('/v1/auth/login')
+      .send({ idToken: 'firebase-token' })
+      .expect(201);
+
+    const accessToken = login.body.data.accessToken as string;
+    const updated = {
+      ...activeUser,
+      displayName: 'Sara Ali',
+      cityId: 'city-1',
+      email: 'sara@example.com',
+      preferredLanguage: 'en' as const,
+      avatarUrl: 'https://cdn.example.com/a.jpg',
+      dateOfBirth: new Date('1990-05-15T00:00:00.000Z'),
+      city: {
+        id: 'city-1',
+        nameEn: 'Baghdad',
+        nameAr: 'بغداد',
+        nameKu: null,
+        governorateId: 'gov-1',
+        governorate: {
+          id: 'gov-1',
+          nameEn: 'Baghdad',
+          nameAr: 'بغداد',
+          nameKu: null,
+        },
+      },
+    };
+    users.updateProfile.mockResolvedValue(updated);
+    users.findActiveById.mockResolvedValue(updated);
+
+    const patched = await request(app.getHttpServer())
+      .patch('/v1/auth/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        displayName: 'Sara Ali',
+        cityId: 'city-1',
+        email: 'sara@example.com',
+        preferredLanguage: 'en',
+        avatarUrl: 'https://cdn.example.com/a.jpg',
+        dateOfBirth: '1990-05-15',
+      })
+      .expect(200);
+
+    expect(users.updateProfile).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        displayName: 'Sara Ali',
+        cityId: 'city-1',
+      }),
+    );
+    expect(patched.body.data.identityStatus).toBe('authenticated');
+    expect(patched.body.data.governorate.id).toBe('gov-1');
+    expect(patched.body.data.dateOfBirth).toBe('1990-05-15');
+  });
+
+  it('PATCH /v1/auth/me rejects clearing required fields with null', async () => {
+    firebase.verifyPhoneIdToken.mockResolvedValue({
+      firebaseUid: 'fb-1',
+      phone: '+9647700000000',
+    });
+    users.findOrCreateFromFirebase.mockResolvedValue({ user: activeUser, created: false });
+
+    const login = await request(app.getHttpServer())
+      .post('/v1/auth/login')
+      .send({ idToken: 'firebase-token' })
+      .expect(201);
+
+    const accessToken = login.body.data.accessToken as string;
+
+    await request(app.getHttpServer())
+      .patch('/v1/auth/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ displayName: null })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch('/v1/auth/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ cityId: null })
+      .expect(400);
   });
 
   it('POST /v1/auth/refresh rotates refresh token', async () => {

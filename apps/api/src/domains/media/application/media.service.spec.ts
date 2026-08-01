@@ -72,6 +72,13 @@ describe('MediaService', () => {
     email: null,
     displayName: null,
     status: 'ACTIVE',
+    preferredLanguage: null,
+    cityId: null,
+    city: null,
+    governorate: null,
+    avatarUrl: null,
+    dateOfBirth: null,
+    identityStatus: 'needs_profile' as const,
   };
 
   beforeEach(() => jest.clearAllMocks());

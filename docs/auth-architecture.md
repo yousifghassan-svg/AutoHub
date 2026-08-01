@@ -19,8 +19,12 @@ sequenceDiagram
   API-->>Client: accessToken + refreshToken + user
 
   Client->>API: GET /auth/me (Bearer access)
-  API->>DB: load active user
-  API-->>Client: profile + role + permissions
+  API->>DB: load active user + city/governorate
+  API-->>Client: profile + role + permissions + identityStatus
+
+  Client->>API: PATCH /auth/me (Bearer, profile:write)
+  API->>DB: update profile fields
+  API-->>Client: updated profile + identityStatus
 
   Client->>API: POST /auth/refresh { refreshToken }
   API->>DB: validate/rotate RefreshToken
@@ -94,6 +98,29 @@ Legacy `ALLOW_STAFF_DEV_LOGIN` is dual-read in Release 0.2 (deprecation warning)
 `dev` / `staff` require a reachable API. Offline synthetic tokens are not supported.
 
 Web/admin store bearer tokens in `localStorage` (temporary — see ADR 005). Mobile uses SecureStore.
+
+## Profile completion (Release 0.2 Phase B)
+
+Consumer write endpoint: **`PATCH /v1/auth/me`** only (permission `profile:write`).
+
+| Field | Required for completion | Notes |
+| --- | --- | --- |
+| `displayName` | Yes | Cannot be cleared with `null` |
+| `cityId` | Yes | Governorate is always derived via `City` |
+| `preferredLanguage` | No | May be cleared with `null` |
+| `email` | No | May be cleared with `null` |
+| `avatarUrl` | No | URL string only in 0.2; MediaAsset in 0.3 |
+| `dateOfBirth` | No | `YYYY-MM-DD`; may be cleared with `null` |
+
+`identityStatus` on login / refresh / `GET|PATCH /me`:
+
+| Value | Meaning |
+| --- | --- |
+| `unauthenticated` | Client-only (no session). Not returned by authenticated auth routes. |
+| `needs_profile` | Missing `displayName` (≥2 chars) and/or `cityId` |
+| `authenticated` | Required profile fields present |
+
+Clients must gate on `user.identityStatus` instead of inventing local completeness rules. `profileComplete` is not stored in the database.
 
 ## Out of scope (later sprints)
 

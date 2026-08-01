@@ -30,6 +30,18 @@ export const otpFormSchema = z.object({
 
 export const profileFormSchema = z.object({
   displayName: displayNameSchema,
+  governorateId: z.string().min(1, { message: 'Select a governorate' }),
+  cityId: z.string().min(1, { message: 'Select a city' }),
+  preferredLanguage: z.enum(['', 'ar', 'ku', 'en']),
+  email: z.union([z.literal(''), z.string().trim().email({ message: 'Enter a valid email' })]),
+  dateOfBirth: z.union([
+    z.literal(''),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Use YYYY-MM-DD' }),
+  ]),
+  avatarUrl: z.union([
+    z.literal(''),
+    z.string().trim().url({ message: 'Enter a valid URL' }),
+  ]),
 });
 
 export type PhoneFormValues = z.infer<typeof phoneFormSchema>;

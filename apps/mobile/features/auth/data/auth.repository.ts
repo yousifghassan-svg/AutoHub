@@ -1,5 +1,10 @@
 import type { HttpClient } from '@/lib/api/http-client';
-import { ApiError, type AuthenticatedUser, type AuthTokens } from '@/lib/api/types';
+import {
+  ApiError,
+  type AuthenticatedUser,
+  type AuthTokens,
+  type UpdateProfileInput,
+} from '@/lib/api/types';
 import type { PhoneAuthGateway } from './phone-auth.gateway';
 import type { TokenStorage } from './token-storage.types';
 import type { PhoneVerificationSession, StoredSession } from '../domain/types';
@@ -11,20 +16,36 @@ export type AuthRepository = {
   refreshSession(): Promise<StoredSession | null>;
   fetchMe(): Promise<AuthenticatedUser>;
   logout(): Promise<void>;
-  completeProfileSetup(displayName: string): Promise<StoredSession>;
+  completeProfileSetup(input: UpdateProfileInput): Promise<StoredSession>;
   getSession(): Promise<StoredSession | null>;
 };
 
-function toStoredSession(tokens: AuthTokens, profileSetupComplete?: boolean): StoredSession {
-  const complete =
-    profileSetupComplete ??
-    Boolean(tokens.user.displayName && tokens.user.displayName.trim().length >= 2);
+function isProfileCompleteFromUser(user: AuthenticatedUser): boolean {
+  if (user.identityStatus === 'authenticated') return true;
+  if (user.identityStatus === 'needs_profile') return false;
+  return Boolean(
+    user.displayName && user.displayName.trim().length >= 2 && user.cityId,
+  );
+}
+
+function toStoredSession(tokens: AuthTokens): StoredSession {
   return {
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,
     accessExpiresAt: Date.now() + tokens.expiresIn * 1000,
     user: tokens.user,
-    profileSetupComplete: complete,
+    profileSetupComplete: isProfileCompleteFromUser(tokens.user),
+  };
+}
+
+function withUpdatedUser(
+  existing: StoredSession,
+  user: AuthenticatedUser,
+): StoredSession {
+  return {
+    ...existing,
+    user,
+    profileSetupComplete: isProfileCompleteFromUser(user),
   };
 }
 
@@ -56,7 +77,7 @@ export function createApiAuthRepository(deps: {
       if (existing.accessExpiresAt - skewMs > Date.now()) {
         try {
           const user = await http.get<AuthenticatedUser>('/v1/auth/me');
-          const next = { ...existing, user };
+          const next = withUpdatedUser(existing, user);
           await storage.save(next);
           return next;
         } catch {
@@ -76,11 +97,10 @@ export function createApiAuthRepository(deps: {
           { refreshToken: existing.refreshToken },
           false,
         );
-        const stored = toStoredSession(tokens, existing.profileSetupComplete);
+        const stored = toStoredSession(tokens);
         await storage.save(stored);
         return stored;
       } catch (e) {
-        // Keep local session on offline/network blips; only clear on auth rejection.
         const status = e instanceof ApiError ? e.statusCode : 0;
         const offline = e instanceof ApiError ? e.offline : false;
         if (offline || status === 0) {
@@ -111,17 +131,16 @@ export function createApiAuthRepository(deps: {
       await storage.clear();
     },
 
-    async completeProfileSetup(displayName) {
+    async completeProfileSetup(input) {
       const existing = await storage.load();
       if (!existing) {
         throw new Error('No active session');
       }
-      await phoneAuth.updateDisplayName?.(displayName);
-      const next: StoredSession = {
-        ...existing,
-        user: { ...existing.user, displayName },
-        profileSetupComplete: true,
-      };
+      if (input.displayName) {
+        await phoneAuth.updateDisplayName?.(input.displayName);
+      }
+      const user = await http.patch<AuthenticatedUser>('/v1/auth/me', input, true);
+      const next = withUpdatedUser(existing, user);
       await storage.save(next);
       return next;
     },
@@ -179,7 +198,7 @@ export function createDevAuthRepository(deps: {
       if (existing.accessExpiresAt - skewMs > Date.now()) {
         try {
           const user = await http.get<AuthenticatedUser>('/v1/auth/me');
-          const next = { ...existing, user };
+          const next = withUpdatedUser(existing, user);
           await storage.save(next);
           return next;
         } catch {
@@ -199,7 +218,7 @@ export function createDevAuthRepository(deps: {
           { refreshToken: existing.refreshToken },
           false,
         );
-        const stored = toStoredSession(tokens, existing.profileSetupComplete);
+        const stored = toStoredSession(tokens);
         await storage.save(stored);
         return stored;
       } catch (e) {
@@ -233,15 +252,14 @@ export function createDevAuthRepository(deps: {
       await storage.clear();
     },
 
-    async completeProfileSetup(displayName) {
+    async completeProfileSetup(input) {
       const existing = await storage.load();
       if (!existing) throw new Error('No active session');
-      await phoneAuth.updateDisplayName?.(displayName);
-      const next = {
-        ...existing,
-        user: { ...existing.user, displayName },
-        profileSetupComplete: true,
-      };
+      if (input.displayName) {
+        await phoneAuth.updateDisplayName?.(input.displayName);
+      }
+      const user = await http.patch<AuthenticatedUser>('/v1/auth/me', input, true);
+      const next = withUpdatedUser(existing, user);
       await storage.save(next);
       return next;
     },

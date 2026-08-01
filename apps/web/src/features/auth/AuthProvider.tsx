@@ -22,6 +22,7 @@ import {
   loadVerification,
   saveVerification,
 } from './data/verification-storage';
+import type { UpdateProfileInput } from '@/lib/api/types';
 import type { AuthStatus, PhoneVerificationSession, StoredSession } from './domain/types';
 
 type AuthContextValue = {
@@ -32,7 +33,7 @@ type AuthContextValue = {
   clearError: () => void;
   sendOtp: (phone: string) => Promise<PhoneVerificationSession>;
   verifyOtp: (code: string) => Promise<StoredSession>;
-  completeProfile: (displayName: string) => Promise<void>;
+  completeProfile: (input: UpdateProfileInput) => Promise<void>;
   logout: () => Promise<void>;
   authMode: WebAuthMode;
 };
@@ -42,8 +43,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function deriveStatus(session: StoredSession | null, bootstrapping: boolean): AuthStatus {
   if (bootstrapping) return 'bootstrapping';
   if (!session) return 'unauthenticated';
-  if (!session.profileSetupComplete) return 'needs_profile';
-  return 'authenticated';
+  const identity = session.user.identityStatus;
+  if (identity === 'authenticated' || identity === 'needs_profile') {
+    return identity;
+  }
+  return session.profileSetupComplete ? 'authenticated' : 'needs_profile';
 }
 
 function createRepo(): AuthRepository {
@@ -130,9 +134,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const completeProfile = useCallback(
-    async (displayName: string) => {
+    async (input: UpdateProfileInput) => {
       setError(null);
-      const next = await repo.completeProfileSetup(displayName);
+      const next = await repo.completeProfileSetup(input);
       setSession(next);
     },
     [repo],

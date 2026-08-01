@@ -43,7 +43,7 @@ First functional AutoHub mobile experience: phone login against the existing Aut
 
 ## Profile setup
 
-There is no profile PATCH on the API yet. When `displayName` is empty after login, the app shows Profile Setup, stores the name in secure session storage, and calls Firebase `updateProfile` when available so a later login can sync the claim.
+Profile completion uses `PATCH /v1/auth/me` (Release 0.2 Phase B). Clients gate on `user.identityStatus` (`needs_profile` | `authenticated`). Optional Firebase `updateProfile` may still sync display name when the SDK is available.
 
 ## Tests
 

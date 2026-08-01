@@ -21,7 +21,7 @@
 | --- | --- |
 | 0 — Auth cleanup | Done |
 | A — API hardening | Done (prod JWT/Firebase validation, auth throttles, gate tests) |
-| B — Profile API | Not started |
+| B — Profile API | Done (`PATCH /auth/me`, `identityStatus`, web/mobile profile-setup) |
 | C/D — Web/Mobile Firebase | Not started |
 | E — Route protection polish | Not started |
 
@@ -31,7 +31,7 @@
 
 | Area | Deliverable |
 | --- | --- |
-| API auth domain | `POST /v1/auth/login`, refresh, logout, `GET /v1/auth/me` |
+| API auth domain | `POST /v1/auth/login`, refresh, logout, `GET|PATCH /v1/auth/me` |
 | Tokens | Access JWT (HS256); opaque refresh hashed at rest; family revoke on reuse |
 | Users | Upsert by `firebaseUid`; `UserRole` + `Permission` map |
 | Guards | JWT, roles, permissions; active-user reload from DB |

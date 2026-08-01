@@ -11,7 +11,7 @@ import { IS_PUBLIC_KEY } from '../../../../shared/decorators/public.decorator';
 import type { AccessTokenPayload, AuthenticatedUser } from '../../domain/auth.types';
 import { AppConfigService } from '../../../../infrastructure/config/app-config.service';
 import { UsersService } from '../../../users/application/users.service';
-import { permissionsForRole } from '../../domain/permissions';
+import { mapAuthenticatedUser } from '../../application/map-authenticated-user';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -64,16 +64,7 @@ export class JwtAuthGuard implements CanActivate {
       return;
     }
 
-    request.user = {
-      id: user.id,
-      firebaseUid: user.firebaseUid,
-      phone: user.phone,
-      email: user.email,
-      displayName: user.displayName,
-      role: user.role,
-      permissions: permissionsForRole(user.role),
-      status: user.status,
-    };
+    request.user = mapAuthenticatedUser(user);
   }
 }
 

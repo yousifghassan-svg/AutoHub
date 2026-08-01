@@ -17,7 +17,9 @@ import type {
   AccessTokenPayload,
   AuthenticatedUser,
   RequestContext,
+  UpdateProfileInput,
 } from '../domain/auth.types';
+import { mapAuthenticatedUser } from './map-authenticated-user';
 
 export type AuthTokensResponse = {
   accessToken: string;
@@ -236,6 +238,16 @@ export class AuthService {
     return this.toAuthenticatedUser(fresh);
   }
 
+  async updateMe(
+    user: AuthenticatedUser,
+    input: UpdateProfileInput,
+  ): Promise<AuthenticatedUser> {
+    const fresh = await this.users.findActiveById(user.id);
+    if (!fresh) throw new UnauthorizedException('User not found or inactive');
+    const updated = await this.users.updateProfile(user.id, input);
+    return this.toAuthenticatedUser(updated);
+  }
+
   private async issueTokens(
     userId: string,
     role: AuthenticatedUser['role'],
@@ -289,25 +301,10 @@ export class AuthService {
     };
   }
 
-  private toAuthenticatedUser(user: {
-    id: string;
-    firebaseUid: string | null;
-    phone: string | null;
-    email: string | null;
-    displayName: string | null;
-    role: AuthenticatedUser['role'];
-    status: string;
-  }): AuthenticatedUser {
-    return {
-      id: user.id,
-      firebaseUid: user.firebaseUid,
-      phone: user.phone,
-      email: user.email,
-      displayName: user.displayName,
-      role: user.role,
-      permissions: permissionsForRole(user.role),
-      status: user.status,
-    };
+  private toAuthenticatedUser(
+    user: Parameters<typeof mapAuthenticatedUser>[0],
+  ): AuthenticatedUser {
+    return mapAuthenticatedUser(user);
   }
 }
 

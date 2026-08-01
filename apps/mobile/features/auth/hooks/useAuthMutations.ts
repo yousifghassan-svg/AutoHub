@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { ApiError } from '@/lib/api/types';
+import { ApiError, type UpdateProfileInput } from '@/lib/api/types';
 import { PhoneAuthError } from '../data/phone-auth.gateway';
 import { useAuth } from '../context/AuthProvider';
 
@@ -28,7 +28,7 @@ export function useVerifyOtpMutation() {
 export function useCompleteProfileMutation() {
   const { completeProfile } = useAuth();
   return useMutation({
-    mutationFn: (displayName: string) => completeProfile(displayName),
+    mutationFn: (input: UpdateProfileInput) => completeProfile(input),
   });
 }
 

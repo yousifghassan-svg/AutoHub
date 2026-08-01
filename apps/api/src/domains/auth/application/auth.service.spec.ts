@@ -12,6 +12,7 @@ describe('AuthService', () => {
     findOrCreateFromFirebase: jest.fn(),
     findActiveById: jest.fn(),
     findActiveByPhone: jest.fn(),
+    updateProfile: jest.fn(),
   };
   const jwt = {
     signAsync: jest.fn().mockResolvedValue('access.jwt'),
@@ -56,6 +57,11 @@ describe('AuthService', () => {
     displayName: null,
     role: 'USER' as const,
     status: 'ACTIVE',
+    preferredLanguage: 'ar' as const,
+    cityId: null,
+    avatarUrl: null,
+    dateOfBirth: null,
+    city: null,
   };
 
   const staffUser = {
@@ -85,6 +91,7 @@ describe('AuthService', () => {
     expect(result.accessToken).toBe('access.jwt');
     expect(result.refreshToken).toBeTruthy();
     expect(result.user.permissions).toContain(Permission.PROFILE_READ);
+    expect(result.user.identityStatus).toBe('needs_profile');
     expect(audit.create).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 'user-1',
@@ -92,6 +99,59 @@ describe('AuthService', () => {
         metadata: expect.objectContaining({ created: true }),
       }),
     );
+  });
+
+  it('updateMe persists profile and returns authenticated identityStatus', async () => {
+    const incomplete = { ...activeUser, displayName: null, cityId: null };
+    const complete = {
+      ...activeUser,
+      displayName: 'Sara Ali',
+      cityId: 'city-1',
+      city: {
+        id: 'city-1',
+        nameEn: 'Baghdad',
+        nameAr: 'بغداد',
+        nameKu: null,
+        governorateId: 'gov-1',
+        governorate: {
+          id: 'gov-1',
+          nameEn: 'Baghdad',
+          nameAr: 'بغداد',
+          nameKu: null,
+        },
+      },
+    };
+    users.findActiveById.mockResolvedValue(incomplete);
+    users.updateProfile.mockResolvedValue(complete);
+
+    const result = await service.updateMe(
+      {
+        id: 'user-1',
+        firebaseUid: 'fb-1',
+        phone: '+9647700000000',
+        email: null,
+        displayName: null,
+        role: 'USER',
+        permissions: [Permission.PROFILE_READ, Permission.PROFILE_WRITE],
+        status: 'ACTIVE',
+        preferredLanguage: 'ar',
+        cityId: null,
+        city: null,
+        governorate: null,
+        avatarUrl: null,
+        dateOfBirth: null,
+        identityStatus: 'needs_profile',
+      },
+      { displayName: 'Sara Ali', cityId: 'city-1' },
+    );
+
+    expect(users.updateProfile).toHaveBeenCalledWith('user-1', {
+      displayName: 'Sara Ali',
+      cityId: 'city-1',
+    });
+    expect(result.identityStatus).toBe('authenticated');
+    expect(result.cityId).toBe('city-1');
+    expect(result.governorate?.id).toBe('gov-1');
   });
 
   it('rejects inactive users on login', async () => {

@@ -13,7 +13,7 @@ import { Server, Socket } from 'socket.io';
 import { AppConfigService } from '../../../infrastructure/config/app-config.service';
 import { UsersService } from '../../users/application/users.service';
 import type { AccessTokenPayload, AuthenticatedUser } from '../../auth/domain/auth.types';
-import { permissionsForRole } from '../../auth/domain/permissions';
+import { mapAuthenticatedUser } from '../../auth/application/map-authenticated-user';
 import { PresenceService } from '../application/presence.service';
 import { ConversationsService } from '../application/conversations.service';
 import type { SendMessageDto } from './dto/communication.dto';
@@ -180,16 +180,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user = await this.users.findActiveById(payload.sub);
     if (!user) throw new UnauthorizedException('User not found');
 
-    return {
-      id: user.id,
-      firebaseUid: user.firebaseUid,
-      phone: user.phone,
-      email: user.email,
-      displayName: user.displayName,
-      role: user.role,
-      permissions: permissionsForRole(user.role),
-      status: user.status,
-    };
+    return mapAuthenticatedUser(user);
   }
 }
 

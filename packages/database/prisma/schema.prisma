@@ -502,17 +502,20 @@ model VehicleModel {
 // ─── Identity ────────────────────────────────────────────────────────────────
 
 model User {
-  id                String       @id @default(cuid())
-  firebaseUid       String?      @unique
-  phone             String?      @unique
-  email             String?      @unique
+  id                String        @id @default(cuid())
+  firebaseUid       String?       @unique
+  phone             String?       @unique
+  email             String?       @unique
   displayName       String?
-  role              UserRole     @default(USER)
-  status            UserStatus   @default(ACTIVE)
-  preferredLanguage LanguageCode @default(ar)
+  role              UserRole      @default(USER)
+  status            UserStatus    @default(ACTIVE)
+  preferredLanguage LanguageCode? @default(ar)
   cityId            String?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  /// Optional profile image URL (MediaAsset linkage deferred to Release 0.3)
+  avatarUrl         String?
+  dateOfBirth       DateTime?     @db.Date
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
   createdById       String?
   updatedById       String?
   deletedAt         DateTime?

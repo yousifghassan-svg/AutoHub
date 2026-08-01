@@ -104,6 +104,13 @@ Implemented transitions (`apps/api/.../listing-status.ts`):
 
 Permissions are fine-grained (`profile:*`, `listings:*`, `media:*`, `messages:*`, `admin:access`, …). Role → permission sets live in API `permissions.ts`.
 
+### Profile completion (consumers)
+
+1. After phone login, a user is `needs_profile` until **display name** and **city** (`cityId`) are set.  
+2. Governorate is selected in UI but stored only via `cityId` (derived on read).  
+3. Optional: preferred language, email, avatar URL, date of birth.  
+4. Self-serve updates use `PATCH /v1/auth/me` only; clients gate on `identityStatus`.
+
 ### Actor shortcuts (product language)
 
 - **Guest** — unauthenticated browse of public ACTIVE listings  

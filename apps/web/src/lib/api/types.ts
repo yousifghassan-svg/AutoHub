@@ -39,6 +39,26 @@ export class ApiError extends Error {
   }
 }
 
+export type IdentityStatus =
+  | 'unauthenticated'
+  | 'needs_profile'
+  | 'authenticated';
+
+export type AuthenticatedUserCity = {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+  nameKu: string | null;
+  governorateId: string;
+};
+
+export type AuthenticatedUserGovernorate = {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+  nameKu: string | null;
+};
+
 export type AuthenticatedUser = {
   id: string;
   firebaseUid: string | null;
@@ -48,6 +68,22 @@ export type AuthenticatedUser = {
   role: string;
   permissions: string[];
   status: string;
+  preferredLanguage: 'ar' | 'ku' | 'en' | null;
+  cityId: string | null;
+  city: AuthenticatedUserCity | null;
+  governorate: AuthenticatedUserGovernorate | null;
+  avatarUrl: string | null;
+  dateOfBirth: string | null;
+  identityStatus: IdentityStatus;
+};
+
+export type UpdateProfileInput = {
+  displayName?: string;
+  cityId?: string;
+  preferredLanguage?: 'ar' | 'ku' | 'en' | null;
+  email?: string | null;
+  avatarUrl?: string | null;
+  dateOfBirth?: string | null;
 };
 
 export type AuthTokens = {

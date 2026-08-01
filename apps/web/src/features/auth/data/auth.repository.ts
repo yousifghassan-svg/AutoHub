@@ -1,5 +1,9 @@
 import type { HttpClient } from '@/lib/api/http-client';
-import type { AuthenticatedUser, AuthTokens } from '@/lib/api/types';
+import type {
+  AuthenticatedUser,
+  AuthTokens,
+  UpdateProfileInput,
+} from '@/lib/api/types';
 import { config } from '@/lib/config';
 import type { PhoneVerificationSession, StoredSession } from '../domain/types';
 import type { TokenStorage } from './token-storage';
@@ -10,20 +14,38 @@ export type AuthRepository = {
   restoreSession(): Promise<StoredSession | null>;
   refreshSession(): Promise<StoredSession | null>;
   logout(): Promise<void>;
-  completeProfileSetup(displayName: string): Promise<StoredSession>;
+  completeProfileSetup(input: UpdateProfileInput): Promise<StoredSession>;
   getSession(): Promise<StoredSession | null>;
 };
 
-function toStoredSession(tokens: AuthTokens, profileSetupComplete?: boolean): StoredSession {
-  const complete =
-    profileSetupComplete ??
-    Boolean(tokens.user.displayName && tokens.user.displayName.trim().length >= 2);
+function isProfileCompleteFromUser(user: AuthenticatedUser): boolean {
+  if (user.identityStatus === 'authenticated') return true;
+  if (user.identityStatus === 'needs_profile') return false;
+  return Boolean(
+    user.displayName &&
+      user.displayName.trim().length >= 2 &&
+      user.cityId,
+  );
+}
+
+function toStoredSession(tokens: AuthTokens): StoredSession {
   return {
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,
     accessExpiresAt: Date.now() + tokens.expiresIn * 1000,
     user: tokens.user,
-    profileSetupComplete: complete,
+    profileSetupComplete: isProfileCompleteFromUser(tokens.user),
+  };
+}
+
+function withUpdatedUser(
+  existing: StoredSession,
+  user: AuthenticatedUser,
+): StoredSession {
+  return {
+    ...existing,
+    user,
+    profileSetupComplete: isProfileCompleteFromUser(user),
   };
 }
 
@@ -80,7 +102,7 @@ export function createDevAuthRepository(
       if (existing.accessExpiresAt - 30_000 > Date.now()) {
         try {
           const user = await http.get<AuthenticatedUser>('/v1/auth/me');
-          const next = { ...existing, user };
+          const next = withUpdatedUser(existing, user);
           await storage.save(next);
           return next;
         } catch {
@@ -93,7 +115,7 @@ export function createDevAuthRepository(
           { refreshToken: existing.refreshToken },
           false,
         );
-        const stored = toStoredSession(tokens, existing.profileSetupComplete);
+        const stored = toStoredSession(tokens);
         await storage.save(stored);
         return stored;
       } catch (e) {
@@ -118,7 +140,7 @@ export function createDevAuthRepository(
           { refreshToken: existing.refreshToken },
           false,
         );
-        const stored = toStoredSession(tokens, existing.profileSetupComplete);
+        const stored = toStoredSession(tokens);
         await storage.save(stored);
         return stored;
       } catch (e) {
@@ -146,14 +168,11 @@ export function createDevAuthRepository(
       }
       await storage.clear();
     },
-    async completeProfileSetup(displayName) {
+    async completeProfileSetup(input) {
       const existing = await storage.load();
       if (!existing) throw new Error('No active session');
-      const next = {
-        ...existing,
-        user: { ...existing.user, displayName },
-        profileSetupComplete: true,
-      };
+      const user = await http.patch<AuthenticatedUser>('/v1/auth/me', input, true);
+      const next = withUpdatedUser(existing, user);
       await storage.save(next);
       return next;
     },
@@ -196,7 +215,7 @@ export function createApiAuthRepository(deps: {
           { refreshToken: existing.refreshToken },
           false,
         );
-        const stored = toStoredSession(tokens, existing.profileSetupComplete);
+        const stored = toStoredSession(tokens);
         await storage.save(stored);
         return stored;
       } catch {
@@ -210,7 +229,7 @@ export function createApiAuthRepository(deps: {
       if (existing.accessExpiresAt - 30_000 > Date.now()) {
         try {
           const user = await http.get<AuthenticatedUser>('/v1/auth/me');
-          const next = { ...existing, user };
+          const next = withUpdatedUser(existing, user);
           await storage.save(next);
           return next;
         } catch {
@@ -220,7 +239,7 @@ export function createApiAuthRepository(deps: {
       const tokens = existing.refreshToken
         ? await http
             .post<AuthTokens>('/v1/auth/refresh', { refreshToken: existing.refreshToken }, false)
-            .then((t) => toStoredSession(t, existing.profileSetupComplete))
+            .then((t) => toStoredSession(t))
             .catch(async () => {
               await storage.clear();
               return null;
@@ -244,14 +263,11 @@ export function createApiAuthRepository(deps: {
       }
       await storage.clear();
     },
-    async completeProfileSetup(displayName) {
+    async completeProfileSetup(input) {
       const existing = await storage.load();
       if (!existing) throw new Error('No active session');
-      const next = {
-        ...existing,
-        user: { ...existing.user, displayName },
-        profileSetupComplete: true,
-      };
+      const user = await http.patch<AuthenticatedUser>('/v1/auth/me', input, true);
+      const next = withUpdatedUser(existing, user);
       await storage.save(next);
       return next;
     },

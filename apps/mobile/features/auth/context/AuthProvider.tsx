@@ -3,6 +3,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { onAuthFailure } from '@/lib/auth-events';
 import { getAuthRepository } from '../di';
+import type { UpdateProfileInput } from '@/lib/api/types';
 import type { AuthStatus, PhoneVerificationSession, StoredSession } from '../domain/types';
 
 type AuthContextValue = {
@@ -13,7 +14,7 @@ type AuthContextValue = {
   clearError: () => void;
   sendOtp: (phoneE164: string) => Promise<PhoneVerificationSession>;
   verifyOtp: (code: string) => Promise<StoredSession>;
-  completeProfile: (displayName: string) => Promise<void>;
+  completeProfile: (input: UpdateProfileInput) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -23,8 +24,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function deriveStatus(session: StoredSession | null, bootstrapping: boolean): AuthStatus {
   if (bootstrapping) return 'bootstrapping';
   if (!session) return 'unauthenticated';
-  if (!session.profileSetupComplete) return 'needs_profile';
-  return 'authenticated';
+  const identity = session.user.identityStatus;
+  if (identity === 'authenticated' || identity === 'needs_profile') {
+    return identity;
+  }
+  return session.profileSetupComplete ? 'authenticated' : 'needs_profile';
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -103,9 +107,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const completeProfile = useCallback(
-    async (displayName: string) => {
+    async (input: UpdateProfileInput) => {
       setError(null);
-      const next = await repo.completeProfileSetup(displayName);
+      const next = await repo.completeProfileSetup(input);
       setSession(next);
     },
     [repo],

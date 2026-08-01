@@ -2,7 +2,7 @@ import { createDevAuthRepository } from '../data/auth.repository';
 import { createMockPhoneAuthGateway } from '../data/mock-phone-auth.gateway';
 import { createMemoryTokenStorage } from '../data/memory-token-storage';
 import type { HttpClient } from '@/lib/api/http-client';
-import type { AuthTokens } from '@/lib/api/types';
+import type { AuthenticatedUser, AuthTokens } from '@/lib/api/types';
 
 describe('createDevAuthRepository', () => {
   const phone = '+9647501234567';
@@ -10,21 +10,48 @@ describe('createDevAuthRepository', () => {
   function setup() {
     const storage = createMemoryTokenStorage();
     const phoneAuth = createMockPhoneAuthGateway();
+    const incompleteUser: AuthenticatedUser = {
+      id: 'user-1',
+      firebaseUid: 'dev:+9647501234567',
+      phone,
+      email: null,
+      displayName: null,
+      role: 'USER',
+      permissions: ['profile:read', 'profile:write'],
+      status: 'ACTIVE',
+      preferredLanguage: 'ar',
+      cityId: null,
+      city: null,
+      governorate: null,
+      avatarUrl: null,
+      dateOfBirth: null,
+      identityStatus: 'needs_profile',
+    };
     const tokens: AuthTokens = {
       accessToken: 'access.jwt',
       refreshToken: 'refresh.opaque',
       tokenType: 'Bearer',
       expiresIn: 900,
-      user: {
-        id: 'user-1',
-        firebaseUid: 'dev:+9647501234567',
-        phone,
-        email: null,
-        displayName: null,
-        role: 'USER',
-        permissions: ['profile:read', 'profile:write'],
-        status: 'ACTIVE',
+      user: incompleteUser,
+    };
+    const completeUser: AuthenticatedUser = {
+      ...incompleteUser,
+      displayName: 'Sara',
+      cityId: 'city-1',
+      city: {
+        id: 'city-1',
+        nameEn: 'Baghdad',
+        nameAr: 'بغداد',
+        nameKu: null,
+        governorateId: 'gov-1',
       },
+      governorate: {
+        id: 'gov-1',
+        nameEn: 'Baghdad',
+        nameAr: 'بغداد',
+        nameKu: null,
+      },
+      identityStatus: 'authenticated',
     };
     const http = {
       post: jest.fn(async (path: string) => {
@@ -39,11 +66,12 @@ describe('createDevAuthRepository', () => {
         if (path === '/v1/auth/logout') return {};
         throw new Error(`Unexpected POST ${path}`);
       }),
-      get: jest.fn(async () => tokens.user),
+      get: jest.fn(async () => incompleteUser),
+      patch: jest.fn(async () => completeUser),
     } as unknown as HttpClient;
 
     const repo = createDevAuthRepository({ http, storage, phoneAuth });
-    return { storage, repo, http, tokens };
+    return { storage, repo, http, tokens, completeUser };
   }
 
   it('logs in via /v1/auth/dev-login with OTP and requires profile setup', async () => {
@@ -57,6 +85,7 @@ describe('createDevAuthRepository', () => {
       false,
     );
     expect(session.user.phone).toBe(phone);
+    expect(session.user.identityStatus).toBe('needs_profile');
     expect(session.profileSetupComplete).toBe(false);
     expect(session.accessToken).toBe('access.jwt');
   });
@@ -105,6 +134,13 @@ describe('createDevAuthRepository', () => {
         role: 'USER',
         permissions: [],
         status: 'ACTIVE',
+        preferredLanguage: null,
+        cityId: null,
+        city: null,
+        governorate: null,
+        avatarUrl: null,
+        dateOfBirth: null,
+        identityStatus: 'needs_profile',
       },
       profileSetupComplete: false,
     });
@@ -113,14 +149,23 @@ describe('createDevAuthRepository', () => {
     expect(await storage.load()).toBeNull();
   });
 
-  it('completes profile setup and logs out', async () => {
-    const { repo } = setup();
+  it('completes profile setup via PATCH /v1/auth/me and logs out', async () => {
+    const { repo, http, completeUser } = setup();
     const verification = await repo.sendOtp(phone);
     await repo.verifyOtpAndLogin(verification, '123456');
-    const profiled = await repo.completeProfileSetup('Sara');
+    const profiled = await repo.completeProfileSetup({
+      displayName: 'Sara',
+      cityId: 'city-1',
+    });
 
+    expect(http.patch).toHaveBeenCalledWith(
+      '/v1/auth/me',
+      { displayName: 'Sara', cityId: 'city-1' },
+      true,
+    );
     expect(profiled.profileSetupComplete).toBe(true);
-    expect(profiled.user.displayName).toBe('Sara');
+    expect(profiled.user.identityStatus).toBe('authenticated');
+    expect(profiled.user.displayName).toBe(completeUser.displayName);
 
     await repo.logout();
     expect(await repo.getSession()).toBeNull();

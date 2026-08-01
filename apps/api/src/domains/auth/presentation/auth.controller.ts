@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Req } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -18,6 +18,7 @@ import { StaffLoginDto } from './dto/staff-login.dto';
 import { DevLoginDto } from './dto/dev-login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { LogoutDto } from './dto/logout.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuthTokensDto, AuthenticatedUserDto } from './dto/auth-response.dto';
 
 @ApiTags('auth')
@@ -93,10 +94,27 @@ export class AuthController {
   @Get('me')
   @ApiBearerAuth('access-token')
   @Permissions(Permission.PROFILE_READ)
-  @ApiOperation({ summary: 'Get current authenticated user profile' })
+  @ApiOperation({
+    summary: 'Get current authenticated user profile',
+    description:
+      'Includes identityStatus (needs_profile | authenticated). Clients should gate on this value.',
+  })
   @ApiOkResponse({ type: AuthenticatedUserDto })
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.auth.me(user);
+  }
+
+  @Patch('me')
+  @ApiBearerAuth('access-token')
+  @Permissions(Permission.PROFILE_WRITE)
+  @ApiOperation({
+    summary: 'Update current user profile',
+    description:
+      'Required for completion: displayName + cityId (governorate derived). Optional fields may be cleared with null. displayName/cityId cannot be null.',
+  })
+  @ApiOkResponse({ type: AuthenticatedUserDto })
+  updateMe(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateProfileDto) {
+    return this.auth.updateMe(user, body);
   }
 }
 
