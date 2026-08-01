@@ -119,17 +119,18 @@ export class AdminPlatesService {
     const city = await this.plates.findCityWithGovernorate(input.cityId);
     const country = input.countryId ?? city.governorate.countryId;
     const slug = `plate-${normalized.toLowerCase()}-${Date.now().toString(36)}`;
+    const status = input.status ?? ListingStatus.PENDING;
 
     const created = await this.plates.create({
       seller: { connect: { id: input.sellerId } },
       category: { connect: { id: input.categoryId } },
-      status: input.status ?? ListingStatus.ACTIVE,
+      status,
       country: { connect: { id: country } },
       city: { connect: { id: input.cityId } },
       primaryPrice: input.primaryPrice,
       slug,
       metaTitle: input.title,
-      publishedAt: new Date(),
+      publishedAt: status === ListingStatus.ACTIVE ? new Date() : undefined,
       createdBy: { connect: { id: actor.id } },
       updatedBy: { connect: { id: actor.id } },
       translations: {
