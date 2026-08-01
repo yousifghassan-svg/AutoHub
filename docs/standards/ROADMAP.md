@@ -25,6 +25,7 @@ Launch a trusted Iraq marketplace for **vehicles and plates** as classifieds, wi
 | Media platform | MediaAsset + R2 + listing attach |
 | Mobile consumer app | Expo design system, auth, home, detail, create, manage |
 | Web marketplace | Browse/search/sell/chat/favorites/notifications |
+| Web owner/visitor UX (Sprint 4) | Preview Mode, Action Registry, status badges, shared listing chrome under `features/listings/shared/` |
 | Admin operations | Dashboard, vehicles/plates, users, reports, communication, settings |
 | Realtime communication | Conversations, Socket.IO, notifications |
 | Financial foundation | Currency catalog, Money VO, currency-scoped search; payment **interfaces only** |
@@ -36,10 +37,10 @@ Launch a trusted Iraq marketplace for **vehicles and plates** as classifieds, wi
 
 | Priority | Item | Outcome |
 | --- | --- | --- |
-| P0 | Engineering standards pack (this sprint) | Normative docs for humans + AI agents |
 | P0 | Keep production classifieds stable | No drive-by refactors; one feature at a time |
+| P1 | Release 0.4 Sprint 5 (marketplace polish) | Visitor contact shell dedupe; owner-only analytics; multi-status fixtures — **not started** |
 | P1 | Media attach unification | Close `r2Key` trust gap; single validated attach path |
-| P1 | Docs/README status sync | Align app status tables with reality |
+| P1 | Auth 0.2 remaining phases | Web/Mobile Firebase production paths; route-protection polish |
 | P2 | Outbox / async workers | Replace Alpha in-process timers where needed |
 | P2 | CI completeness | Add mobile lint/typecheck (and tests where stable) to CI |
 | P2 | Mobile sell alignment | Config/plugin approach parity with web sell host (separate feature) |

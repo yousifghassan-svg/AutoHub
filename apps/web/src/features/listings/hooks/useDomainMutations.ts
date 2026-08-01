@@ -28,6 +28,8 @@ export function useDomainMutations() {
     void qc.invalidateQueries({ queryKey: ['listings-infinite'] });
     void qc.invalidateQueries({ queryKey: ['vehicles'] });
     void qc.invalidateQueries({ queryKey: ['plates'] });
+    void qc.invalidateQueries({ queryKey: ['vehicle'] });
+    void qc.invalidateQueries({ queryKey: ['plate'] });
   };
 
   return {

@@ -36,11 +36,15 @@ export type ApiListing = {
       height: number | null;
     }>;
   }>;
-  city?: { nameEn: string; nameAr: string };
+  city?: { id?: string; nameEn: string; nameAr: string; governorateId?: string };
   latitude?: number | null;
   longitude?: number | null;
   locationText?: string | null;
   features?: string[];
+  cityId?: string | null;
+  governorateId?: string | null;
+  phoneClicks?: number | null;
+  whatsappClicks?: number | null;
   sellerContact?: {
     displayName: string | null;
     phone: string | null;
@@ -49,6 +53,13 @@ export type ApiListing = {
     dealerName: string | null;
     dealerVerified: boolean;
     dealerLogoUrl: string | null;
+  } | null;
+  /** Plate GET returns raw seller; normalized in mapListingToDetail. */
+  seller?: {
+    id?: string;
+    displayName?: string | null;
+    phone?: string | null;
+    role?: string | null;
   } | null;
   carDetails?: {
     year: number | null;
@@ -84,7 +95,6 @@ export type ApiListing = {
     colorId?: string | null;
   } | null;
   conditionTypeId?: string | null;
-  governorateId?: string | null;
   title?: string;
   plateDetails?: {
     formatCode: string;
@@ -208,21 +218,38 @@ export function mapListingToDetail(listing: ApiListing): ListingDetailModel {
 
   const locationText = listing.locationText?.trim() || null;
 
+  const sellerContact =
+    listing.sellerContact ??
+    (listing.seller
+      ? {
+          displayName: listing.seller.displayName ?? null,
+          phone: listing.seller.phone ?? null,
+          whatsapp: listing.seller.phone ?? null,
+          dealerSlug: null,
+          dealerName: null,
+          dealerVerified: false,
+          dealerLogoUrl: null,
+        }
+      : null);
+
   return {
     ...card,
     location: locationText || card.location,
     description,
     media,
     publishedAt: listing.publishedAt ?? null,
-    sellerId: listing.sellerId ?? null,
-    governorateId: listing.governorateId ?? null,
+    sellerId: listing.sellerId ?? listing.seller?.id ?? null,
+    cityId: listing.cityId ?? listing.city?.id ?? null,
+    governorateId: listing.governorateId ?? listing.city?.governorateId ?? null,
     cityNameEn: listing.city?.nameEn ?? null,
     latitude: listing.latitude ?? null,
     longitude: listing.longitude ?? null,
     locationText,
     features: listing.features ?? [],
-    sellerContact: listing.sellerContact ?? null,
-    dealerBadge: Boolean(listing.sellerContact?.dealerSlug ?? listing.isVerified),
+    sellerContact,
+    dealerBadge: Boolean(sellerContact?.dealerSlug ?? listing.isVerified),
+    phoneClicks: listing.phoneClicks ?? null,
+    whatsappClicks: listing.whatsappClicks ?? null,
     specs: details
       ? {
           brandId: details.brandId ?? null,

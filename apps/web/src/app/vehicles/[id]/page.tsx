@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useMemo } from 'react';
+import { ListingBreadcrumbBuilder, buildRecommendationQuery } from '@/features/listings/shared';
 import { VehicleDetailView } from '@/features/vehicles/components/VehicleDetailView';
 import { useVehicleDetail, useVehiclesPage } from '@/features/vehicles/hooks/useVehicles';
 
@@ -11,17 +12,33 @@ export default function VehicleDetailPage() {
   const query = useVehicleDetail(id);
   const listing = query.data;
 
+  const recommendation = listing
+    ? buildRecommendationQuery(listing, 5)
+    : null;
+
   const related = useVehiclesPage(
     {
-      categoryCode: listing?.categoryCode,
-      pageSize: 5,
-      sortBy: 'createdAt',
+      categoryCode: recommendation?.categoryCode as
+        | 'CAR'
+        | 'MOTORCYCLE'
+        | 'TRUCK'
+        | 'HEAVY_EQUIPMENT'
+        | undefined,
+      cityId: recommendation?.cityId,
+      governorateId: recommendation?.governorateId,
+      makeId: recommendation?.makeId,
+      pageSize: recommendation?.pageSize ?? 5,
+      sortBy: recommendation?.sortBy ?? 'createdAt',
+      sortOrder: recommendation?.sortOrder ?? 'desc',
     },
     Boolean(listing?.categoryCode),
   );
 
   const relatedItems = useMemo(
-    () => (related.data?.items ?? []).filter((i) => i.id !== id).slice(0, 4),
+    () =>
+      (related.data?.items ?? [])
+        .filter((i) => i.id !== id)
+        .slice(0, 4),
     [related.data?.items, id],
   );
 
@@ -29,14 +46,18 @@ export default function VehicleDetailPage() {
     ? `/vehicles/search?category=${listing.categoryCode}`
     : '/vehicles/search';
 
+  const breadcrumbs = listing
+    ? ListingBreadcrumbBuilder.forListing(listing)
+    : [
+        { label: 'Home', href: '/' },
+        { label: 'Vehicles', href: '/vehicles' },
+        { label: 'Vehicle' },
+      ];
+
   return (
     <VehicleDetailView
       query={query}
-      breadcrumbs={[
-        { label: 'Home', href: '/' },
-        { label: 'Vehicles', href: '/vehicles' },
-        { label: listing?.title ?? 'Vehicle' },
-      ]}
+      breadcrumbs={breadcrumbs}
       backHref="/vehicles"
       searchHref={searchHref}
       cardHref={(vehicleId) => `/vehicles/${vehicleId}`}

@@ -28,11 +28,25 @@ import {
   type ListingDetailModel,
   type ReportReason,
 } from '@/features/listings/domain/types';
+import {
+  isListingOwner,
+  ListingDescription,
+  ListingOwnerActions,
+  ListingPreviewBanner,
+  ListingSellerCard,
+  ListingStats,
+  ListingStatusBadge,
+  listingStatsFromCounts,
+  shareListing,
+  useListingPreviewMode,
+  whatsappHref,
+  YourListingBadge,
+} from '@/features/listings/shared';
 import { createVehiclesRepository } from '@/features/vehicles/data/vehicles.repository';
 import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch';
 import { getHttpClient } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/types';
-import { listingImageSrc, mediaPublicUrl } from '@/lib/media/url';
+import { listingImageSrc } from '@/lib/media/url';
 const VehicleGallery = dynamic(
   () => import('@/features/media').then((m) => m.VehicleGallery),
   {
@@ -53,10 +67,6 @@ function formatEngineSize(cc: number | null | undefined): string | null {
   if (cc == null) return null;
   if (cc >= 1000) return `${(cc / 1000).toFixed(1)} L`;
   return `${cc.toLocaleString()} cc`;
-}
-
-function whatsappHref(phone: string): string {
-  return `https://wa.me/${phone.replace(/\D/g, '')}`;
 }
 
 function openStreetMapEmbed(lat: number, lng: number): string {
@@ -92,7 +102,8 @@ export function VehicleDetailView({
   const router = useRouter();
   const catalog = useCatalogFilters();
   const { isFavorite, toggle } = useFavorites();
-  const { status } = useAuth();
+  const { status, session } = useAuth();
+  const { previewAsVisitor, enterPreview, exitPreview } = useListingPreviewMode();
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState<ReportReason>('SPAM');
   const [reportDetails, setReportDetails] = useState('');
@@ -104,6 +115,9 @@ export function VehicleDetailView({
   const listing = query.data;
 
   const canReport = status === 'authenticated';
+  const owner = isListingOwner(session?.user.id, listing?.sellerId);
+  const showOwnerChrome = owner && !previewAsVisitor;
+  const showVisitorChrome = !owner || previewAsVisitor;
 
   const specs = useMemo(() => {
     if (!listing?.specs || !catalog.data) return [] as Array<{ label: string; value: string }>;
@@ -198,7 +212,6 @@ export function VehicleDetailView({
   }
 
   const contact = listing.sellerContact;
-  const dealerLogo = mediaPublicUrl(contact?.dealerLogoUrl);
   const galleryItems = listing.media.length
     ? listing.media.map((m) => ({
         id: m.id,
@@ -223,22 +236,15 @@ export function VehicleDetailView({
 
   const share = async () => {
     const url = typeof window !== 'undefined' ? window.location.href : '';
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: listing.title, url });
-      } else {
-        await navigator.clipboard.writeText(url);
-        setShareMsg('Link copied');
-        setTimeout(() => setShareMsg(''), 2000);
-      }
-    } catch {
-      setShareMsg('Share cancelled');
-      setTimeout(() => setShareMsg(''), 2000);
-    }
+    const result = await shareListing({ title: listing.title, url });
+    setShareMsg(result.message ?? (result.ok ? 'Shared' : 'Share failed'));
+    setTimeout(() => setShareMsg(''), 2000);
   };
 
   return (
-    <div className="page-container space-y-12 py-10">
+    <div>
+      {previewAsVisitor ? <ListingPreviewBanner onExit={exitPreview} /> : null}
+      <div className="page-container space-y-12 py-10">
       <Breadcrumbs items={breadcrumbs} />
 
       <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr]">
@@ -248,11 +254,13 @@ export function VehicleDetailView({
 
         <div className="space-y-5">
           <div className="flex flex-wrap gap-2">
+            {showOwnerChrome ? <YourListingBadge /> : null}
             {listing.isFeatured ? <Badge tone="brand">Featured</Badge> : null}
             {listing.isVerified ? <Badge tone="success">Verified</Badge> : null}
             <Badge>{listing.categoryCode}</Badge>
             {listing.dealerBadge ? <Badge tone="warning">Dealer</Badge> : null}
           </div>
+          <ListingStatusBadge status={listing.status} />
           <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
             {listing.title}
           </h1>
@@ -265,128 +273,108 @@ export function VehicleDetailView({
               .join(' · ')}
           </p>
 
-          <Card className="space-y-3">
-            <p className="text-sm font-semibold text-ink">Contact & actions</p>
-            <div className="flex flex-wrap gap-2">
-              {contact?.phone ? (
-                <a href={`tel:${contact.phone}`} onClick={() => recordContactClick('phone')}>
-                  <Button>Call</Button>
-                </a>
-              ) : null}
-              {contact?.whatsapp ? (
-                <a
-                  href={whatsappHref(contact.whatsapp)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => recordContactClick('whatsapp')}
-                >
-                  <Button variant="secondary">WhatsApp</Button>
-                </a>
-              ) : null}
-              {!contact?.phone && !contact?.whatsapp ? (
-                <Button disabled>Contact unavailable</Button>
-              ) : null}
-              <Button
-                variant={isFavorite(listing.id) ? 'primary' : 'secondary'}
-                onClick={() => toggle(listing.id)}
-              >
-                {isFavorite(listing.id) ? 'Saved' : 'Favorite'}
-              </Button>
-              <Button variant="secondary" onClick={() => void share()}>
-                Share
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={chatBusy}
-                onClick={() => {
-                  if (!listing) return;
-                  if (status !== 'authenticated') {
-                    router.push(`/login?next=/vehicles/${listing.id}`);
-                    return;
-                  }
-                  setChatBusy(true);
-                  setChatError(null);
-                  void createChatRepository(getHttpClient())
-                    .startListingChat(listing.id, {
-                      type: 'TEXT',
-                      body: `Hi, I'm interested in ${listing.title}`,
-                    })
-                    .then((c) => router.push(`/messages/${c.id}`))
-                    .catch((err: unknown) =>
-                      setChatError(err instanceof Error ? err.message : 'Could not start chat'),
-                    )
-                    .finally(() => setChatBusy(false));
-                }}
-              >
-                {chatBusy ? 'Opening…' : 'Message seller'}
-              </Button>
-              <Button variant="ghost" onClick={() => setReportOpen(true)}>
-                Report
-              </Button>
-            </div>
-            {shareMsg ? <p className="text-xs text-ink-secondary">{shareMsg}</p> : null}
-            {chatError ? <p className="text-xs text-error">{chatError}</p> : null}
-          </Card>
-
-          {contact?.dealerSlug ? (
-            <Link href={`/dealers/${contact.dealerSlug}`}>
-              <Card className="transition hover:border-brand/40">
-                <div className="flex items-center gap-4">
-                  {dealerLogo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={dealerLogo}
-                      alt=""
-                      className="h-14 w-14 rounded-xl border border-border object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-brand-soft text-lg font-bold text-brand">
-                      {(contact.dealerName ?? 'D').slice(0, 1).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-ink">{contact.dealerName ?? 'Dealer'}</p>
-                      {contact.dealerVerified ? (
-                        <span className="rounded-full bg-success-soft px-2 py-0.5 text-xs font-semibold text-success">
-                          Verified
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="text-sm text-ink-secondary">View dealer profile</p>
-                  </div>
-                </div>
-              </Card>
-            </Link>
-          ) : (
-            <Card>
-              <p className="mb-2 text-sm font-semibold text-ink">Seller</p>
-              <p className="text-sm text-ink-secondary">
-                {contact?.displayName
-                  ? contact.displayName
-                  : listing.isVerified
-                    ? 'Verified seller on AutoHub.'
-                    : 'Private seller listing.'}
-              </p>
-              <Link href="/dealers" className="mt-3 inline-block text-sm font-semibold text-brand">
-                Browse dealers
-              </Link>
+          {showOwnerChrome ? (
+            <Card className="space-y-3">
+              <p className="text-sm font-semibold text-ink">Manage listing</p>
+              <ListingOwnerActions
+                listingId={listing.id}
+                status={listing.status}
+                domain="VEHICLE"
+                surface="detail"
+                onPreview={enterPreview}
+              />
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button variant="secondary" onClick={() => void share()}>
+                  Share
+                </Button>
+              </div>
+              {shareMsg ? <p className="text-xs text-ink-secondary">{shareMsg}</p> : null}
             </Card>
-          )}
+          ) : null}
 
-          <p className="text-xs text-ink-secondary">
-            Views {listing.viewsCount ?? '—'} · Favorites {listing.favoritesCount ?? '—'}
-          </p>
+          {showVisitorChrome ? (
+            <Card className="space-y-3">
+              <p className="text-sm font-semibold text-ink">Contact & actions</p>
+              <div className="flex flex-wrap gap-2">
+                {contact?.phone ? (
+                  <a href={`tel:${contact.phone}`} onClick={() => recordContactClick('phone')}>
+                    <Button>Call</Button>
+                  </a>
+                ) : null}
+                {contact?.whatsapp ? (
+                  <a
+                    href={whatsappHref(contact.whatsapp)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => recordContactClick('whatsapp')}
+                  >
+                    <Button variant="secondary">WhatsApp</Button>
+                  </a>
+                ) : null}
+                {!contact?.phone && !contact?.whatsapp ? (
+                  <Button disabled>Contact unavailable</Button>
+                ) : null}
+                <Button
+                  variant={isFavorite(listing.id) ? 'primary' : 'secondary'}
+                  onClick={() => toggle(listing.id)}
+                >
+                  {isFavorite(listing.id) ? 'Saved' : 'Favorite'}
+                </Button>
+                <Button variant="secondary" onClick={() => void share()}>
+                  Share
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={chatBusy}
+                  onClick={() => {
+                    if (!listing) return;
+                    if (status !== 'authenticated') {
+                      router.push(`/login?next=/vehicles/${listing.id}`);
+                      return;
+                    }
+                    setChatBusy(true);
+                    setChatError(null);
+                    void createChatRepository(getHttpClient())
+                      .startListingChat(listing.id, {
+                        type: 'TEXT',
+                        body: `Hi, I'm interested in ${listing.title}`,
+                      })
+                      .then((c) => router.push(`/messages/${c.id}`))
+                      .catch((err: unknown) =>
+                        setChatError(err instanceof Error ? err.message : 'Could not start chat'),
+                      )
+                      .finally(() => setChatBusy(false));
+                  }}
+                >
+                  {chatBusy ? 'Opening…' : 'Message seller'}
+                </Button>
+                <Button variant="ghost" onClick={() => setReportOpen(true)}>
+                  Report
+                </Button>
+              </div>
+              {shareMsg ? <p className="text-xs text-ink-secondary">{shareMsg}</p> : null}
+              {chatError ? <p className="text-xs text-error">{chatError}</p> : null}
+            </Card>
+          ) : null}
+
+          <ListingSellerCard
+            sellerContact={listing.sellerContact}
+            isVerified={listing.isVerified}
+          />
+
+          <ListingStats
+            metrics={listingStatsFromCounts({
+              viewsCount: listing.viewsCount,
+              favoritesCount: listing.favoritesCount,
+              phoneClicks: listing.phoneClicks,
+              whatsappClicks: listing.whatsappClicks,
+            })}
+          />
         </div>
       </div>
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <h2 className="font-display text-xl font-semibold text-ink">Description</h2>
-          <p className="mt-3 whitespace-pre-wrap text-ink">
-            {listing.description || 'No description provided.'}
-          </p>
-        </Card>
+        <ListingDescription description={listing.description} />
         <Card>
           <h2 className="font-display text-xl font-semibold text-ink">Specifications</h2>
           {specs.length ? (
@@ -527,6 +515,7 @@ export function VehicleDetailView({
           }),
         }}
       />
+      </div>
     </div>
   );
 }

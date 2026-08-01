@@ -97,6 +97,7 @@ export type ListingDetailModel = ListingCardModel & {
   publishedAt: string | null;
   sellerId: string | null;
   specs: ListingSpecs | null;
+  cityId?: string | null;
   governorateId?: string | null;
   cityNameEn?: string | null;
   latitude: number | null;
@@ -104,6 +105,8 @@ export type ListingDetailModel = ListingCardModel & {
   locationText: string | null;
   features: string[];
   sellerContact: SellerContactModel | null;
+  phoneClicks?: number | null;
+  whatsappClicks?: number | null;
 };
 
 export const REPORT_REASONS: Array<{ value: ReportReason; label: string }> = [

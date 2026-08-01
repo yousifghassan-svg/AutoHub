@@ -23,6 +23,7 @@ export type VehicleListQuery = {
   currencyCode?: string;
   governorateId?: string;
   cityId?: string;
+  makeId?: string;
   sortBy?: 'createdAt' | 'primaryPrice' | 'publishedAt';
   sortOrder?: 'asc' | 'desc';
 };

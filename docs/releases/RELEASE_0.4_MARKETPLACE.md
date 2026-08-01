@@ -13,7 +13,24 @@
 - Enable public discovery (search/filter/sort) with correct visibility (ACTIVE only for public).  
 - Enable authenticated create/edit/status flows on web, mobile, and admin moderation tools.  
 - Support dual currency (IQD default, USD) with currency-scoped price filters.  
-- Deliver domain-agnostic web sell wizard + mobile domain create flows without breaking drafts/URLs.
+- Deliver domain-agnostic web sell wizard + mobile domain create flows without breaking drafts/URLs.  
+- Deliver owner vs visitor listing-detail UX with status-aware owner actions (web).
+
+### Sprint status (Release 0.4 engineering)
+
+| Sprint | Focus | Status |
+| --- | --- | --- |
+| 4 | Marketplace UX & Owner Experience (web) | **Completed** |
+| 5 | (not started) | Pending |
+
+**Sprint 4 delivered (web, no API/DB changes):**
+
+- Owner vs visitor chrome on vehicle and plate detail (`isListingOwner`, Preview Mode with Exit banner)
+- Action Registry (`ListingActions.getActions`) driving Edit / Pause / Activate / Republish / Mark sold / Delete / Preview
+- `ListingStatusBadge` (badge + help text) for Draft → Rejected
+- Shared listing UI under `features/listings/shared/` (`ListingSellerCard`, `ListingStats`, `ListingDescription`, breadcrumbs, share, recommendations)
+- My Listings uses the same owner Action Registry (`surface: manage`)
+- Deferred (no API fields): seller member-since, seller listing count, MediaAsset avatars
 
 ---
 
@@ -24,6 +41,7 @@
 | API | `/v1/vehicles`, `/v1/plates`, catalog/filters, currencies, listing status transitions |
 | Search | Keyword/filters; currency-scoped min/max/sort; featured/verified signals |
 | Web | Home/search/detail, `/sell` plugin wizard, my-listings, dealers browse as shipped |
+| Web owner UX | Owner/visitor detail split, Preview Mode, Action Registry, status badge, share, similar listings |
 | Mobile | Home, search, detail, `/sell/vehicle` & `/sell/plate`, manage lists |
 | Admin | Vehicles/plates CRUD-ish ops, dashboard stats, reports entry points |
 | Lifecycle | `DRAFT` → `PENDING` → `ACTIVE` (+ reserved/sold/archived/rejected rules) |
@@ -90,6 +108,9 @@
 - [ ] Resume local draft after refresh  
 - [ ] Mobile create vehicle + plate; resume by `localId`  
 - [ ] My listings / my vehicles / my plates status actions  
+- [x] Owner detail: manage actions by status; no Favorite/Contact on owner chrome  
+- [x] Preview Mode hides owner actions; Exit Preview restores owner view  
+- [x] Visitor detail: contact / favorite / share paths (ACTIVE public listings)  
 
 ### Staff
 
