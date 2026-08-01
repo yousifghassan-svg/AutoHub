@@ -11,6 +11,7 @@ describe('AuthService', () => {
   const users = {
     findOrCreateFromFirebase: jest.fn(),
     findActiveById: jest.fn(),
+    findActiveByPhone: jest.fn(),
   };
   const jwt = {
     signAsync: jest.fn().mockResolvedValue('access.jwt'),
@@ -22,6 +23,8 @@ describe('AuthService', () => {
         accessTtlSeconds: 900,
         refreshTtlSeconds: 3600,
       },
+      allowStaffLogin: true,
+      allowDevLogin: true,
     },
   };
   const refreshTokens = {
@@ -55,8 +58,18 @@ describe('AuthService', () => {
     status: 'ACTIVE',
   };
 
+  const staffUser = {
+    ...activeUser,
+    id: 'admin-1',
+    role: 'ADMIN' as const,
+    phone: '+9647700090001',
+    firebaseUid: 'fb-admin-1',
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
+    appConfig.app.allowStaffLogin = true;
+    appConfig.app.allowDevLogin = true;
   });
 
   it('logs in, creates tokens, and audits LOGIN', async () => {
@@ -148,6 +161,62 @@ describe('AuthService', () => {
       expect.objectContaining({
         action: AuthAuditAction.LOGOUT,
         userId: 'user-1',
+      }),
+    );
+  });
+
+  it('rejects staffLogin when allowStaffLogin is false', async () => {
+    appConfig.app.allowStaffLogin = false;
+    await expect(service.staffLogin('+9647700090001', {})).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(users.findActiveByPhone).not.toHaveBeenCalled();
+  });
+
+  it('rejects staffLogin for non-staff roles', async () => {
+    users.findActiveByPhone.mockResolvedValue(activeUser);
+    await expect(service.staffLogin(activeUser.phone, {})).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it('issues tokens for staffLogin when enabled', async () => {
+    users.findActiveByPhone.mockResolvedValue(staffUser);
+    refreshTokens.create.mockResolvedValue({});
+
+    const result = await service.staffLogin(staffUser.phone, {});
+
+    expect(result.accessToken).toBe('access.jwt');
+    expect(result.user.role).toBe('ADMIN');
+    expect(audit.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ provider: 'staff_phone' }),
+      }),
+    );
+  });
+
+  it('rejects devLogin when allowDevLogin is false', async () => {
+    appConfig.app.allowDevLogin = false;
+    await expect(service.devLogin('+9647700010006', {})).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(users.findActiveByPhone).not.toHaveBeenCalled();
+  });
+
+  it('issues tokens for devLogin when enabled', async () => {
+    users.findActiveByPhone.mockResolvedValue(null);
+    users.findOrCreateFromFirebase.mockResolvedValue({
+      user: { ...activeUser, firebaseUid: 'dev:+9647700010006', phone: '+9647700010006' },
+      created: true,
+    });
+    refreshTokens.create.mockResolvedValue({});
+
+    const result = await service.devLogin('+9647700010006', {});
+
+    expect(result.accessToken).toBe('access.jwt');
+    expect(audit.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ provider: 'dev_phone', created: true }),
       }),
     );
   });

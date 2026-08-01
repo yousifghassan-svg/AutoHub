@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { STAFF_SEED_ACCOUNTS } from '@/features/auth/domain/types';
 import { Button, Input } from '@/components/ui';
+import { config } from '@/lib/config';
 
 export default function LoginPage() {
   const { status, staffLogin, error, clearError, hasAccess } = useAuth();
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [phone, setPhone] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const staffLoginEnabled = config.authMode === 'staff';
 
   useEffect(() => {
     if (status === 'authenticated' && hasAccess) {
@@ -60,9 +62,19 @@ export default function LoginPage() {
             AutoHub Admin
           </h1>
           <p className="mt-2 text-sm text-ink-secondary">
-            Sign in with your staff phone number.
+            {staffLoginEnabled
+              ? 'Sign in with your staff phone number (development/staging only).'
+              : 'Staff phone login is disabled in this build.'}
           </p>
         </div>
+
+        {!staffLoginEnabled ? (
+          <p className="rounded-md bg-brand-soft p-3 text-sm text-brand">
+            Production admin authentication requires Firebase staff login (not
+            available in Release 0.2 Phase 0). Use a staging/dev build with
+            NEXT_PUBLIC_AUTH_MODE=staff.
+          </p>
+        ) : null}
 
         <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
           <Input
@@ -74,29 +86,37 @@ export default function LoginPage() {
             onChange={(e) => setPhone(e.target.value)}
             error={localError || error || undefined}
             required
+            disabled={!staffLoginEnabled}
           />
-          <Button type="submit" className="w-full" loading={submitting}>
+          <Button
+            type="submit"
+            className="w-full"
+            loading={submitting}
+            disabled={!staffLoginEnabled}
+          >
             {submitting ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
 
-        <div className="mt-8">
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-secondary">
-            Seed accounts (local dev)
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {STAFF_SEED_ACCOUNTS.map((acc) => (
-              <button
-                key={acc.phone}
-                type="button"
-                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-ink-secondary transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand"
-                onClick={() => setPhone(acc.phone)}
-              >
-                {acc.label}
-              </button>
-            ))}
+        {staffLoginEnabled ? (
+          <div className="mt-8">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-secondary">
+              Seed accounts (local / staging)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {STAFF_SEED_ACCOUNTS.map((acc) => (
+                <button
+                  key={acc.phone}
+                  type="button"
+                  className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-ink-secondary transition-colors hover:border-brand/40 hover:bg-brand-soft hover:text-brand"
+                  onClick={() => setPhone(acc.phone)}
+                >
+                  {acc.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </div>
   );

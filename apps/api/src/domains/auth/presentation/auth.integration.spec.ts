@@ -25,6 +25,16 @@ describe('Auth HTTP integration', () => {
   const users = {
     findOrCreateFromFirebase: jest.fn(),
     findActiveById: jest.fn(),
+    findActiveByPhone: jest.fn(),
+  };
+  const appConfigState = {
+    jwt: {
+      accessSecret: 'integration-test-secret',
+      accessTtlSeconds: 900,
+      refreshTtlSeconds: 3600,
+    },
+    allowStaffLogin: true,
+    allowDevLogin: true,
   };
   const refreshStore = new Map<
     string,
@@ -57,12 +67,8 @@ describe('Auth HTTP integration', () => {
         {
           provide: AppConfigService,
           useValue: {
-            app: {
-              jwt: {
-                accessSecret: 'integration-test-secret',
-                accessTtlSeconds: 900,
-                refreshTtlSeconds: 3600,
-              },
+            get app() {
+              return appConfigState;
             },
           },
         },
@@ -158,9 +164,12 @@ describe('Auth HTTP integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     refreshStore.clear();
+    appConfigState.allowStaffLogin = true;
+    appConfigState.allowDevLogin = true;
     users.findActiveById.mockImplementation(async (id: string) =>
       id === activeUser.id ? activeUser : null,
     );
+    users.findActiveByPhone.mockResolvedValue(null);
   });
 
   it('POST /v1/auth/login issues tokens', async () => {
@@ -252,5 +261,53 @@ describe('Auth HTTP integration', () => {
       .post('/v1/auth/refresh')
       .send({ refreshToken: login.body.data.refreshToken })
       .expect(401);
+  });
+
+  it('POST /v1/auth/staff-login returns 403 when staff login is disabled', async () => {
+    appConfigState.allowStaffLogin = false;
+
+    const res = await request(app.getHttpServer())
+      .post('/v1/auth/staff-login')
+      .send({ phone: '+9647700090001' })
+      .expect(403);
+
+    expect(res.body.success).toBe(false);
+    expect(users.findActiveByPhone).not.toHaveBeenCalled();
+  });
+
+  it('POST /v1/auth/dev-login returns 403 when dev login is disabled', async () => {
+    appConfigState.allowDevLogin = false;
+
+    const res = await request(app.getHttpServer())
+      .post('/v1/auth/dev-login')
+      .send({ phone: '+9647700010006' })
+      .expect(403);
+
+    expect(res.body.success).toBe(false);
+    expect(users.findActiveByPhone).not.toHaveBeenCalled();
+  });
+
+  it('POST /v1/auth/dev-login issues tokens when enabled', async () => {
+    users.findActiveByPhone.mockResolvedValue(null);
+    users.findOrCreateFromFirebase.mockResolvedValue({
+      user: {
+        ...activeUser,
+        firebaseUid: 'dev:+9647700010006',
+        phone: '+9647700010006',
+      },
+      created: true,
+    });
+    users.findActiveById.mockImplementation(async (id: string) =>
+      id === activeUser.id ? { ...activeUser, phone: '+9647700010006' } : null,
+    );
+
+    const res = await request(app.getHttpServer())
+      .post('/v1/auth/dev-login')
+      .send({ phone: '+9647700010006' })
+      .expect(201);
+
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.accessToken).toBeTruthy();
+    expect(res.body.data.refreshToken).toBeTruthy();
   });
 });

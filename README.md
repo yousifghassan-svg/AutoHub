@@ -30,8 +30,10 @@ npx pnpm@9.15.0 --filter @autohub/api --filter @autohub/web --parallel dev
 - API health: http://localhost:4000/v1/health  
 - Swagger: http://localhost:4000/docs  
 
-Web auth defaults to mock OTP `123456` (`NEXT_PUBLIC_AUTH_MODE=mock`).
+Web auth defaults to **dev** mode (`NEXT_PUBLIC_AUTH_MODE=dev`, OTP `NEXT_PUBLIC_AUTH_DEV_OTP=123456`) which calls `POST /v1/auth/dev-login` — the API must be running. Production builds require `NEXT_PUBLIC_AUTH_MODE=firebase`.
+
+See auth env docs: [`docs/auth-architecture.md`](./docs/auth-architecture.md), standards under [`docs/standards/`](./docs/standards/).
 
 ## Roadmap
 
-See [`docs/roadmap.md`](./docs/roadmap.md).
+Historical: [`docs/roadmap.md`](./docs/roadmap.md) · Normative: [`docs/standards/ROADMAP.md`](./docs/standards/ROADMAP.md).

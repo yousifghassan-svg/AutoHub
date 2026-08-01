@@ -11,7 +11,7 @@ export function getSellRepository(): SellRepository {
   if (repository) return repository;
   const drafts = createDraftStore();
   repository =
-    config.authMode === 'mock'
+    config.authMode === 'dev'
       ? createMockSellRepository({ drafts })
       : createApiSellRepository({ http: getHttpClient(), drafts });
   return repository;

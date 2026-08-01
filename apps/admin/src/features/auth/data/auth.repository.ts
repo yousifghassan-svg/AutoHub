@@ -1,5 +1,6 @@
 import type { HttpClient } from '@/lib/api/http-client';
 import type { AuthenticatedUser, AuthTokens } from '@/lib/api/types';
+import { config } from '@/lib/config';
 import type { StoredSession } from '../domain/types';
 import type { TokenStorage } from './token-storage';
 
@@ -35,6 +36,11 @@ export function createAuthRepository(deps: {
 
   return {
     async staffLogin(phone) {
+      if (config.authMode !== 'staff') {
+        throw new Error(
+          'Staff phone login is disabled in this build (NEXT_PUBLIC_AUTH_MODE must be staff).',
+        );
+      }
       const tokens = await http.post<AuthTokens>(
         '/v1/auth/staff-login',
         { phone: normalizePhone(phone) },

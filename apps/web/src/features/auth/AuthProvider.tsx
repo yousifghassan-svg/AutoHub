@@ -11,9 +11,10 @@ import React, {
 import { useQueryClient } from '@tanstack/react-query';
 import { config } from '@/lib/config';
 import { getHttpClient, getTokenStorage } from '@/lib/api/client';
+import type { WebAuthMode } from '@/lib/auth-mode';
 import {
   createApiAuthRepository,
-  createMockAuthRepository,
+  createDevAuthRepository,
   type AuthRepository,
 } from './data/auth.repository';
 import {
@@ -33,7 +34,7 @@ type AuthContextValue = {
   verifyOtp: (code: string) => Promise<StoredSession>;
   completeProfile: (displayName: string) => Promise<void>;
   logout: () => Promise<void>;
-  authMode: 'mock' | 'api';
+  authMode: WebAuthMode;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -48,18 +49,18 @@ function deriveStatus(session: StoredSession | null, bootstrapping: boolean): Au
 function createRepo(): AuthRepository {
   const storage = getTokenStorage();
   const http = getHttpClient();
-  if (config.authMode === 'api') {
+  if (config.authMode === 'firebase') {
     return createApiAuthRepository({
       http,
       storage,
       getIdToken: async () => {
         throw new Error(
-          'API auth mode requires Firebase Web phone auth. Set NEXT_PUBLIC_AUTH_MODE=mock for local Alpha.',
+          'Firebase web phone auth is not wired yet. For local/staging without Firebase, set NEXT_PUBLIC_AUTH_MODE=dev and run the API.',
         );
       },
     });
   }
-  return createMockAuthRepository(storage, http);
+  return createDevAuthRepository(storage, http);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

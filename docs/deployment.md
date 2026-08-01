@@ -21,7 +21,7 @@
 ## Production checklist
 
 1. Separate Firebase projects for staging/prod
-2. `AUTH_DEV_BYPASS=false` and real Firebase credentials
+2. Real Firebase credentials; staff/dev login hard-disabled in production (`AUTH_ALLOW_*` ignored)
 3. Run `prisma migrate deploy` then `db:seed` (geo/catalog)
 4. Configure CORS origins for web/admin domains
 5. Enable Sentry / OpenTelemetry exporters

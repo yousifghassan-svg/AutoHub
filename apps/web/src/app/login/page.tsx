@@ -56,7 +56,7 @@ export default function LoginPage() {
           <h1 className="font-display text-2xl font-bold text-ink">Log in</h1>
           <p className="mt-1 text-sm text-ink-secondary">
             Phone OTP via the Nest auth API ({authMode} mode).
-            {authMode === 'mock' ? ` Use code ${config.mockOtpCode}.` : ''}
+            {authMode === 'dev' ? ` Use code ${config.authDevOtp}.` : ''}
           </p>
         </div>
         <Input

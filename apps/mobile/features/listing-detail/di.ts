@@ -13,7 +13,7 @@ export function getListingDetailRepository(): ListingDetailRepository {
   if (repository) return repository;
   const cache = createDetailCache();
   repository =
-    config.authMode === 'mock'
+    config.authMode === 'dev'
       ? createMockListingDetailRepository({ cache })
       : createApiListingDetailRepository({ http: getHttpClient(), cache });
   return repository;

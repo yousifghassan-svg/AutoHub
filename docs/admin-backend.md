@@ -253,7 +253,7 @@ Logged modules/actions include:
 
 ### `POST /v1/auth/staff-login`
 
-**Auth:** none (public, gated by `ALLOW_STAFF_DEV_LOGIN` env)
+**Auth:** none (public, gated by `AUTH_ALLOW_STAFF_LOGIN`; legacy `ALLOW_STAFF_DEV_LOGIN` dual-read in 0.2; always off in production)
 
 Body: `{ "phone": "+9647700090002" }` (E.164)
 

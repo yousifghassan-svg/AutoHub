@@ -3,8 +3,8 @@ import type { PhoneAuthGateway } from './phone-auth.gateway';
 import { PhoneAuthError } from './phone-auth.gateway';
 
 /**
- * Dev / Story gateway: any E.164 phone, OTP = config.mockOtpCode (123456).
- * Produces a mock Firebase-shaped idToken string for the mock auth repository.
+ * Dev gateway: any E.164 phone, OTP = config.authDevOtp.
+ * Used with createDevAuthRepository → POST /v1/auth/dev-login (no offline tokens).
  */
 export function createMockPhoneAuthGateway(): PhoneAuthGateway {
   let lastDisplayName: string | null = null;
@@ -15,16 +15,16 @@ export function createMockPhoneAuthGateway(): PhoneAuthGateway {
         throw new PhoneAuthError('Invalid phone number', 'INVALID_PHONE');
       }
       return {
-        verificationId: `mock-verification:${phoneE164}`,
+        verificationId: `dev-verification:${phoneE164}`,
         phoneE164,
       };
     },
     async confirmOtp(session, code) {
-      if (code !== config.mockOtpCode) {
+      if (code !== config.authDevOtp) {
         throw new PhoneAuthError('Invalid verification code', 'INVALID_CODE');
       }
       const idToken = [
-        'mock',
+        'dev',
         session.phoneE164,
         lastDisplayName ?? '',
         Date.now().toString(36),

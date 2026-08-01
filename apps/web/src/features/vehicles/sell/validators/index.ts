@@ -1,0 +1,1 @@
+export { validateVehicleDetailsStep } from './vehicleDetails';

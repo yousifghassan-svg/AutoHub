@@ -27,9 +27,9 @@ export default function IndexScreen() {
             AutoHub
           </Text>
           <Loading label="Restoring session…" />
-          {config.authMode === 'mock' ? (
+          {config.authMode === 'dev' ? (
             <Text variant="caption" color="secondary">
-              Auth mode: mock (OTP {config.mockOtpCode})
+              Auth mode: dev (OTP {config.authDevOtp})
             </Text>
           ) : null}
         </View>

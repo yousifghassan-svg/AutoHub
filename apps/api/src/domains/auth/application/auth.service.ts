@@ -67,10 +67,10 @@ export class AuthService {
 
   /**
    * Staff dashboard login by phone (seed admins / local ops).
-   * Disabled in production unless ALLOW_STAFF_DEV_LOGIN=true.
+   * Development/staging only — always disabled when NODE_ENV=production.
    */
   async staffLogin(phone: string, ctx: RequestContext): Promise<AuthTokensResponse> {
-    if (!this.appConfig.app.allowStaffDevLogin) {
+    if (!this.appConfig.app.allowStaffLogin) {
       throw new ForbiddenException('Staff phone login is disabled');
     }
 
@@ -105,11 +105,12 @@ export class AuthService {
   }
 
   /**
-   * Non-production phone login for Web/mobile RC without Firebase.
-   * Same gate as staff-login. Reuses seed users by phone, or creates a USER.
+   * Non-production phone login for Web/mobile without Firebase.
+   * Development/staging only — always disabled when NODE_ENV=production.
+   * Reuses seed users by phone, or creates a USER.
    */
   async devLogin(phone: string, ctx: RequestContext): Promise<AuthTokensResponse> {
-    if (!this.appConfig.app.allowStaffDevLogin) {
+    if (!this.appConfig.app.allowDevLogin) {
       throw new ForbiddenException('Dev phone login is disabled');
     }
 

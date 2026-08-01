@@ -5,6 +5,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { Public } from '../../../shared/decorators/public.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
@@ -25,6 +26,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('login')
   @ApiOperation({
     summary: 'Login with Firebase phone ID token',
@@ -37,11 +39,12 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('staff-login')
   @ApiOperation({
     summary: 'Staff dashboard login by phone',
     description:
-      'Issues JWT for an existing staff user (ADMIN, MODERATOR, …). Enabled in non-production by default; set ALLOW_STAFF_DEV_LOGIN to override.',
+      'Issues JWT for an existing staff user (ADMIN, MODERATOR, …). Development/staging only (AUTH_ALLOW_STAFF_LOGIN). Always disabled in production.',
   })
   @ApiOkResponse({ type: AuthTokensDto })
   staffLogin(@Body() body: StaffLoginDto, @Req() req: Request) {
@@ -49,11 +52,12 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('dev-login')
   @ApiOperation({
     summary: 'Dev phone login (non-production)',
     description:
-      'Issues JWT for any phone without Firebase. Finds or creates USER. Same gate as staff-login (ALLOW_STAFF_DEV_LOGIN / non-production).',
+      'Issues JWT for any phone without Firebase. Finds or creates USER. Development/staging only (AUTH_ALLOW_DEV_LOGIN). Always disabled in production.',
   })
   @ApiOkResponse({ type: AuthTokensDto })
   devLogin(@Body() body: DevLoginDto, @Req() req: Request) {
@@ -61,6 +65,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Post('refresh')
   @ApiOperation({ summary: 'Refresh access token using refresh token' })
   @ApiOkResponse({ type: AuthTokensDto })

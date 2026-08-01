@@ -35,77 +35,48 @@ function normalizePhone(phone: string): string {
   return `+964${digits}`;
 }
 
-/**
- * Mock OTP UX that exchanges a verified phone for a real Nest JWT via /v1/auth/dev-login
- * (non-production). Falls back to a local-only session if the API is unreachable.
- */
-export function createMockAuthRepository(
-  storage: TokenStorage,
-  http?: HttpClient,
-): AuthRepository {
-  function localSession(phone: string, displayName: string | null): StoredSession {
-    const user: AuthenticatedUser = {
-      id: `mock-user-${phone.replace(/\D/g, '')}`,
-      firebaseUid: `mock-firebase-${phone}`,
-      phone,
-      email: null,
-      displayName,
-      role: 'USER',
-      permissions: [
-        'profile:read',
-        'profile:write',
-        'listings:read',
-        'listings:write',
-        'listings:create',
-        'listings:delete',
-        'media:upload',
-        'media:read',
-      ],
-      status: 'ACTIVE',
-    };
-    return {
-      accessToken: `mock-access-${user.id}`,
-      refreshToken: `mock-refresh-${user.id}`,
-      accessExpiresAt: Date.now() + 15 * 60 * 1000,
-      user,
-      profileSetupComplete: Boolean(displayName && displayName.trim().length >= 2),
-    };
+function rejectLegacyOfflineSession(existing: StoredSession | null): StoredSession | null {
+  if (!existing) return null;
+  if (existing.accessToken.startsWith('mock-access-')) {
+    return null;
   }
+  return existing;
+}
 
+/**
+ * Dev OTP UX → real Nest JWT via POST /v1/auth/dev-login.
+ * Requires a reachable API. Offline / synthetic tokens are not supported.
+ */
+export function createDevAuthRepository(
+  storage: TokenStorage,
+  http: HttpClient,
+): AuthRepository {
   return {
     async sendOtp(phoneE164) {
       return {
         phoneE164: normalizePhone(phoneE164),
-        verificationId: `mock-verif-${Date.now()}`,
+        verificationId: `dev-verif-${Date.now()}`,
       };
     },
     async verifyOtpAndLogin(session, code) {
-      if (code.trim() !== config.mockOtpCode) {
-        throw new Error(`Invalid OTP. Use ${config.mockOtpCode} in mock mode.`);
+      if (code.trim() !== config.authDevOtp) {
+        throw new Error(`Invalid OTP. Use ${config.authDevOtp} in dev auth mode.`);
       }
-      if (http) {
-        try {
-          const tokens = await http.post<AuthTokens>(
-            '/v1/auth/dev-login',
-            { phone: session.phoneE164 },
-            false,
-          );
-          const stored = toStoredSession(tokens);
-          await storage.save(stored);
-          return stored;
-        } catch {
-          /* offline / API down — local session for OTP UX only */
-        }
-      }
-      const stored = localSession(session.phoneE164, null);
+      const tokens = await http.post<AuthTokens>(
+        '/v1/auth/dev-login',
+        { phone: session.phoneE164 },
+        false,
+      );
+      const stored = toStoredSession(tokens);
       await storage.save(stored);
       return stored;
     },
     async restoreSession() {
-      const existing = await storage.load();
-      if (!existing) return null;
-      if (existing.accessToken.startsWith('mock-access-')) return existing;
-      if (!http) return existing;
+      const existing = rejectLegacyOfflineSession(await storage.load());
+      if (!existing) {
+        await storage.clear();
+        return null;
+      }
       if (existing.accessExpiresAt - 30_000 > Date.now()) {
         try {
           const user = await http.get<AuthenticatedUser>('/v1/auth/me');
@@ -130,24 +101,16 @@ export function createMockAuthRepository(
           e && typeof e === 'object' && 'statusCode' in e
             ? Number((e as { statusCode?: number }).statusCode)
             : 0;
-        // Keep session on network blips; clear only on auth rejection.
         if (status === 0) return existing;
         await storage.clear();
         return null;
       }
     },
     async refreshSession() {
-      const existing = await storage.load();
-      if (!existing) return null;
-      if (existing.accessToken.startsWith('mock-access-') || !http) {
-        const next = {
-          ...existing,
-          accessToken: `mock-access-${existing.user.id}-${Date.now()}`,
-          refreshToken: `mock-refresh-${existing.user.id}-${Date.now()}`,
-          accessExpiresAt: Date.now() + 15 * 60 * 1000,
-        };
-        await storage.save(next);
-        return next;
+      const existing = rejectLegacyOfflineSession(await storage.load());
+      if (!existing) {
+        await storage.clear();
+        return null;
       }
       try {
         const tokens = await http.post<AuthTokens>(
@@ -169,8 +132,8 @@ export function createMockAuthRepository(
       }
     },
     async logout() {
-      const existing = await storage.load();
-      if (http && existing?.accessToken && !existing.accessToken.startsWith('mock-access-')) {
+      const existing = rejectLegacyOfflineSession(await storage.load());
+      if (existing?.accessToken) {
         try {
           await http.post(
             '/v1/auth/logout',
@@ -195,12 +158,15 @@ export function createMockAuthRepository(
       return next;
     },
     async getSession() {
-      return storage.load();
+      return rejectLegacyOfflineSession(await storage.load());
     },
   };
 }
 
-/** API mode expects a Firebase idToken from the caller (web Firebase wiring). */
+/** @deprecated Use createDevAuthRepository */
+export const createMockAuthRepository = createDevAuthRepository;
+
+/** Firebase mode expects a Firebase idToken from the caller (wired in a later phase). */
 export function createApiAuthRepository(deps: {
   http: HttpClient;
   storage: TokenStorage;
@@ -209,10 +175,9 @@ export function createApiAuthRepository(deps: {
   const { http, storage, getIdToken } = deps;
   return {
     async sendOtp(phoneE164) {
-      // Firebase phone start is handled by getIdToken provider; placeholder session.
       return {
         phoneE164: normalizePhone(phoneE164),
-        verificationId: `api-pending-${Date.now()}`,
+        verificationId: `firebase-pending-${Date.now()}`,
       };
     },
     async verifyOtpAndLogin(session, code) {

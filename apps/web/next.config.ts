@@ -1,4 +1,7 @@
 import type { NextConfig } from 'next';
+import { assertWebProductionAuthBuild } from './src/lib/assert-production-auth';
+
+assertWebProductionAuthBuild();
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

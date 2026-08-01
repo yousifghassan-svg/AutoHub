@@ -33,9 +33,9 @@ export default function OtpPage() {
 
   useEffect(() => {
     // Client-only defaults avoid SSR/client mismatch.
-    if (authMode === 'mock') {
-      setCode(config.mockOtpCode);
-      setHint(`Use ${config.mockOtpCode} in mock mode.`);
+    if (authMode === 'dev') {
+      setCode(config.authDevOtp);
+      setHint(`Use ${config.authDevOtp} in dev auth mode.`);
     }
   }, [authMode]);
 
@@ -55,7 +55,7 @@ export default function OtpPage() {
 
     void (async () => {
       try {
-        if (!verification && !stored && phone && authMode === 'mock') {
+        if (!verification && !stored && phone && authMode === 'dev') {
           await sendOtp(phone);
           if (!cancelled) {
             setPhoneHint(phone);
@@ -92,7 +92,7 @@ export default function OtpPage() {
       await sendOtp(phone);
       setPhoneHint(phone);
       setResendIn(RESEND_SECONDS);
-      if (authMode === 'mock') setCode(config.mockOtpCode);
+      if (authMode === 'dev') setCode(config.authDevOtp);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not resend code');
     } finally {

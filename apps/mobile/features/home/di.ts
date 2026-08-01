@@ -15,7 +15,7 @@ export function getHomeRepository(): HomeRepository {
   const recentlyViewed = createRecentlyViewedStore();
 
   repository =
-    config.authMode === 'mock'
+    config.authMode === 'dev'
       ? createMockHomeRepository({ recentlyViewed })
       : createApiHomeRepository({ http: getHttpClient(), recentlyViewed });
 

@@ -5,7 +5,7 @@ export class DevLoginDto {
   @ApiProperty({
     example: '+9647700010006',
     description:
-      'Any E.164 phone. Non-production only (same gate as staff-login). Finds or creates a USER for local RC.',
+      'Any E.164 phone. Development/staging only (AUTH_ALLOW_DEV_LOGIN). Always disabled in production. Finds or creates a USER.',
   })
   @IsString()
   @MinLength(8)

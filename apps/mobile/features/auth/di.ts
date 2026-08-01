@@ -2,7 +2,7 @@ import { config } from '@/lib/config';
 import { getHttpClient } from '@/lib/api/client';
 import {
   createApiAuthRepository,
-  createMockAuthRepository,
+  createDevAuthRepository,
   type AuthRepository,
 } from './data/auth.repository';
 import { createFirebasePhoneAuthGateway } from './data/firebase-phone-auth.gateway';
@@ -15,18 +15,21 @@ export function getAuthRepository(): AuthRepository {
   if (repository) return repository;
 
   const storage = createSecureTokenStorage();
-  const phoneAuth =
-    config.authMode === 'api' ? createFirebasePhoneAuthGateway() : createMockPhoneAuthGateway();
+  const http = getHttpClient();
 
-  if (config.authMode === 'mock') {
-    repository = createMockAuthRepository({ storage, phoneAuth });
+  if (config.authMode === 'firebase') {
+    repository = createApiAuthRepository({
+      http,
+      storage,
+      phoneAuth: createFirebasePhoneAuthGateway(),
+    });
     return repository;
   }
 
-  repository = createApiAuthRepository({
-    http: getHttpClient(),
+  repository = createDevAuthRepository({
+    http,
     storage,
-    phoneAuth,
+    phoneAuth: createMockPhoneAuthGateway(),
   });
   return repository;
 }

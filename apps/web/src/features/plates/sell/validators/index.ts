@@ -1,0 +1,1 @@
+export { validatePlateDetailsStep } from './plateDetails';

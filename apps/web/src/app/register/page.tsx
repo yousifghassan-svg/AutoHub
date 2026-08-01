@@ -39,7 +39,7 @@ export default function RegisterPage() {
           <h1 className="font-display text-2xl font-bold text-ink">Create account</h1>
           <p className="mt-1 text-sm text-ink-secondary">
             Verify your Iraqi mobile number. Accounts are created on first successful OTP.
-            {authMode === 'mock' ? ` Demo OTP: ${config.mockOtpCode}.` : ''}
+            {authMode === 'dev' ? ` Dev OTP: ${config.authDevOtp}.` : ''}
           </p>
         </div>
         <Input

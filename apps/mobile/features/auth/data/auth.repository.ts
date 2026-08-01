@@ -133,26 +133,25 @@ export function createApiAuthRepository(deps: {
 }
 
 /**
- * Full offline / Expo Go mock: no API calls.
- * OTP 123456; session persists via TokenStorage.
+ * Dev OTP UX → Nest JWT via POST /v1/auth/dev-login.
+ * Requires a reachable API. Offline synthetic tokens are not supported.
  */
-export function createMockAuthRepository(deps: {
+export function createDevAuthRepository(deps: {
+  http: HttpClient;
   storage: TokenStorage;
   phoneAuth: PhoneAuthGateway;
 }): AuthRepository {
-  const { storage, phoneAuth } = deps;
+  const { http, storage, phoneAuth } = deps;
 
-  function mockUser(phone: string, displayName: string | null): AuthenticatedUser {
-    return {
-      id: `mock-user-${phone.replace(/\D/g, '')}`,
-      firebaseUid: `mock-firebase-${phone}`,
-      phone,
-      email: null,
-      displayName,
-      role: 'USER',
-      permissions: ['profile:read', 'profile:write', 'listings:read', 'listings:write'],
-      status: 'ACTIVE',
-    };
+  async function clearLegacyOfflineSession(
+    existing: StoredSession | null,
+  ): Promise<StoredSession | null> {
+    if (!existing) return null;
+    if (existing.accessToken.startsWith('mock-access-')) {
+      await storage.clear();
+      return null;
+    }
+    return existing;
   }
 
   return {
@@ -162,42 +161,75 @@ export function createMockAuthRepository(deps: {
 
     async verifyOtpAndLogin(session, code) {
       await phoneAuth.confirmOtp(session, code);
-      const user = mockUser(session.phoneE164, null);
-      const stored: StoredSession = {
-        accessToken: `mock-access-${user.id}`,
-        refreshToken: `mock-refresh-${user.id}`,
-        accessExpiresAt: Date.now() + 15 * 60 * 1000,
-        user,
-        profileSetupComplete: false,
-      };
+      const tokens = await http.post<AuthTokens>(
+        '/v1/auth/dev-login',
+        { phone: session.phoneE164 },
+        false,
+      );
+      const stored = toStoredSession(tokens);
       await storage.save(stored);
       return stored;
     },
 
     async restoreSession() {
-      return storage.load();
+      const existing = await clearLegacyOfflineSession(await storage.load());
+      if (!existing?.refreshToken) return null;
+
+      const skewMs = 30_000;
+      if (existing.accessExpiresAt - skewMs > Date.now()) {
+        try {
+          const user = await http.get<AuthenticatedUser>('/v1/auth/me');
+          const next = { ...existing, user };
+          await storage.save(next);
+          return next;
+        } catch {
+          // fall through to refresh
+        }
+      }
+
+      return this.refreshSession();
     },
 
     async refreshSession() {
-      const existing = await storage.load();
-      if (!existing) return null;
-      const next = {
-        ...existing,
-        accessToken: `mock-access-${existing.user.id}-${Date.now()}`,
-        refreshToken: `mock-refresh-${existing.user.id}-${Date.now()}`,
-        accessExpiresAt: Date.now() + 15 * 60 * 1000,
-      };
-      await storage.save(next);
-      return next;
+      const existing = await clearLegacyOfflineSession(await storage.load());
+      if (!existing?.refreshToken) return null;
+      try {
+        const tokens = await http.post<AuthTokens>(
+          '/v1/auth/refresh',
+          { refreshToken: existing.refreshToken },
+          false,
+        );
+        const stored = toStoredSession(tokens, existing.profileSetupComplete);
+        await storage.save(stored);
+        return stored;
+      } catch (e) {
+        const status = e instanceof ApiError ? e.statusCode : 0;
+        const offline = e instanceof ApiError ? e.offline : false;
+        if (offline || status === 0) {
+          return existing;
+        }
+        await storage.clear();
+        return null;
+      }
     },
 
     async fetchMe() {
-      const existing = await storage.load();
-      if (!existing) throw new Error('Not authenticated');
-      return existing.user;
+      return http.get<AuthenticatedUser>('/v1/auth/me');
     },
 
     async logout() {
+      const existing = await clearLegacyOfflineSession(await storage.load());
+      try {
+        if (existing?.accessToken) {
+          await http.post(
+            '/v1/auth/logout',
+            { refreshToken: existing.refreshToken, revokeAll: false },
+            true,
+          );
+        }
+      } catch {
+        // Best-effort logout — always clear local session
+      }
       await storage.clear();
     },
 
@@ -215,7 +247,10 @@ export function createMockAuthRepository(deps: {
     },
 
     async getSession() {
-      return storage.load();
+      return clearLegacyOfflineSession(await storage.load());
     },
   };
 }
+
+/** @deprecated Use createDevAuthRepository */
+export const createMockAuthRepository = createDevAuthRepository;

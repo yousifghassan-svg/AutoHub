@@ -17,8 +17,8 @@ export default function WelcomeScreen() {
           Continue with phone
         </Button>
         <Text variant="caption" color="secondary" align="center">
-          {config.authMode === 'mock'
-            ? `Demo mode · use OTP ${config.mockOtpCode}`
+          {config.authMode === 'dev'
+            ? `Dev mode · use OTP ${config.authDevOtp} (API required)`
             : 'Secured with Firebase phone authentication'}
         </Text>
       </View>

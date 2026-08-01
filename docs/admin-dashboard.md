@@ -22,7 +22,7 @@ Open **http://localhost:3001/login** and sign in with a seed phone:
 
 Quick-pick buttons on the login page fill these numbers. Successful login requires the `admin:access` permission (all seed staff roles have it).
 
-Set `NEXT_PUBLIC_AUTH_MODE=staff` (default) for phone login via `POST /v1/auth/staff-login`.
+Set `NEXT_PUBLIC_AUTH_MODE=staff` (default) for phone login via `POST /v1/auth/staff-login` on development/staging. Production builds must not use `staff` (build fails closed). Gate: `AUTH_ALLOW_STAFF_LOGIN` (legacy `ALLOW_STAFF_DEV_LOGIN` dual-read in 0.2).
 
 ## Pages
 

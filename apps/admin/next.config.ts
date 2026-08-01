@@ -1,4 +1,7 @@
 import type { NextConfig } from 'next';
+import { assertAdminProductionAuthBuild } from './src/lib/assert-production-auth';
+
+assertAdminProductionAuthBuild();
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

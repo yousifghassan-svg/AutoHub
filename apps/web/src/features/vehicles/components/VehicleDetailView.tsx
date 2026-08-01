@@ -33,8 +33,6 @@ import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch'
 import { getHttpClient } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/types';
 import { listingImageSrc, mediaPublicUrl } from '@/lib/media/url';
-import { config } from '@/lib/config';
-
 const VehicleGallery = dynamic(
   () => import('@/features/media').then((m) => m.VehicleGallery),
   {
@@ -472,9 +470,7 @@ export function VehicleDetailView({
         </p>
         {!canReport ? (
           <p className="mt-4 rounded-md bg-brand-soft px-4 py-3 text-sm text-brand">
-            {config.authMode === 'mock'
-              ? 'Mock auth cannot submit reports. Switch to NEXT_PUBLIC_AUTH_MODE=api and sign in.'
-              : 'Sign in to submit a report.'}{' '}
+            Sign in to submit a report.{' '}
             <Link href="/login" className="font-semibold underline">
               Log in
             </Link>

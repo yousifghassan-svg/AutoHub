@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { getNodeEnv } from '@autohub/config';
 import { isNonEmptyString } from '@autohub/utils';
 import type { EnvConfig } from '../../config/env.validation';
+import { resolveAuthLoginFlags } from './auth-login-flags';
 
 export interface AppRuntimeConfig {
   nodeEnv: ReturnType<typeof getNodeEnv>;
@@ -16,6 +17,14 @@ export interface AppRuntimeConfig {
     accessTtlSeconds: number;
     refreshTtlSeconds: number;
   };
+  /** Staff phone login (`/v1/auth/staff-login`). Always false in production. */
+  allowStaffLogin: boolean;
+  /** Consumer dev login (`/v1/auth/dev-login`). Always false in production. */
+  allowDevLogin: boolean;
+  /**
+   * @deprecated Use allowStaffLogin / allowDevLogin. Kept for Release 0.2 callers; removed in 0.3.
+   * True only when both staff and dev login are enabled.
+   */
   allowStaffDevLogin: boolean;
   firebase: {
     projectId?: string;
@@ -59,11 +68,25 @@ export class AppConfigService {
         accessTtlSeconds: this.config.get('JWT_ACCESS_TTL_SECONDS', { infer: true }),
         refreshTtlSeconds: this.config.get('JWT_REFRESH_TTL_SECONDS', { infer: true }),
       },
-      allowStaffDevLogin: (() => {
-        const flag = this.config.get('ALLOW_STAFF_DEV_LOGIN', { infer: true });
-        if (flag === true) return true;
-        if (flag === false) return false;
-        return this.config.get('NODE_ENV', { infer: true }) !== 'production';
+      ...(() => {
+        const nodeEnv = this.config.get('NODE_ENV', { infer: true });
+        const flags = resolveAuthLoginFlags({
+          nodeEnv,
+          authAllowStaffLogin: this.config.get('AUTH_ALLOW_STAFF_LOGIN', {
+            infer: true,
+          }),
+          authAllowDevLogin: this.config.get('AUTH_ALLOW_DEV_LOGIN', {
+            infer: true,
+          }),
+          allowStaffDevLogin: this.config.get('ALLOW_STAFF_DEV_LOGIN', {
+            infer: true,
+          }),
+        });
+        return {
+          allowStaffLogin: flags.allowStaffLogin,
+          allowDevLogin: flags.allowDevLogin,
+          allowStaffDevLogin: flags.allowStaffLogin && flags.allowDevLogin,
+        };
       })(),
       firebase: {
         projectId: emptyToUndefined(this.config.get('FIREBASE_PROJECT_ID', { infer: true })),
