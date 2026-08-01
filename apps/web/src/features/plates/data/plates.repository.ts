@@ -82,7 +82,7 @@ export function createPlatesRepository(http: HttpClient): PlatesRepository {
       };
     },
     async getById(id) {
-      const data = await http.get<ApiListing>(`/v1/plates/${id}`, false);
+      const data = await http.get<ApiListing>(`/v1/plates/${id}`, true);
       return mapListingToDetail(data);
     },
     async create(body) {
