@@ -3,7 +3,10 @@
 **Version:** `0.4.x`  
 **Codename:** Marketplace  
 **Production intent:** End-to-end classifieds for vehicles & plates (browse, search, sell, manage)  
-**Master checklist:** [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)
+**Master checklist:** [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)  
+**Go / No-Go review:** [`RELEASE_0.4_RC_GO_NO_GO.md`](./RELEASE_0.4_RC_GO_NO_GO.md) · [`RELEASE_0.4_BUG_BACKLOG.md`](./RELEASE_0.4_BUG_BACKLOG.md) · [`RELEASE_0.4_TECH_DEBT.md`](./RELEASE_0.4_TECH_DEBT.md)
+
+**RC decision (2026-08-01):** **GO FOR INTERNAL TESTING** — not closed/public beta. No fixes until explicitly approved.
 
 ---
 
@@ -21,7 +24,8 @@
 | Sprint | Focus | Status |
 | --- | --- | --- |
 | 4 | Marketplace UX & Owner Experience (web) | **Completed** |
-| 5 | (not started) | Pending |
+| RC | Full marketplace Go / No-Go validation | **Completed (docs)** — decision: GO FOR INTERNAL TESTING |
+| 5 | Remediation / polish (P0–P1) | **Not started** — blocked on fix approval |
 
 **Sprint 4 delivered (web, no API/DB changes):**
 

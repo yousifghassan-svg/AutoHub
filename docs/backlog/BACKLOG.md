@@ -12,10 +12,12 @@ This file tracks engineering sprints against release trains. Full epic files may
 | Sprint | Focus | Status | Summary |
 | --- | --- | --- | --- |
 | 4 | Marketplace UX & Owner Experience (web) | **Completed** | Owner vs visitor listing detail; full Preview Mode; Action Registry; status badge + help; shared listing UI (`ListingSellerCard`, `ListingStats`, `ListingDescription`, breadcrumbs, share, recommendation strategies); My Listings wired to the same registry. No API/DB changes. Deferred: seller member-since, listing count, MediaAsset avatars. |
-| 5 | Marketplace polish / follow-ups | Not started | Candidate: shared visitor contact shell; owner-only click metrics; multi-status seed fixtures; Action Registry unit tests. |
+| RC | Release 0.4 Go / No-Go readiness | **Completed (docs)** | Formal gates, checklist, risk register, coverage matrix, bug backlog. **Decision: GO FOR INTERNAL TESTING** (62% overall). Not closed/public beta. |
+| 5 | P0/P1 remediation (after approval) | Not started | Plate moderation, sell login `next`, search URL sync, delete confirm, favorites strategy, admin redirects — see bug backlog. **Do not start until fix approval.** |
 
 Evidence: `apps/web/src/features/listings/shared/`, vehicle/plate detail pages, `my-listings`.  
-Release notes: [`../releases/RELEASE_0.4_MARKETPLACE.md`](../releases/RELEASE_0.4_MARKETPLACE.md).
+Release notes: [`../releases/RELEASE_0.4_MARKETPLACE.md`](../releases/RELEASE_0.4_MARKETPLACE.md).  
+Go/No-Go: [`../releases/RELEASE_0.4_RC_GO_NO_GO.md`](../releases/RELEASE_0.4_RC_GO_NO_GO.md) · Bugs: [`../releases/RELEASE_0.4_BUG_BACKLOG.md`](../releases/RELEASE_0.4_BUG_BACKLOG.md).
 
 ---
 
