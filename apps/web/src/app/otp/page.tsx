@@ -78,9 +78,13 @@ export default function OtpPage() {
   }, []);
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      router.replace('/');
+    if (status !== 'authenticated') return;
+    const next = readQuery('next');
+    if (next === 'profile-setup') {
+      router.replace('/profile-setup');
+      return;
     }
+    router.replace(next && next.startsWith('/') ? next : '/');
   }, [status, router]);
 
   const onResend = async () => {

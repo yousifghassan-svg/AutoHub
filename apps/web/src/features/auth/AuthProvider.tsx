@@ -13,8 +13,8 @@ import { config } from '@/lib/config';
 import { getHttpClient, getTokenStorage } from '@/lib/api/client';
 import type { WebAuthMode } from '@/lib/auth-mode';
 import {
-  createApiAuthRepository,
   createDevAuthRepository,
+  createFirebaseAuthRepository,
   type AuthRepository,
 } from './data/auth.repository';
 import {
@@ -54,15 +54,7 @@ function createRepo(): AuthRepository {
   const storage = getTokenStorage();
   const http = getHttpClient();
   if (config.authMode === 'firebase') {
-    return createApiAuthRepository({
-      http,
-      storage,
-      getIdToken: async () => {
-        throw new Error(
-          'Firebase web phone auth is not wired yet. For local/staging without Firebase, set NEXT_PUBLIC_AUTH_MODE=dev and run the API.',
-        );
-      },
-    });
+    return createFirebaseAuthRepository(storage, http);
   }
   return createDevAuthRepository(storage, http);
 }

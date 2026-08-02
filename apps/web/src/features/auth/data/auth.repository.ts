@@ -6,6 +6,11 @@ import type {
 } from '@/lib/api/types';
 import { config } from '@/lib/config';
 import type { PhoneVerificationSession, StoredSession } from '../domain/types';
+import {
+  clearPhoneConfirmations,
+  confirmOtp as confirmFirebaseOtp,
+  sendOtp as sendFirebaseOtp,
+} from '@/lib/firebase';
 import type { TokenStorage } from './token-storage';
 
 export type AuthRepository = {
@@ -185,15 +190,40 @@ export function createDevAuthRepository(
 /** @deprecated Use createDevAuthRepository */
 export const createMockAuthRepository = createDevAuthRepository;
 
-/** Firebase mode expects a Firebase idToken from the caller (wired in a later phase). */
+/**
+ * Firebase phone OTP → Nest `POST /v1/auth/login` with Firebase ID token.
+ * Session restore/refresh/logout unchanged (Nest JWT + refresh).
+ */
+export function createFirebaseAuthRepository(
+  storage: TokenStorage,
+  http: HttpClient,
+): AuthRepository {
+  return createApiAuthRepository({
+    http,
+    storage,
+    sendOtp: async (phoneE164) => {
+      const phone = normalizePhone(phoneE164);
+      return sendFirebaseOtp(phone);
+    },
+    getIdToken: (session, code) => confirmFirebaseOtp(session.verificationId, code),
+    onLogout: () => {
+      clearPhoneConfirmations();
+    },
+  });
+}
+
+/** @deprecated Prefer createFirebaseAuthRepository */
 export function createApiAuthRepository(deps: {
   http: HttpClient;
   storage: TokenStorage;
+  sendOtp?: (phoneE164: string) => Promise<PhoneVerificationSession>;
   getIdToken: (session: PhoneVerificationSession, code: string) => Promise<string>;
+  onLogout?: () => void;
 }): AuthRepository {
-  const { http, storage, getIdToken } = deps;
+  const { http, storage, getIdToken, onLogout } = deps;
   return {
     async sendOtp(phoneE164) {
+      if (deps.sendOtp) return deps.sendOtp(phoneE164);
       return {
         phoneE164: normalizePhone(phoneE164),
         verificationId: `firebase-pending-${Date.now()}`,
@@ -261,6 +291,7 @@ export function createApiAuthRepository(deps: {
       } catch {
         /* best effort */
       }
+      onLogout?.();
       await storage.clear();
     },
     async completeProfileSetup(input) {
