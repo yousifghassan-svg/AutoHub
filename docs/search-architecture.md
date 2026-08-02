@@ -13,6 +13,13 @@
 
 Web product search is `GET /v1/vehicles/search` (`domain = VEHICLE`). Legacy `GET /v1/search` remains for trending / suggestions / saved-search.
 
+### Vehicle keyword strategy (P4-1)
+
+1. FTS via indexed expression `to_tsvector('simple', title || description)` → uses `ListingTranslation_fts_idx`
+2. Separate ILIKE pass on title/description/slug/meta for partial tokens
+3. Union listing IDs into `where.id.in` (avoids OR that defeats GIN)
+4. Heavy equipment: keyword parity on translations; year/makeName/modelName when filters are HE-expressible (no `brandId` FK on HE)
+
 ## Components
 
 ```
