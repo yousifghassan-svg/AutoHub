@@ -1,6 +1,10 @@
 'use client';
 
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+} from '@tanstack/react-query';
 import { getHttpClient } from '@/lib/api/client';
 import { createVehiclesRepository } from '../data/vehicles.repository';
 import type { VehicleListQuery, VehicleSearchQuery } from '../domain/types';
@@ -29,6 +33,8 @@ export function useVehicleSearchInfinite(
     getNextPageParam: (last) =>
       last.page < last.totalPages ? last.page + 1 : undefined,
     enabled,
+    // Keep prior results visible while filters refetch (P4-5 UX; no extra requests).
+    placeholderData: keepPreviousData,
   });
 }
 

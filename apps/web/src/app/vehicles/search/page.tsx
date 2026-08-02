@@ -20,6 +20,11 @@ import {
   YEAR_MAX,
   YEAR_MIN,
 } from '@/features/search/lib/apply-saved-filters';
+import {
+  buildActiveFilterChips,
+  clearedVehicleSearchFilters,
+  hasActiveVehicleFilters,
+} from '@/features/search/lib/vehicle-search-filters';
 import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch';
 import { useVehicleSearchUrlState } from '@/features/search/hooks/useVehicleSearchUrlState';
 import {
@@ -27,12 +32,43 @@ import {
   VEHICLE_SORTS,
 } from '@/features/vehicles';
 
+function ResultCardSkeleton() {
+  return (
+    <div
+      className="overflow-hidden rounded-xl border border-border bg-surface shadow-card"
+      aria-hidden
+    >
+      <Skeleton className="aspect-[4/3] w-full rounded-none" />
+      <div className="space-y-2 p-3">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+        <Skeleton className="h-4 w-1/3" />
+      </div>
+    </div>
+  );
+}
+
+function ResultsSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div
+      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+      aria-busy="true"
+      aria-label="Loading search results"
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <ResultCardSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
 function VehicleSearchInner() {
   const catalog = useCatalogFilters();
   const { state, keywordDraft, setKeywordDraft, submitKeyword, writeState } =
     useVehicleSearchUrlState();
 
   const priceBounds = priceRangeForCurrency(state.currencyCode);
+  const filtersActive = hasActiveVehicleFilters(state);
 
   const [priceDraft, setPriceDraft] = useState<[number, number]>([
     state.minPrice,
@@ -46,6 +82,15 @@ function VehicleSearchInner() {
     state.minMileage,
     state.maxMileage,
   ]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const sync = () => setFiltersOpen(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
 
   useEffect(() => {
     setPriceDraft([state.minPrice, state.maxPrice]);
@@ -87,6 +132,46 @@ function VehicleSearchInner() {
     [],
   );
 
+  const chipLabels = useMemo(() => {
+    const brands = catalog.data?.brands ?? [];
+    const bodyTypes = catalog.data?.bodyTypes ?? [];
+    const fuels = catalog.data?.fuelTypes ?? [];
+    const transmissions = catalog.data?.transmissionTypes ?? [];
+    const governorates = catalog.data?.governorates ?? [];
+    return {
+      categoryLabel: vehicleCategories.find((c) => c.code === state.categoryCode)
+        ?.label,
+      brandName: brands.find((b) => b.id === state.brandId)?.nameEn,
+      modelName: models.find((m) => m.id === state.modelId)?.nameEn,
+      bodyName: bodyTypes.find((t) => t.id === state.bodyTypeId)?.nameEn,
+      fuelName: fuels.find((t) => t.id === state.fuelTypeId)?.nameEn,
+      transmissionName: transmissions.find(
+        (t) => t.id === state.transmissionTypeId,
+      )?.nameEn,
+      governorateName: governorates.find((g) => g.id === state.governorateId)
+        ?.nameEn,
+      cityName: cities.find((c) => c.id === state.cityId)?.nameEn,
+    };
+  }, [
+    catalog.data,
+    cities,
+    models,
+    state.bodyTypeId,
+    state.brandId,
+    state.categoryCode,
+    state.cityId,
+    state.fuelTypeId,
+    state.governorateId,
+    state.modelId,
+    state.transmissionTypeId,
+    vehicleCategories,
+  ]);
+
+  const activeChips = useMemo(
+    () => buildActiveFilterChips(state, chipLabels),
+    [state, chipLabels],
+  );
+
   const query = useMemo(
     () => ({
       keyword: state.q.trim() || undefined,
@@ -117,6 +202,9 @@ function VehicleSearchInner() {
   const items = search.data?.pages.flatMap((p) => p.items) ?? [];
   const total = search.data?.pages[0]?.total ?? 0;
   const loadedPages = search.data?.pages.length ?? 0;
+  const isInitialLoading = search.isLoading && items.length === 0;
+  const isRefetching =
+    search.isFetching && !search.isFetchingNextPage && items.length > 0;
 
   // Hydrate shared links with page>1 by fetching until URL page is reached.
   useEffect(() => {
@@ -136,6 +224,26 @@ function VehicleSearchInner() {
     search.fetchNextPage,
   ]);
 
+  const loadMore = () => {
+    if (!search.hasNextPage || search.isFetchingNextPage) return;
+    void (async () => {
+      const result = await search.fetchNextPage();
+      const pages = result.data?.pages.length ?? loadedPages + 1;
+      writeState({ page: pages }, { resetPage: false, history: 'replace' });
+    })();
+  };
+
+  const clearAllFilters = () => {
+    setKeywordDraft('');
+    writeState(clearedVehicleSearchFilters());
+  };
+
+  const resultSummary = isInitialLoading
+    ? 'Searching…'
+    : total === 0
+      ? 'No results'
+      : `${total.toLocaleString()} result${total === 1 ? '' : 's'}`;
+
   return (
     <div className="page-container py-10">
       <Breadcrumbs
@@ -149,8 +257,15 @@ function VehicleSearchInner() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="section-title">Search vehicles</h1>
-          <p className="mt-1 text-sm text-ink-secondary">
-            {search.isLoading ? 'Searching…' : `${total.toLocaleString()} results`}
+          <p
+            className="mt-1 text-sm text-ink-secondary"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {resultSummary}
+            {isRefetching ? (
+              <span className="ms-2 text-ink-secondary">Updating…</span>
+            ) : null}
           </p>
         </div>
         <Select
@@ -160,7 +275,7 @@ function VehicleSearchInner() {
             const next = VEHICLE_SORTS[Number(e.target.value)] ?? VEHICLE_SORTS[0]!;
             writeState({ sortBy: next.sortBy, sortOrder: next.sortOrder });
           }}
-          className="w-56"
+          className="w-full sm:w-56"
         >
           {VEHICLE_SORTS.map((s, i) => (
             <option key={`${s.sortBy}-${s.sortOrder}`} value={i}>
@@ -171,7 +286,9 @@ function VehicleSearchInner() {
       </div>
 
       <form
-        className="mb-6 grid gap-3 rounded-xl border border-border bg-surface p-4 shadow-card md:grid-cols-[1fr_auto]"
+        className="mb-4 grid gap-3 rounded-xl border border-border bg-surface p-4 shadow-card md:grid-cols-[1fr_auto]"
+        role="search"
+        aria-label="Vehicle keyword search"
         onSubmit={(e) => {
           e.preventDefault();
           submitKeyword();
@@ -182,23 +299,106 @@ function VehicleSearchInner() {
           value={keywordDraft}
           onChange={(e) => setKeywordDraft(e.target.value)}
           placeholder="Toyota, Camry, Baghdad…"
+          autoComplete="off"
         />
-        <div className="flex items-end">
+        <div className="flex items-end gap-2">
+          {keywordDraft.trim() ? (
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full md:w-auto"
+              onClick={() => {
+                setKeywordDraft('');
+                writeState({ q: '' });
+              }}
+            >
+              Clear
+            </Button>
+          ) : null}
           <Button type="submit" className="w-full md:w-auto">
             Search
           </Button>
         </div>
       </form>
 
-      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-        <aside className="space-y-5 rounded-xl border border-border bg-surface p-4 shadow-card">
-          <p className="text-sm font-semibold text-ink">Filters</p>
+      {activeChips.length > 0 ? (
+        <div
+          className="mb-4 flex flex-wrap items-center gap-2"
+          aria-label="Active filters"
+        >
+          {activeChips.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => {
+                if (chip.id === 'q') setKeywordDraft('');
+                writeState(chip.clear);
+              }}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface-muted px-3 py-1 text-xs font-semibold text-ink transition hover:border-brand hover:text-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              aria-label={`Remove filter ${chip.label}`}
+            >
+              <span className="truncate">{chip.label}</span>
+              <span aria-hidden className="text-ink-secondary">
+                ×
+              </span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={clearAllFilters}
+            className="text-xs font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          >
+            Clear all
+          </button>
+        </div>
+      ) : null}
 
-          <div className="flex flex-wrap gap-2">
+      <div className="mb-4 lg:hidden">
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-full"
+          aria-expanded={filtersOpen}
+          aria-controls="vehicle-search-filters"
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          {filtersOpen ? 'Hide filters' : 'Show filters'}
+          {filtersActive ? ` (${activeChips.length})` : ''}
+        </Button>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+        <aside
+          id="vehicle-search-filters"
+          className={`space-y-5 rounded-xl border border-border bg-surface p-4 shadow-card ${
+            filtersOpen ? 'block' : 'hidden lg:block'
+          }`}
+          aria-label="Search filters"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-ink">Filters</p>
+            {filtersActive ? (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="text-xs font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                Clear all
+              </button>
+            ) : null}
+          </div>
+
+          <div
+            role="radiogroup"
+            aria-label="Vehicle category"
+            className="flex flex-wrap gap-2"
+          >
             <button
               type="button"
+              role="radio"
+              aria-checked={!state.categoryCode}
               onClick={() => writeState({ categoryCode: '' })}
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+              className={`rounded-full px-3 py-1 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                 !state.categoryCode
                   ? 'bg-brand text-white'
                   : 'bg-surface-muted text-ink-secondary'
@@ -210,8 +410,10 @@ function VehicleSearchInner() {
               <button
                 key={c.code}
                 type="button"
+                role="radio"
+                aria-checked={state.categoryCode === c.code}
                 onClick={() => writeState({ categoryCode: c.code })}
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                className={`rounded-full px-3 py-1 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                   state.categoryCode === c.code
                     ? 'bg-brand text-white'
                     : 'bg-surface-muted text-ink-secondary'
@@ -290,6 +492,7 @@ function VehicleSearchInner() {
             label="Model"
             value={state.modelId}
             onChange={(e) => writeState({ modelId: e.target.value })}
+            disabled={!state.brandId}
           >
             <option value="">Any model</option>
             {models.map((m) => (
@@ -359,6 +562,7 @@ function VehicleSearchInner() {
             label="City"
             value={state.cityId}
             onChange={(e) => writeState({ cityId: e.target.value })}
+            disabled={!state.governorateId}
           >
             <option value="">Any city</option>
             {cities.map((c) => (
@@ -379,21 +583,26 @@ function VehicleSearchInner() {
           </label>
         </aside>
 
-        <div>
-          {search.isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="aspect-[4/3] w-full" />
-              ))}
-            </div>
+        <div
+          className={
+            isRefetching ? 'opacity-70 transition-opacity duration-150' : undefined
+          }
+        >
+          {isInitialLoading ? (
+            <ResultsSkeleton />
           ) : search.isError ? (
             <EmptyState
               title="Search failed"
               description={
-                search.error instanceof Error ? search.error.message : 'Try again'
+                search.error instanceof Error
+                  ? search.error.message
+                  : 'Something went wrong. Please try again.'
               }
               action={
-                <Button variant="secondary" onClick={() => void search.refetch()}>
+                <Button
+                  variant="secondary"
+                  onClick={() => void search.refetch()}
+                >
                   Retry
                 </Button>
               }
@@ -401,38 +610,67 @@ function VehicleSearchInner() {
           ) : items.length === 0 ? (
             <EmptyState
               title="No vehicles found"
-              description="Try adjusting filters or broadening your keyword."
+              description={
+                filtersActive
+                  ? 'Try clearing filters or broadening your keyword.'
+                  : 'Try a different keyword or check back later.'
+              }
+              action={
+                filtersActive ? (
+                  <Button variant="secondary" onClick={clearAllFilters}>
+                    Clear filters
+                  </Button>
+                ) : undefined
+              }
             />
           ) : (
             <>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div
+                className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                role="list"
+                aria-label="Search results"
+              >
                 {items.map((item) => (
-                  <ListingCard
-                    key={item.id}
-                    listing={item}
-                    href={`/vehicles/${item.id}`}
-                  />
+                  <div key={item.id} role="listitem">
+                    <ListingCard
+                      listing={item}
+                      href={`/vehicles/${item.id}`}
+                    />
+                  </div>
                 ))}
               </div>
-              <InfiniteSentinel
-                disabled={!search.hasNextPage || search.isFetchingNextPage}
-                onVisible={() => {
-                  if (!search.hasNextPage || search.isFetchingNextPage) return;
-                  void (async () => {
-                    const result = await search.fetchNextPage();
-                    const pages = result.data?.pages.length ?? loadedPages + 1;
-                    writeState(
-                      { page: pages },
-                      { resetPage: false, history: 'replace' },
-                    );
-                  })();
-                }}
-              />
-              {search.isFetchingNextPage ? (
-                <p className="py-6 text-center text-sm text-ink-secondary">
-                  Loading more…
-                </p>
-              ) : null}
+
+              <div className="mt-6 flex flex-col items-center gap-3">
+                <InfiniteSentinel
+                  disabled={!search.hasNextPage || search.isFetchingNextPage}
+                  onVisible={loadMore}
+                />
+                {search.hasNextPage ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={search.isFetchingNextPage}
+                    onClick={loadMore}
+                    aria-busy={search.isFetchingNextPage}
+                  >
+                    {search.isFetchingNextPage ? 'Loading more…' : 'Load more'}
+                  </Button>
+                ) : (
+                  <p className="text-sm text-ink-secondary" aria-live="polite">
+                    Showing all {total.toLocaleString()} results
+                  </p>
+                )}
+                {search.isFetchingNextPage ? (
+                  <div
+                    className="grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                    aria-hidden
+                  >
+                    <ResultCardSkeleton />
+                    <ResultCardSkeleton />
+                    <ResultCardSkeleton />
+                  </div>
+                ) : null}
+              </div>
             </>
           )}
         </div>
@@ -441,9 +679,19 @@ function VehicleSearchInner() {
   );
 }
 
+function SearchPageFallback() {
+  return (
+    <div className="page-container py-10">
+      <Skeleton className="mb-6 h-8 w-48" />
+      <Skeleton className="mb-4 h-24 w-full" />
+      <ResultsSkeleton />
+    </div>
+  );
+}
+
 export default function VehicleSearchPage() {
   return (
-    <Suspense fallback={<div className="page-container py-20">Loading search…</div>}>
+    <Suspense fallback={<SearchPageFallback />}>
       <VehicleSearchInner />
     </Suspense>
   );

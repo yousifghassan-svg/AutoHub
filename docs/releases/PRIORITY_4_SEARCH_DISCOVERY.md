@@ -35,7 +35,7 @@
 | **P4-2** | Relevance sort under keyword; `SearchEvent` / `PopularKeyword` from vehicle search | Trending fed by vehicle path |
 | **P4-3** | DTO/filter parity required by web UI | **Done** — `IsIn` sort enums; `brandId`↔`makeId` alias; mapper tests for web filter surface; client omits default sort params so API keyword→relevance can apply |
 | **P4-4** | Web URL as SSOT for search (BUG-005) | **Done** — parse/serialize + `useVehicleSearchUrlState`; Back/Forward/refresh/share |
-| **P4-5** | Web UX polish | **Done** — Clear keyword, Relevance sort option, empty/error states retained |
+| **P4-5** | Web UX polish | **Done** — loading/empty/error/skeletons, active filter chips, clear all, mobile filter panel, result count + load-more a11y; URL/API unchanged |
 | **P4-6** | Tests + finalize `docs/search-architecture.md` | **Done** — vehicle-search unit tests + docs |
 
 ---
@@ -194,6 +194,23 @@ Use distinct slug prefixes `p4-quality-*` and soft-delete/cleanup after validati
 | **`ts_rank`** | **Not introduced** | Heuristic sufficient for gate |
 
 **P4-1 code:** `VehicleRepository.resolveKeywordListingIds` (FTS GIN expression + separate ILIKE union); HE year/makeName/modelName branch when dimensions are HE-expressible.
+
+---
+
+## P4-5 — Search UX polish
+
+**Scope:** Web `/vehicles/search` presentation only. No backend, FTS, URL SSOT, auth, or API contract changes.
+
+| Area | Change |
+| --- | --- |
+| Loading | Card skeletons; Suspense fallback; keep previous results while refetching (`keepPreviousData`) |
+| Empty / error | Clear-filters CTA when filters active; Retry on error |
+| Filters | Active chips + Clear all; mobile show/hide panel; disabled model/city until parent selected |
+| Results | `aria-live` count; Load more button + sentinel; end-of-list copy |
+| A11y | `role="search"`, category radiogroup, chip remove labels, focus rings |
+
+**Helpers:** `apps/web/src/features/search/lib/vehicle-search-filters.ts`  
+**Tests:** `pnpm --filter @autohub/web test:search-ux`
 
 ---
 
