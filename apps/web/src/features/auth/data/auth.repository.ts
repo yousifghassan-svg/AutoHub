@@ -187,9 +187,6 @@ export function createDevAuthRepository(
   };
 }
 
-/** @deprecated Use createDevAuthRepository */
-export const createMockAuthRepository = createDevAuthRepository;
-
 /**
  * Firebase phone OTP → Nest `POST /v1/auth/login` with Firebase ID token.
  * Session restore/refresh/logout unchanged (Nest JWT + refresh).
@@ -212,7 +209,7 @@ export function createFirebaseAuthRepository(
   });
 }
 
-/** @deprecated Prefer createFirebaseAuthRepository */
+/** Shared Nest session adapter used by Firebase (and tests). */
 export function createApiAuthRepository(deps: {
   http: HttpClient;
   storage: TokenStorage;

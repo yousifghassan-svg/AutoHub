@@ -34,14 +34,14 @@ Effort key: **S** ≤ 0.5 day · **M** 0.5–2 days · **L** 2–5 days · **XL*
 | Field | Detail |
 | --- | --- |
 | Class | P0 (for **public** beta only) |
-| Status | OPEN |
-| Impact | Cannot safely onboard real public users on Firebase phone auth; risk of shipping with non-prod auth modes. Does **not** block closed beta when staging auth is agreed. |
-| Reproduction | Review `RELEASE_0.2` phase table: C/D/E not started; local QA depends on `AUTH_ALLOW_DEV_LOGIN` / staff. |
-| Root cause | Release 0.2 Phases C–E unfinished (deferred from 0.4 product scope but blocks public). |
-| Recommended fix | Complete Firebase web/mobile production paths + route-protection polish under 0.2 before public beta. |
+| Status | **CLOSED** (web+API Firebase path) — 2026-08-02 |
+| Impact | ~~Cannot safely onboard real public users on Firebase phone auth~~ Web phone OTP → Nest JWT verified; Release 0.2 **FROZEN**. |
+| Reproduction | n/a — superseded by freeze audit in `RELEASE_0.2_AUTHENTICATION.md`. |
+| Root cause | Phases C/E completed for web; production gates block dev/phone-testing. |
+| Residual | Mobile Expo Firebase production path remains **deferred backlog** (Phase D), not a reopen of web auth. |
 | Owner | Auth |
-| Effort | XL |
-| Evidence | CODE / docs |
+| Effort | — |
+| Evidence | Commits `b968ec8`, `751c635`; `RELEASE_0.2_AUTHENTICATION.md` |
 
 ---
 

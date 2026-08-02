@@ -19,7 +19,7 @@ Launch a trusted Iraq marketplace for **vehicles and plates** as classifieds, wi
 | --- | --- |
 | Database listing hub | `packages/database` — currencies, categories, geo, detail tables, commerce placeholders |
 | API DDD monolith | `apps/api` domains + envelope + Swagger |
-| Auth + RBAC | Firebase phone → JWT/refresh; permissions enum |
+| Auth + RBAC | **FROZEN** — Web Firebase phone → Nest JWT/refresh; permissions enum (`RELEASE_0.2`) |
 | Vehicles & plates domain split | Sprint 20 APIs + admin/web surfaces |
 | Search & discovery | Search domain + client filters |
 | Media platform | MediaAsset + R2 + listing attach |
@@ -40,7 +40,7 @@ Launch a trusted Iraq marketplace for **vehicles and plates** as classifieds, wi
 | P0 | Keep production classifieds stable | No drive-by refactors; one feature at a time |
 | P1 | Release 0.4 RC follow-up | Go/No-Go: **GO FOR CLOSED BETA** (75%); remaining P1 polish + staging smoke before invites — see `docs/releases/RELEASE_0.4_RC_GO_NO_GO.md` |
 | P1 | Media attach unification | Close `r2Key` trust gap; single validated attach path |
-| P1 | Auth 0.2 remaining phases | Web/Mobile Firebase production paths; route-protection polish |
+| P2 | Mobile Firebase phone auth (0.2 Phase D) | Deferred backlog — do not reopen web auth freeze |
 | P2 | Outbox / async workers | Replace Alpha in-process timers where needed |
 | P2 | CI completeness | Add mobile lint/typecheck (and tests where stable) to CI |
 | P2 | Mobile sell alignment | Config/plugin approach parity with web sell host (separate feature) |
@@ -69,6 +69,7 @@ Feature flags / env gates (concept from deployment docs): keep billing/auctions/
 - Live payment capture in production  
 - FX conversion across currencies in search sort  
 - Treating legacy mobile `/sell/wizard` (`/v1/listings`) as the future create path  
+- **Authentication refactors** while Release 0.2 is **FROZEN** (see deferred list in `RELEASE_0.2_AUTHENTICATION.md`)  
 
 ---
 
