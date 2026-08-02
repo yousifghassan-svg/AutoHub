@@ -30,9 +30,9 @@ Effort key: **S** ≤ 0.5 day · **M** 0.5–2 days · **L** 2–5 days · **XL*
 | Field | Detail |
 | --- | --- |
 | Class | P1 |
-| Status | **CLOSED** (Priority 4 / P4-4) |
-| Fix | URL SSOT via `url-search-state` + `useVehicleSearchUrlState` on `/vehicles/search` |
-| Notes | Back/Forward/refresh/share; see `PRIORITY_4_SEARCH_DISCOVERY.md` |
+| Status | **CLOSED** (Priority 4 / P4-4; Search **FROZEN**) |
+| Fix | URL SSOT via `url-search-state` + `useVehicleSearchUrlState` on `/vehicles/search`; keyword unspecified sort omit `1cfe763` |
+| Notes | Back/Forward/refresh/share; freeze doc `RELEASE_0.4_SEARCH_DISCOVERY.md`; tag `search-0.4-freeze` |
 
 ---
 

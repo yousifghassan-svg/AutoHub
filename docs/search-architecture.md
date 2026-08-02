@@ -24,7 +24,10 @@ Web product search is `GET /v1/vehicles/search` (`domain = VEHICLE`). Legacy `GE
 
 - `sortBy=relevance` → `isFeatured DESC`, `isVerified DESC`, `viewsCount DESC`, `publishedAt DESC` (no `ts_rank`)
 - Default `sortBy` becomes `relevance` when `keyword` is present and sort omitted
+- Web: unspecified URL sort omits `sortBy`/`sortOrder`; explicit user sort always sent
 - `SearchService.recordAnalytics` called from vehicle search (feeds trending)
+
+**Freeze:** [`releases/RELEASE_0.4_SEARCH_DISCOVERY.md`](./releases/RELEASE_0.4_SEARCH_DISCOVERY.md) · tag `search-0.4-freeze`
 
 ## Components
 

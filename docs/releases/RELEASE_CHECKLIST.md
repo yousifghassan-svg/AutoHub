@@ -16,6 +16,7 @@ Use this checklist for **every** numbered release document in this folder. A rel
 | [0.2](./RELEASE_0.2_AUTHENTICATION.md) | Authentication | Firebase phone → JWT/RBAC |
 | [0.3](./RELEASE_0.3_MEDIA.md) | Media | R2 / MediaAsset pipeline |
 | [0.4](./RELEASE_0.4_MARKETPLACE.md) | Marketplace | Vehicles/plates, search, sell, web/admin/mobile browse |
+| [0.4 Search](./RELEASE_0.4_SEARCH_DISCOVERY.md) | Search & Discovery | Priority 4 freeze — Postgres FTS vehicle path + URL SSOT (`search-0.4-freeze`) |
 | [0.5](./RELEASE_0.5_MESSAGING.md) | Messaging | Chat, notifications, moderation hooks |
 | [0.6](./RELEASE_0.6_PAYMENTS.md) | Payments | Live payments/escrow/subscriptions (future) |
 | [1.0](./RELEASE_1.0_PUBLIC_LAUNCH.md) | Public Launch | Iraq production launch gate |

@@ -6,7 +6,7 @@
 | 2 | Backend foundation (DDD) | Approved |
 | 3 | Auth (Firebase phone → JWT / RBAC) | **FROZEN** (web+API; see `docs/releases/RELEASE_0.2_AUTHENTICATION.md`) |
 | 4 | Listings engine | Approved |
-| 5 | Search & discovery | Approved |
+| 5 | Search & discovery | **FROZEN** (Priority 4; see `docs/releases/RELEASE_0.4_SEARCH_DISCOVERY.md`) |
 | 6 | Media platform | Approved |
 | 7 | Mobile Design System (Expo) | Approved |
 | 8 | Mobile Authentication | Approved |

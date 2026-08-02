@@ -21,7 +21,7 @@ Launch a trusted Iraq marketplace for **vehicles and plates** as classifieds, wi
 | API DDD monolith | `apps/api` domains + envelope + Swagger |
 | Auth + RBAC | **FROZEN** — Web Firebase phone → Nest JWT/refresh; permissions enum (`RELEASE_0.2`) |
 | Vehicles & plates domain split | Sprint 20 APIs + admin/web surfaces |
-| Search & discovery | Search domain + client filters |
+| Search & discovery | **FROZEN** — Postgres FTS vehicle web path + URL SSOT (`RELEASE_0.4_SEARCH_DISCOVERY.md`, tag `search-0.4-freeze`) |
 | Media platform | MediaAsset + R2 + listing attach |
 | Mobile consumer app | Expo design system, auth, home, detail, create, manage |
 | Web marketplace | Browse/search/sell/chat/favorites/notifications |
@@ -38,7 +38,6 @@ Launch a trusted Iraq marketplace for **vehicles and plates** as classifieds, wi
 | Priority | Item | Outcome |
 | --- | --- | --- |
 | P0 | Keep production classifieds stable | No drive-by refactors; one feature at a time |
-| P1 | **Priority 4 — Search & Discovery** | Postgres FTS on vehicle web path; URL sync; quality gate — see `docs/releases/PRIORITY_4_SEARCH_DISCOVERY.md` (P4-0 baseline recorded) |
 | P1 | Release 0.4 RC follow-up | Go/No-Go: **GO FOR CLOSED BETA** (75%); remaining P1 polish + staging smoke before invites — see `docs/releases/RELEASE_0.4_RC_GO_NO_GO.md` |
 | P1 | Media attach unification | Close `r2Key` trust gap; single validated attach path |
 | P2 | Mobile Firebase phone auth (0.2 Phase D) | Deferred backlog — do not reopen web auth freeze |
@@ -71,6 +70,7 @@ Feature flags / env gates (concept from deployment docs): keep billing/auctions/
 - FX conversion across currencies in search sort  
 - Treating legacy mobile `/sell/wizard` (`/v1/listings`) as the future create path  
 - **Authentication refactors** while Release 0.2 is **FROZEN** (see deferred list in `RELEASE_0.2_AUTHENTICATION.md`)  
+- **Search & Discovery refactors** while Priority 4 is **FROZEN** (see deferred list in `RELEASE_0.4_SEARCH_DISCOVERY.md`)  
 
 ---
 

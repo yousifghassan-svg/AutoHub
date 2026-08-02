@@ -1,8 +1,10 @@
 # Priority 4 — Search & Discovery
 
-**Status:** P4-0…P4-6 implemented on clean `develop` (quality gate **PASS**, no `ts_rank`)  
+**Status:** **FROZEN** (2026-08-03) — see [`RELEASE_0.4_SEARCH_DISCOVERY.md`](./RELEASE_0.4_SEARCH_DISCOVERY.md)  
+**Git tag:** `search-0.4-freeze`  
 **Baseline commit:** `9173fa7` (Release 0.2 Authentication **FROZEN**)  
-**Branch policy:** Do **not** restore `wip/pre-priority-4-mixed`.
+**Branch policy:** Do **not** restore `wip/pre-priority-4-mixed`.  
+**Freeze rule:** Do not refactor vehicle Search & Discovery unless a production bug is found.
 
 ---
 
@@ -37,6 +39,7 @@
 | **P4-4** | Web URL as SSOT for search (BUG-005) | **Done** — parse/serialize + `useVehicleSearchUrlState`; Back/Forward/refresh/share |
 | **P4-5** | Web UX polish | **Done** — loading/empty/error/skeletons, active filter chips, clear all, mobile filter panel, result count + load-more a11y; URL/API unchanged |
 | **P4-6** | Tests + finalize `docs/search-architecture.md` | **Done** — vehicle-search unit tests + docs |
+| **Freeze** | Keyword sort omit + production audit | **Done** — unspecified sort omitted so API keyword→relevance applies (`1cfe763`) |
 
 ---
 
