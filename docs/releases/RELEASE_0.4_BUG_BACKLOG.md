@@ -26,6 +26,14 @@ Effort key: **S** ≤ 0.5 day · **M** 0.5–2 days · **L** 2–5 days · **XL*
 | Fix | `a8869f1` — `fix(api): align admin plate creation with moderation workflow` |
 | Notes | Default `PENDING`; `publishedAt` only when status is `ACTIVE`. Policy: Create does not imply Publish. |
 
+### BUG-005 — Search filters not written to URL
+| Field | Detail |
+| --- | --- |
+| Class | P1 |
+| Status | **CLOSED** (Priority 4 / P4-4) |
+| Fix | URL SSOT via `url-search-state` + `useVehicleSearchUrlState` on `/vehicles/search` |
+| Notes | Back/Forward/refresh/share; see `PRIORITY_4_SEARCH_DISCOVERY.md` |
+
 ---
 
 ## Critical (P0)
@@ -69,18 +77,6 @@ Effort key: **S** ≤ 0.5 day · **M** 0.5–2 days · **L** 2–5 days · **XL*
 | Recommended fix | Redirect to `/login?next=/sell` (preserve query if any). |
 | Owner | Web |
 | Effort | S |
-| Evidence | CODE |
-
-### BUG-005 — Search filters not written to URL
-| Field | Detail |
-| --- | --- |
-| Class | P1 |
-| Impact | Shared/bookmarked search links lose filters; refresh resets UX. |
-| Reproduction | Open `/vehicles/search`, change filters, copy URL / refresh → filters not preserved. |
-| Root cause | Search pages read initial params but do not sync state back to the router query. |
-| Recommended fix | Write filter state to URL (replace) on change; hydrate from URL on load. |
-| Owner | Web |
-| Effort | M |
 | Evidence | CODE |
 
 ### BUG-006 — Owner delete has no confirmation

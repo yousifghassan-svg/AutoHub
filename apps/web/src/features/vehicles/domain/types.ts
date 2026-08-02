@@ -11,6 +11,14 @@ export function isVehicleCategory(code: string | undefined | null): boolean {
   return Boolean(code && code !== 'PLATE');
 }
 
+export type VehicleSortBy =
+  | 'createdAt'
+  | 'primaryPrice'
+  | 'publishedAt'
+  | 'relevance';
+
+export type VehicleSortOrder = 'asc' | 'desc';
+
 export type VehicleListQuery = {
   page?: number;
   pageSize?: number;
@@ -24,8 +32,8 @@ export type VehicleListQuery = {
   governorateId?: string;
   cityId?: string;
   makeId?: string;
-  sortBy?: 'createdAt' | 'primaryPrice' | 'publishedAt' | 'relevance';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?: VehicleSortBy;
+  sortOrder?: VehicleSortOrder;
 };
 
 export type VehicleSearchQuery = VehicleListQuery & {

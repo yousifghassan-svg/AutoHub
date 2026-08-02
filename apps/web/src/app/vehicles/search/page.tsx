@@ -1,7 +1,6 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { InfiniteSentinel } from '@/components/InfiniteSentinel';
 import { ListingCard } from '@/components/ListingCard';
@@ -13,7 +12,7 @@ import {
   Select,
   Skeleton,
 } from '@/components/ui';
-import { CATEGORIES, type ListingCategoryCode } from '@/features/listings/domain/types';
+import { CATEGORIES } from '@/features/listings/domain/types';
 import { CurrencySelect } from '@/features/currencies/components/CurrencySelect';
 import { priceRangeForCurrency } from '@/features/currencies/domain/types';
 import {
@@ -22,48 +21,65 @@ import {
   YEAR_MIN,
 } from '@/features/search/lib/apply-saved-filters';
 import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch';
+import { useVehicleSearchUrlState } from '@/features/search/hooks/useVehicleSearchUrlState';
 import {
   useVehicleSearchInfinite,
   VEHICLE_SORTS,
 } from '@/features/vehicles';
 
 function VehicleSearchInner() {
-  const params = useSearchParams();
   const catalog = useCatalogFilters();
+  const { state, keywordDraft, setKeywordDraft, submitKeyword, writeState } =
+    useVehicleSearchUrlState();
 
-  const [keyword, setKeyword] = useState(params.get('q') ?? '');
-  const [submitted, setSubmitted] = useState(params.get('q') ?? '');
-  const [categoryCode, setCategoryCode] = useState<ListingCategoryCode | ''>(
-    (params.get('category') as ListingCategoryCode | null) ?? '',
-  );
-  const [brandId, setBrandId] = useState(params.get('brandId') ?? '');
-  const [modelId, setModelId] = useState(params.get('modelId') ?? '');
-  const [bodyTypeId, setBodyTypeId] = useState('');
-  const [fuelTypeId, setFuelTypeId] = useState('');
-  const [transmissionTypeId, setTransmissionTypeId] = useState('');
-  const [governorateId, setGovernorateId] = useState('');
-  const [cityId, setCityId] = useState('');
-  const [sortIndex, setSortIndex] = useState(0);
-  const [currencyCode, setCurrencyCode] = useState(params.get('currency') ?? 'IQD');
-  const priceBounds = priceRangeForCurrency(currencyCode);
-  const [price, setPrice] = useState<[number, number]>([0, priceBounds.max]);
-  const [year, setYear] = useState<[number, number]>([YEAR_MIN, YEAR_MAX]);
-  const [mileage, setMileage] = useState<[number, number]>([0, MILEAGE_MAX]);
-  const [featuredOnly, setFeaturedOnly] = useState(params.get('featured') === '1');
+  const priceBounds = priceRangeForCurrency(state.currencyCode);
 
-  const sort = VEHICLE_SORTS[sortIndex] ?? VEHICLE_SORTS[0]!;
+  const [priceDraft, setPriceDraft] = useState<[number, number]>([
+    state.minPrice,
+    state.maxPrice,
+  ]);
+  const [yearDraft, setYearDraft] = useState<[number, number]>([
+    state.minYear,
+    state.maxYear,
+  ]);
+  const [mileageDraft, setMileageDraft] = useState<[number, number]>([
+    state.minMileage,
+    state.maxMileage,
+  ]);
+
+  useEffect(() => {
+    setPriceDraft([state.minPrice, state.maxPrice]);
+  }, [state.minPrice, state.maxPrice, state.currencyCode]);
+
+  useEffect(() => {
+    setYearDraft([state.minYear, state.maxYear]);
+  }, [state.minYear, state.maxYear]);
+
+  useEffect(() => {
+    setMileageDraft([state.minMileage, state.maxMileage]);
+  }, [state.minMileage, state.maxMileage]);
+
+  const sortIndex = useMemo(() => {
+    const idx = VEHICLE_SORTS.findIndex(
+      (s) => s.sortBy === state.sortBy && s.sortOrder === state.sortOrder,
+    );
+    return idx >= 0 ? idx : 0;
+  }, [state.sortBy, state.sortOrder]);
 
   const models = useMemo(
-    () => (catalog.data?.models ?? []).filter((m) => !brandId || m.brandId === brandId),
-    [catalog.data?.models, brandId],
+    () =>
+      (catalog.data?.models ?? []).filter(
+        (m) => !state.brandId || m.brandId === state.brandId,
+      ),
+    [catalog.data?.models, state.brandId],
   );
 
   const cities = useMemo(
     () =>
       (catalog.data?.cities ?? []).filter(
-        (c) => !governorateId || c.governorateId === governorateId,
+        (c) => !state.governorateId || c.governorateId === state.governorateId,
       ),
-    [catalog.data?.cities, governorateId],
+    [catalog.data?.cities, state.governorateId],
   );
 
   const vehicleCategories = useMemo(
@@ -73,51 +89,52 @@ function VehicleSearchInner() {
 
   const query = useMemo(
     () => ({
-      keyword: submitted.trim() || undefined,
-      categoryCode: categoryCode || undefined,
-      makeId: brandId || undefined,
-      modelId: modelId || undefined,
-      bodyTypeId: bodyTypeId || undefined,
-      fuelTypeId: fuelTypeId || undefined,
-      transmissionTypeId: transmissionTypeId || undefined,
-      governorateId: governorateId || undefined,
-      cityId: cityId || undefined,
-      currencyCode,
-      minPrice: price[0] > 0 ? price[0] : undefined,
-      maxPrice: price[1] < priceBounds.max ? price[1] : undefined,
-      minYear: year[0] > YEAR_MIN ? year[0] : undefined,
-      maxYear: year[1] < YEAR_MAX ? year[1] : undefined,
-      minMileage: mileage[0] > 0 ? mileage[0] : undefined,
-      maxMileage: mileage[1] < MILEAGE_MAX ? mileage[1] : undefined,
-      isFeatured: featuredOnly || undefined,
-      sortBy: sort.sortBy,
-      sortOrder: sort.sortOrder,
+      keyword: state.q.trim() || undefined,
+      categoryCode: state.categoryCode || undefined,
+      makeId: state.brandId || undefined,
+      modelId: state.modelId || undefined,
+      bodyTypeId: state.bodyTypeId || undefined,
+      fuelTypeId: state.fuelTypeId || undefined,
+      transmissionTypeId: state.transmissionTypeId || undefined,
+      governorateId: state.governorateId || undefined,
+      cityId: state.cityId || undefined,
+      currencyCode: state.currencyCode,
+      minPrice: state.minPrice > 0 ? state.minPrice : undefined,
+      maxPrice: state.maxPrice < priceBounds.max ? state.maxPrice : undefined,
+      minYear: state.minYear > YEAR_MIN ? state.minYear : undefined,
+      maxYear: state.maxYear < YEAR_MAX ? state.maxYear : undefined,
+      minMileage: state.minMileage > 0 ? state.minMileage : undefined,
+      maxMileage: state.maxMileage < MILEAGE_MAX ? state.maxMileage : undefined,
+      isFeatured: state.featured || undefined,
+      sortBy: state.sortBy,
+      sortOrder: state.sortOrder,
       pageSize: 12,
     }),
-    [
-      submitted,
-      categoryCode,
-      brandId,
-      modelId,
-      bodyTypeId,
-      fuelTypeId,
-      transmissionTypeId,
-      governorateId,
-      cityId,
-      currencyCode,
-      price,
-      priceBounds.max,
-      year,
-      mileage,
-      featuredOnly,
-      sort.sortBy,
-      sort.sortOrder,
-    ],
+    [state, priceBounds.max],
   );
 
   const search = useVehicleSearchInfinite(query, true);
   const items = search.data?.pages.flatMap((p) => p.items) ?? [];
   const total = search.data?.pages[0]?.total ?? 0;
+  const loadedPages = search.data?.pages.length ?? 0;
+
+  // Hydrate shared links with page>1 by fetching until URL page is reached.
+  useEffect(() => {
+    if (
+      loadedPages > 0 &&
+      loadedPages < state.page &&
+      search.hasNextPage &&
+      !search.isFetchingNextPage
+    ) {
+      void search.fetchNextPage();
+    }
+  }, [
+    loadedPages,
+    state.page,
+    search.hasNextPage,
+    search.isFetchingNextPage,
+    search.fetchNextPage,
+  ]);
 
   return (
     <div className="page-container py-10">
@@ -139,7 +156,10 @@ function VehicleSearchInner() {
         <Select
           label="Sort"
           value={String(sortIndex)}
-          onChange={(e) => setSortIndex(Number(e.target.value))}
+          onChange={(e) => {
+            const next = VEHICLE_SORTS[Number(e.target.value)] ?? VEHICLE_SORTS[0]!;
+            writeState({ sortBy: next.sortBy, sortOrder: next.sortOrder });
+          }}
           className="w-56"
         >
           {VEHICLE_SORTS.map((s, i) => (
@@ -154,13 +174,13 @@ function VehicleSearchInner() {
         className="mb-6 grid gap-3 rounded-xl border border-border bg-surface p-4 shadow-card md:grid-cols-[1fr_auto]"
         onSubmit={(e) => {
           e.preventDefault();
-          setSubmitted(keyword);
+          submitKeyword();
         }}
       >
         <Input
           label="Keyword"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
+          value={keywordDraft}
+          onChange={(e) => setKeywordDraft(e.target.value)}
           placeholder="Toyota, Camry, Baghdad…"
         />
         <div className="flex items-end">
@@ -177,9 +197,11 @@ function VehicleSearchInner() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => setCategoryCode('')}
+              onClick={() => writeState({ categoryCode: '' })}
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                !categoryCode ? 'bg-brand text-white' : 'bg-surface-muted text-ink-secondary'
+                !state.categoryCode
+                  ? 'bg-brand text-white'
+                  : 'bg-surface-muted text-ink-secondary'
               }`}
             >
               All
@@ -188,9 +210,9 @@ function VehicleSearchInner() {
               <button
                 key={c.code}
                 type="button"
-                onClick={() => setCategoryCode(c.code)}
+                onClick={() => writeState({ categoryCode: c.code })}
                 className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  categoryCode === c.code
+                  state.categoryCode === c.code
                     ? 'bg-brand text-white'
                     : 'bg-surface-muted text-ink-secondary'
                 }`}
@@ -201,47 +223,60 @@ function VehicleSearchInner() {
           </div>
 
           <CurrencySelect
-            value={currencyCode}
-            onChange={(code) => {
-              const next = priceRangeForCurrency(code);
-              setCurrencyCode(code);
-              setPrice([0, next.max]);
-            }}
+            value={state.currencyCode}
+            onChange={(code) => writeState({ currencyCode: code })}
             className="mb-3 block text-sm"
           />
           <RangeField
-            label={`Price (${currencyCode})`}
+            label={`Price (${state.currencyCode})`}
             min={0}
             max={priceBounds.max}
             step={priceBounds.step}
-            value={price}
-            onChange={setPrice}
+            value={priceDraft}
+            onChange={(price) => {
+              setPriceDraft(price);
+              writeState(
+                { minPrice: price[0], maxPrice: price[1] },
+                { debounceMs: 250 },
+              );
+            }}
             format={(n) => n.toLocaleString()}
           />
           <RangeField
             label="Year"
             min={YEAR_MIN}
             max={YEAR_MAX}
-            value={year}
-            onChange={setYear}
+            value={yearDraft}
+            onChange={(year) => {
+              setYearDraft(year);
+              writeState(
+                { minYear: year[0], maxYear: year[1] },
+                { debounceMs: 250 },
+              );
+            }}
           />
           <RangeField
             label="Mileage (km)"
             min={0}
             max={MILEAGE_MAX}
             step={1000}
-            value={mileage}
-            onChange={setMileage}
+            value={mileageDraft}
+            onChange={(mileage) => {
+              setMileageDraft(mileage);
+              writeState(
+                { minMileage: mileage[0], maxMileage: mileage[1] },
+                { debounceMs: 250 },
+              );
+            }}
             format={(n) => n.toLocaleString()}
           />
 
           <Select
             label="Brand"
-            value={brandId}
-            onChange={(e) => {
-              setBrandId(e.target.value);
-              setModelId('');
-            }}
+            value={state.brandId}
+            onChange={(e) =>
+              writeState({ brandId: e.target.value, modelId: '' })
+            }
           >
             <option value="">Any brand</option>
             {(catalog.data?.brands ?? []).map((b) => (
@@ -251,7 +286,11 @@ function VehicleSearchInner() {
             ))}
           </Select>
 
-          <Select label="Model" value={modelId} onChange={(e) => setModelId(e.target.value)}>
+          <Select
+            label="Model"
+            value={state.modelId}
+            onChange={(e) => writeState({ modelId: e.target.value })}
+          >
             <option value="">Any model</option>
             {models.map((m) => (
               <option key={m.id} value={m.id}>
@@ -260,7 +299,11 @@ function VehicleSearchInner() {
             ))}
           </Select>
 
-          <Select label="Body type" value={bodyTypeId} onChange={(e) => setBodyTypeId(e.target.value)}>
+          <Select
+            label="Body type"
+            value={state.bodyTypeId}
+            onChange={(e) => writeState({ bodyTypeId: e.target.value })}
+          >
             <option value="">Any</option>
             {(catalog.data?.bodyTypes ?? []).map((t) => (
               <option key={t.id} value={t.id}>
@@ -271,8 +314,10 @@ function VehicleSearchInner() {
 
           <Select
             label="Transmission"
-            value={transmissionTypeId}
-            onChange={(e) => setTransmissionTypeId(e.target.value)}
+            value={state.transmissionTypeId}
+            onChange={(e) =>
+              writeState({ transmissionTypeId: e.target.value })
+            }
           >
             <option value="">Any</option>
             {(catalog.data?.transmissionTypes ?? []).map((t) => (
@@ -282,7 +327,11 @@ function VehicleSearchInner() {
             ))}
           </Select>
 
-          <Select label="Fuel" value={fuelTypeId} onChange={(e) => setFuelTypeId(e.target.value)}>
+          <Select
+            label="Fuel"
+            value={state.fuelTypeId}
+            onChange={(e) => writeState({ fuelTypeId: e.target.value })}
+          >
             <option value="">Any</option>
             {(catalog.data?.fuelTypes ?? []).map((t) => (
               <option key={t.id} value={t.id}>
@@ -293,11 +342,10 @@ function VehicleSearchInner() {
 
           <Select
             label="Governorate"
-            value={governorateId}
-            onChange={(e) => {
-              setGovernorateId(e.target.value);
-              setCityId('');
-            }}
+            value={state.governorateId}
+            onChange={(e) =>
+              writeState({ governorateId: e.target.value, cityId: '' })
+            }
           >
             <option value="">All Iraq</option>
             {(catalog.data?.governorates ?? []).map((g) => (
@@ -307,7 +355,11 @@ function VehicleSearchInner() {
             ))}
           </Select>
 
-          <Select label="City" value={cityId} onChange={(e) => setCityId(e.target.value)}>
+          <Select
+            label="City"
+            value={state.cityId}
+            onChange={(e) => writeState({ cityId: e.target.value })}
+          >
             <option value="">Any city</option>
             {cities.map((c) => (
               <option key={c.id} value={c.id}>
@@ -319,8 +371,8 @@ function VehicleSearchInner() {
           <label className="flex items-center gap-2 text-sm text-ink">
             <input
               type="checkbox"
-              checked={featuredOnly}
-              onChange={(e) => setFeaturedOnly(e.target.checked)}
+              checked={state.featured}
+              onChange={(e) => writeState({ featured: e.target.checked })}
               className="rounded border-border"
             />
             Featured only
@@ -337,7 +389,9 @@ function VehicleSearchInner() {
           ) : search.isError ? (
             <EmptyState
               title="Search failed"
-              description={search.error instanceof Error ? search.error.message : 'Try again'}
+              description={
+                search.error instanceof Error ? search.error.message : 'Try again'
+              }
               action={
                 <Button variant="secondary" onClick={() => void search.refetch()}>
                   Retry
@@ -353,17 +407,31 @@ function VehicleSearchInner() {
             <>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {items.map((item) => (
-                  <ListingCard key={item.id} listing={item} href={`/vehicles/${item.id}`} />
+                  <ListingCard
+                    key={item.id}
+                    listing={item}
+                    href={`/vehicles/${item.id}`}
+                  />
                 ))}
               </div>
               <InfiniteSentinel
                 disabled={!search.hasNextPage || search.isFetchingNextPage}
                 onVisible={() => {
-                  if (search.hasNextPage) void search.fetchNextPage();
+                  if (!search.hasNextPage || search.isFetchingNextPage) return;
+                  void (async () => {
+                    const result = await search.fetchNextPage();
+                    const pages = result.data?.pages.length ?? loadedPages + 1;
+                    writeState(
+                      { page: pages },
+                      { resetPage: false, history: 'replace' },
+                    );
+                  })();
                 }}
               />
               {search.isFetchingNextPage ? (
-                <p className="py-6 text-center text-sm text-ink-secondary">Loading more…</p>
+                <p className="py-6 text-center text-sm text-ink-secondary">
+                  Loading more…
+                </p>
               ) : null}
             </>
           )}
