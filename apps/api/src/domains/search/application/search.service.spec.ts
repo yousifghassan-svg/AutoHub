@@ -66,6 +66,21 @@ describe('SearchService', () => {
     discovery.recordEvent.mockResolvedValue(undefined);
   });
 
+  it('recordAnalytics forwards to discovery.recordEvent (best-effort)', () => {
+    service.recordAnalytics({
+      keyword: 'toyota',
+      brandId: 'b1',
+      resultCount: 3,
+    });
+    expect(discovery.recordEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keyword: 'toyota',
+        brandId: 'b1',
+        resultCount: 3,
+      }),
+    );
+  });
+
   it('searches and records analytics event', async () => {
     discovery.search.mockResolvedValue({
       items: [

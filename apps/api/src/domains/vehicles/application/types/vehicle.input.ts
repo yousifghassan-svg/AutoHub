@@ -41,7 +41,7 @@ export type UpdateVehicleInput = {
 export type ListVehiclesInput = {
   page?: number;
   pageSize?: number;
-  sortBy?: 'createdAt' | 'primaryPrice' | 'publishedAt';
+  sortBy?: 'createdAt' | 'primaryPrice' | 'publishedAt' | 'relevance';
   sortOrder?: 'asc' | 'desc';
   cityId?: string;
   governorateId?: string;

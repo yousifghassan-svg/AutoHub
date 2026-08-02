@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { ListingStatus } from '@autohub/database';
+import { ListingStatus, type Prisma } from '@autohub/database';
 import type { AuthenticatedUser } from '../../auth/domain/auth.types';
+import { SearchService } from '../../search/application/search.service';
 import { canModerateVehicles } from '../domain/vehicle.policies';
 import { VehicleRepository } from '../infrastructure/vehicle.repository';
 import { VehiclesService } from './vehicles.service';
@@ -11,11 +12,16 @@ export class VehicleSearchService {
   constructor(
     private readonly vehicles: VehicleRepository,
     private readonly vehiclesService: VehiclesService,
+    private readonly searchAnalytics: SearchService,
   ) {}
 
   async search(query: SearchVehiclesInput, actor?: AuthenticatedUser) {
     const page = query.page ?? 1;
     const pageSize = Math.min(query.pageSize ?? 20, 100);
+    const hasKeyword = Boolean(query.keyword?.trim());
+    const sortBy =
+      query.sortBy ?? (hasKeyword ? 'relevance' : 'createdAt');
+    const sortOrder = query.sortOrder ?? 'desc';
 
     const isStaff = actor ? canModerateVehicles(actor.role, actor.permissions) : false;
     const status = query.status;
@@ -41,8 +47,8 @@ export class VehicleSearchService {
     const { items, total } = await this.vehicles.search({
       page,
       pageSize,
-      sortBy: query.sortBy ?? 'createdAt',
-      sortOrder: query.sortOrder ?? 'desc',
+      sortBy,
+      sortOrder,
       cityId: query.cityId,
       governorateId: query.governorateId,
       categoryId: query.categoryId,
@@ -68,12 +74,36 @@ export class VehicleSearchService {
       sellerId,
     });
 
+    this.searchAnalytics.recordAnalytics({
+      userId: actor?.id,
+      keyword: query.keyword?.trim() || undefined,
+      categoryId: query.categoryId,
+      brandId: query.brandId,
+      modelId: query.modelId,
+      cityId: query.cityId,
+      governorateId: query.governorateId,
+      filters: {
+        domain: 'VEHICLE',
+        categoryCode: query.categoryCode,
+        currencyCode: query.currencyCode,
+        minPrice: query.minPrice,
+        maxPrice: query.maxPrice,
+        minYear: query.minYear,
+        maxYear: query.maxYear,
+        sortBy,
+        sortOrder,
+      } as Prisma.InputJsonValue,
+      resultCount: total,
+    });
+
     return {
       items: items.map((item) => this.vehiclesService.mapVehicleResponse(item)),
       page,
       pageSize,
       total,
       totalPages: Math.ceil(total / pageSize) || 0,
+      sortBy,
+      sortOrder,
     };
   }
 }

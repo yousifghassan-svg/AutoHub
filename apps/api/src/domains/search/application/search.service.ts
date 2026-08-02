@@ -32,6 +32,22 @@ export type RecentSearchItem = {
 export class SearchService {
   constructor(private readonly discovery: DiscoveryRepository) {}
 
+  /** Best-effort analytics for any search surface (legacy + vehicle). */
+  recordAnalytics(input: {
+    userId?: string;
+    sessionId?: string;
+    keyword?: string;
+    categoryId?: string;
+    brandId?: string;
+    modelId?: string;
+    cityId?: string;
+    governorateId?: string;
+    filters?: Prisma.InputJsonValue;
+    resultCount: number;
+  }) {
+    void this.discovery.recordEvent(input).catch(() => undefined);
+  }
+
   async search(
     filters: SearchFilters,
     actor?: AuthenticatedUser,
@@ -48,21 +64,18 @@ export class SearchService {
       sort,
     });
 
-    // Analytics off the critical path (best-effort)
-    void this.discovery
-      .recordEvent({
-        userId: actor?.id,
-        sessionId,
-        keyword: filters.q?.trim() || undefined,
-        categoryId: filters.categoryId,
-        brandId: filters.brandId,
-        modelId: filters.modelId,
-        cityId: filters.cityId,
-        governorateId: filters.governorateId,
-        filters: filters as unknown as Prisma.InputJsonValue,
-        resultCount: total,
-      })
-      .catch(() => undefined);
+    this.recordAnalytics({
+      userId: actor?.id,
+      sessionId,
+      keyword: filters.q?.trim() || undefined,
+      categoryId: filters.categoryId,
+      brandId: filters.brandId,
+      modelId: filters.modelId,
+      cityId: filters.cityId,
+      governorateId: filters.governorateId,
+      filters: filters as unknown as Prisma.InputJsonValue,
+      resultCount: total,
+    });
 
     return {
       items: items.map((item) => this.toCard(item)),

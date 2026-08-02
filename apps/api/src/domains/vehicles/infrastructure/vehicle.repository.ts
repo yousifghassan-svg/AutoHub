@@ -7,11 +7,12 @@ import {
 } from '@autohub/database';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { VEHICLE_DOMAIN } from '../domain/vehicle.constants';
+import { buildVehicleOrderBy } from '../domain/vehicle-sort';
 
 export type VehicleListParams = {
   page: number;
   pageSize: number;
-  sortBy: 'createdAt' | 'primaryPrice' | 'publishedAt';
+  sortBy: 'createdAt' | 'primaryPrice' | 'publishedAt' | 'relevance';
   sortOrder: 'asc' | 'desc';
   cityId?: string;
   governorateId?: string;
@@ -133,7 +134,7 @@ export class VehicleRepository {
       this.prisma.listing.findMany({
         where,
         include: listInclude,
-        orderBy: { [params.sortBy]: params.sortOrder },
+        orderBy: buildVehicleOrderBy(params.sortBy, params.sortOrder),
         skip,
         take: params.pageSize,
       }),
@@ -172,7 +173,7 @@ export class VehicleRepository {
       this.prisma.listing.findMany({
         where,
         include: listInclude,
-        orderBy: { [params.sortBy]: params.sortOrder },
+        orderBy: buildVehicleOrderBy(params.sortBy, params.sortOrder),
         skip,
         take: params.pageSize,
       }),

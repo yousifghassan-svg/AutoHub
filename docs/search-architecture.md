@@ -20,6 +20,12 @@ Web product search is `GET /v1/vehicles/search` (`domain = VEHICLE`). Legacy `GE
 3. Union listing IDs into `where.id.in` (avoids OR that defeats GIN)
 4. Heavy equipment: keyword parity on translations; year/makeName/modelName when filters are HE-expressible (no `brandId` FK on HE)
 
+### Relevance + analytics (P4-2)
+
+- `sortBy=relevance` → `isFeatured DESC`, `isVerified DESC`, `viewsCount DESC`, `publishedAt DESC` (no `ts_rank`)
+- Default `sortBy` becomes `relevance` when `keyword` is present and sort omitted
+- `SearchService.recordAnalytics` called from vehicle search (feeds trending)
+
 ## Components
 
 ```

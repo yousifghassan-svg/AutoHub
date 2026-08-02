@@ -28,10 +28,12 @@ export class ListVehiclesDto {
   @Max(100)
   pageSize?: number = 20;
 
-  @ApiPropertyOptional({ enum: ['createdAt', 'primaryPrice', 'publishedAt'] })
+  @ApiPropertyOptional({
+    enum: ['createdAt', 'primaryPrice', 'publishedAt', 'relevance'],
+  })
   @IsOptional()
   @IsString()
-  sortBy?: 'createdAt' | 'primaryPrice' | 'publishedAt';
+  sortBy?: 'createdAt' | 'primaryPrice' | 'publishedAt' | 'relevance';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'] })
   @IsOptional()
