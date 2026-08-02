@@ -33,7 +33,7 @@
 | **P4-0** | Baseline metrics + architecture lock + quality plan | This document |
 | **P4-1** | FTS + ILIKE on `VehicleRepository`; HE keyword/year parity; quality validation | Gate checklist green; no `ts_rank` unless failed |
 | **P4-2** | Relevance sort under keyword; `SearchEvent` / `PopularKeyword` from vehicle search | Trending fed by vehicle path |
-| **P4-3** | DTO/filter parity only if web needs it | **Skipped** — web does not expose verified/condition filters yet |
+| **P4-3** | DTO/filter parity required by web UI | **Done** — `IsIn` sort enums; `brandId`↔`makeId` alias; mapper tests for web filter surface; client omits default sort params so API keyword→relevance can apply |
 | **P4-4** | Web URL ↔ state (BUG-005) | **Done** — `url-search-state.ts` + `/vehicles/search` |
 | **P4-5** | Web UX polish | **Done** — Clear keyword, Relevance sort option, empty/error states retained |
 | **P4-6** | Tests + finalize `docs/search-architecture.md` | **Done** — vehicle-search unit tests + docs |

@@ -24,7 +24,7 @@ export type VehicleListQuery = {
   governorateId?: string;
   cityId?: string;
   makeId?: string;
-  sortBy?: 'createdAt' | 'primaryPrice' | 'publishedAt';
+  sortBy?: 'createdAt' | 'primaryPrice' | 'publishedAt' | 'relevance';
   sortOrder?: 'asc' | 'desc';
 };
 

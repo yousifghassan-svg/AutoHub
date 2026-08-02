@@ -26,8 +26,9 @@ function toListQuery(params: VehicleListQuery): string {
   if (params.currencyCode) sp.set('currencyCode', params.currencyCode);
   if (params.governorateId) sp.set('governorateId', params.governorateId);
   if (params.cityId) sp.set('cityId', params.cityId);
-  sp.set('sortBy', params.sortBy ?? 'createdAt');
-  sp.set('sortOrder', params.sortOrder ?? 'desc');
+  // Omit sort defaults so the API can apply keyword → relevance (P4-2/P4-3).
+  if (params.sortBy) sp.set('sortBy', params.sortBy);
+  if (params.sortOrder) sp.set('sortOrder', params.sortOrder);
   return sp.toString();
 }
 

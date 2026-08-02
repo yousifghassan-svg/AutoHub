@@ -3,6 +3,7 @@ import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -11,6 +12,19 @@ import {
   Min,
 } from 'class-validator';
 import { ListingCategoryCode, ListingStatus } from '@autohub/database';
+
+export const VEHICLE_SORT_BY = [
+  'createdAt',
+  'primaryPrice',
+  'publishedAt',
+  'relevance',
+] as const;
+
+export type VehicleSortByDto = (typeof VEHICLE_SORT_BY)[number];
+
+export const VEHICLE_SORT_ORDER = ['asc', 'desc'] as const;
+
+export type VehicleSortOrderDto = (typeof VEHICLE_SORT_ORDER)[number];
 
 export class ListVehiclesDto {
   @ApiPropertyOptional({ default: 1 })
@@ -28,17 +42,15 @@ export class ListVehiclesDto {
   @Max(100)
   pageSize?: number = 20;
 
-  @ApiPropertyOptional({
-    enum: ['createdAt', 'primaryPrice', 'publishedAt', 'relevance'],
-  })
+  @ApiPropertyOptional({ enum: VEHICLE_SORT_BY })
   @IsOptional()
-  @IsString()
-  sortBy?: 'createdAt' | 'primaryPrice' | 'publishedAt' | 'relevance';
+  @IsIn(VEHICLE_SORT_BY)
+  sortBy?: VehicleSortByDto;
 
-  @ApiPropertyOptional({ enum: ['asc', 'desc'] })
+  @ApiPropertyOptional({ enum: VEHICLE_SORT_ORDER })
   @IsOptional()
-  @IsString()
-  sortOrder?: 'asc' | 'desc';
+  @IsIn(VEHICLE_SORT_ORDER)
+  sortOrder?: VehicleSortOrderDto;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -60,10 +72,17 @@ export class ListVehiclesDto {
   @IsEnum(ListingCategoryCode)
   categoryCode?: ListingCategoryCode;
 
-  @ApiPropertyOptional({ description: 'Make / brand id' })
+  @ApiPropertyOptional({ description: 'Make / brand id (preferred)' })
   @IsOptional()
   @IsString()
   makeId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Alias for makeId (accepted for client/catalog parity)',
+  })
+  @IsOptional()
+  @IsString()
+  brandId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -126,7 +145,8 @@ export function mapListVehiclesDto(dto: ListVehiclesDto) {
     governorateId: dto.governorateId,
     categoryId: dto.categoryId,
     categoryCode: dto.categoryCode,
-    brandId: dto.makeId,
+    // makeId is preferred; brandId accepted as alias used by catalog/clients
+    brandId: dto.makeId ?? dto.brandId,
     modelId: dto.modelId,
     minPrice: dto.minPrice,
     maxPrice: dto.maxPrice,
