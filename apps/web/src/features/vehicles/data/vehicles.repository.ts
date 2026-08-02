@@ -12,6 +12,7 @@ import type {
   ListingStatus,
 } from '@/features/listings/domain/types';
 import type { VehicleListQuery, VehicleSearchQuery } from '../domain/types';
+import { toVehicleSearchQueryString } from './vehicle-search-api-query';
 
 function toListQuery(params: VehicleListQuery): string {
   const sp = new URLSearchParams();
@@ -26,25 +27,12 @@ function toListQuery(params: VehicleListQuery): string {
   if (params.currencyCode) sp.set('currencyCode', params.currencyCode);
   if (params.governorateId) sp.set('governorateId', params.governorateId);
   if (params.cityId) sp.set('cityId', params.cityId);
-  // Omit sort defaults so the API can apply keyword → relevance (P4-2/P4-3).
-  if (params.sortBy) sp.set('sortBy', params.sortBy);
-  if (params.sortOrder) sp.set('sortOrder', params.sortOrder);
-  return sp.toString();
-}
-
-function toSearchQuery(params: VehicleSearchQuery): string {
-  const sp = new URLSearchParams(toListQuery(params));
   if (params.makeId) sp.set('makeId', params.makeId);
-  if (params.modelId) sp.set('modelId', params.modelId);
-  if (params.bodyTypeId) sp.set('bodyTypeId', params.bodyTypeId);
-  if (params.fuelTypeId) sp.set('fuelTypeId', params.fuelTypeId);
-  if (params.transmissionTypeId) sp.set('transmissionTypeId', params.transmissionTypeId);
-  if (params.driveTypeId) sp.set('driveTypeId', params.driveTypeId);
-  if (params.colorId) sp.set('colorId', params.colorId);
-  if (params.minYear != null) sp.set('minYear', String(params.minYear));
-  if (params.maxYear != null) sp.set('maxYear', String(params.maxYear));
-  if (params.minMileage != null) sp.set('minMileage', String(params.minMileage));
-  if (params.maxMileage != null) sp.set('maxMileage', String(params.maxMileage));
+  // Omit unspecified sort so list endpoints keep their own defaults.
+  if (params.sortBy) {
+    sp.set('sortBy', params.sortBy);
+    sp.set('sortOrder', params.sortOrder ?? 'desc');
+  }
   return sp.toString();
 }
 
@@ -73,7 +61,7 @@ export function createVehiclesRepository(http: HttpClient): VehiclesRepository {
     },
     async search(query) {
       const data = await http.get<Paginated<ApiListing>>(
-        `/v1/vehicles/search?${toSearchQuery(query)}`,
+        `/v1/vehicles/search?${toVehicleSearchQueryString(query)}`,
         false,
       );
       return {

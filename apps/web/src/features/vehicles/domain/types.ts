@@ -57,6 +57,7 @@ export type VehicleSortOption = {
 };
 
 export const VEHICLE_SORTS: VehicleSortOption[] = [
+  { sortBy: 'relevance', sortOrder: 'desc', label: 'Best match' },
   { sortBy: 'createdAt', sortOrder: 'desc', label: 'Newest' },
   { sortBy: 'primaryPrice', sortOrder: 'asc', label: 'Price: low to high' },
   { sortBy: 'primaryPrice', sortOrder: 'desc', label: 'Price: high to low' },

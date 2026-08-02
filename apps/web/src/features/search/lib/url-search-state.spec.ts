@@ -15,6 +15,32 @@ function roundTrip(state: VehicleSearchUrlState): VehicleSearchUrlState {
   return parseVehicleSearchParams(new URLSearchParams(qs));
 }
 
+function emptyFilters(
+  overrides: Partial<VehicleSearchUrlState> = {},
+): VehicleSearchUrlState {
+  return {
+    q: '',
+    categoryCode: '',
+    brandId: '',
+    modelId: '',
+    bodyTypeId: '',
+    fuelTypeId: '',
+    transmissionTypeId: '',
+    governorateId: '',
+    cityId: '',
+    currencyCode: 'IQD',
+    minPrice: 0,
+    maxPrice: priceRangeForCurrency('IQD').max,
+    minYear: YEAR_MIN,
+    maxYear: YEAR_MAX,
+    minMileage: 0,
+    maxMileage: MILEAGE_MAX,
+    featured: false,
+    page: 1,
+    ...overrides,
+  };
+}
+
 describe('vehicle search URL state (P4-4)', () => {
   it('round-trips the required searchable parameters', () => {
     const state: VehicleSearchUrlState = {
@@ -68,55 +94,37 @@ describe('vehicle search URL state (P4-4)', () => {
     assert.equal(parsed.q, 'tesla');
   });
 
-  it('omits default page/sort/currency from the query string', () => {
-    const qs = serializeVehicleSearchParams({
-      q: '',
-      categoryCode: '',
-      brandId: '',
-      modelId: '',
-      bodyTypeId: '',
-      fuelTypeId: '',
-      transmissionTypeId: '',
-      governorateId: '',
-      cityId: '',
-      currencyCode: 'IQD',
-      minPrice: 0,
-      maxPrice: priceRangeForCurrency('IQD').max,
-      minYear: YEAR_MIN,
-      maxYear: YEAR_MAX,
-      minMileage: 0,
-      maxMileage: MILEAGE_MAX,
-      featured: false,
-      sortBy: 'createdAt',
-      sortOrder: 'desc',
-      page: 1,
-    }).toString();
+  it('omits unspecified sort/page/currency from the query string', () => {
+    const qs = serializeVehicleSearchParams(emptyFilters()).toString();
     assert.equal(qs, '');
   });
 
+  it('treats missing sort params as unspecified (not createdAt)', () => {
+    const parsed = parseVehicleSearchParams(new URLSearchParams('q=toyota'));
+    assert.equal(parsed.q, 'toyota');
+    assert.equal(parsed.sortBy, undefined);
+    assert.equal(parsed.sortOrder, undefined);
+  });
+
+  it('persists explicit createdAt sort in the query string', () => {
+    const qs = serializeVehicleSearchParams(
+      emptyFilters({ sortBy: 'createdAt', sortOrder: 'desc' }),
+    ).toString();
+    const sp = new URLSearchParams(qs);
+    assert.equal(sp.get('sortBy'), 'createdAt');
+    assert.equal(sp.get('sortOrder'), 'desc');
+  });
+
+  it('round-trips explicit relevance sort', () => {
+    const restored = roundTrip(
+      emptyFilters({ q: 'toyota', sortBy: 'relevance', sortOrder: 'desc' }),
+    );
+    assert.equal(restored.sortBy, 'relevance');
+    assert.equal(restored.sortOrder, 'desc');
+  });
+
   it('resets page when filters change unless page is patched', () => {
-    const current: VehicleSearchUrlState = {
-      q: 'x',
-      categoryCode: '',
-      brandId: '',
-      modelId: '',
-      bodyTypeId: '',
-      fuelTypeId: '',
-      transmissionTypeId: '',
-      governorateId: '',
-      cityId: '',
-      currencyCode: 'IQD',
-      minPrice: 0,
-      maxPrice: priceRangeForCurrency('IQD').max,
-      minYear: YEAR_MIN,
-      maxYear: YEAR_MAX,
-      minMileage: 0,
-      maxMileage: MILEAGE_MAX,
-      featured: false,
-      sortBy: 'createdAt',
-      sortOrder: 'desc',
-      page: 4,
-    };
+    const current = emptyFilters({ q: 'x', page: 4 });
     const filtered = patchVehicleSearchState(current, { brandId: 'b1' });
     assert.equal(filtered.page, 1);
     const paged = patchVehicleSearchState(

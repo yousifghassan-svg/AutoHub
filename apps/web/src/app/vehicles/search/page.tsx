@@ -27,6 +27,7 @@ import {
 } from '@/features/search/lib/vehicle-search-filters';
 import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch';
 import { useVehicleSearchUrlState } from '@/features/search/hooks/useVehicleSearchUrlState';
+import { buildVehicleSearchApiSort } from '@/features/vehicles/data/vehicle-search-api-query';
 import {
   useVehicleSearchInfinite,
   VEHICLE_SORTS,
@@ -105,11 +106,20 @@ function VehicleSearchInner() {
   }, [state.minMileage, state.maxMileage]);
 
   const sortIndex = useMemo(() => {
+    if (!state.sortBy) {
+      // Display-only default: keyword → Best match; browse → Newest.
+      const fallback = state.q.trim()
+        ? VEHICLE_SORTS.findIndex((s) => s.sortBy === 'relevance')
+        : VEHICLE_SORTS.findIndex(
+            (s) => s.sortBy === 'createdAt' && s.sortOrder === 'desc',
+          );
+      return fallback >= 0 ? fallback : 0;
+    }
     const idx = VEHICLE_SORTS.findIndex(
       (s) => s.sortBy === state.sortBy && s.sortOrder === state.sortOrder,
     );
     return idx >= 0 ? idx : 0;
-  }, [state.sortBy, state.sortOrder]);
+  }, [state.q, state.sortBy, state.sortOrder]);
 
   const models = useMemo(
     () =>
@@ -191,8 +201,7 @@ function VehicleSearchInner() {
       minMileage: state.minMileage > 0 ? state.minMileage : undefined,
       maxMileage: state.maxMileage < MILEAGE_MAX ? state.maxMileage : undefined,
       isFeatured: state.featured || undefined,
-      sortBy: state.sortBy,
-      sortOrder: state.sortOrder,
+      ...buildVehicleSearchApiSort(state.sortBy, state.sortOrder),
       pageSize: 12,
     }),
     [state, priceBounds.max],

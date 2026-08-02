@@ -31,8 +31,6 @@ function baseState(
     minMileage: 0,
     maxMileage: MILEAGE_MAX,
     featured: false,
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
     page: 1,
     ...overrides,
   };

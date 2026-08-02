@@ -26,14 +26,15 @@ export type VehicleSearchUrlState = {
   minMileage: number;
   maxMileage: number;
   featured: boolean;
-  sortBy: VehicleSortBy;
-  sortOrder: VehicleSortOrder;
+  /**
+   * Explicit sort only. `undefined` means the user has not chosen a sort —
+   * the client omits sort params so the API can apply keyword → relevance.
+   */
+  sortBy?: VehicleSortBy;
+  sortOrder?: VehicleSortOrder;
   /** 1-based result page (infinite scroll loads 1..page). */
   page: number;
 };
-
-const DEFAULT_SORT_BY: VehicleSortBy = 'createdAt';
-const DEFAULT_SORT_ORDER: VehicleSortOrder = 'desc';
 
 function num(params: URLSearchParams, key: string): number | undefined {
   const raw = params.get(key);
@@ -47,26 +48,32 @@ function clampPage(value: number | undefined): number {
   return Math.floor(value);
 }
 
+function parseSortBy(raw: string | null): VehicleSortBy | undefined {
+  if (
+    raw === 'primaryPrice' ||
+    raw === 'publishedAt' ||
+    raw === 'relevance' ||
+    raw === 'createdAt'
+  ) {
+    return raw;
+  }
+  return undefined;
+}
+
+function parseSortOrder(raw: string | null): VehicleSortOrder | undefined {
+  if (raw === 'asc' || raw === 'desc') return raw;
+  return undefined;
+}
+
 export function parseVehicleSearchParams(
   params: URLSearchParams,
 ): VehicleSearchUrlState {
   const currencyCode = params.get('currency') ?? 'IQD';
   const bounds = priceRangeForCurrency(currencyCode);
-  const sortByRaw = params.get('sortBy');
-  const sortOrderRaw = params.get('sortOrder');
-
-  const sortBy: VehicleSortBy =
-    sortByRaw === 'primaryPrice' ||
-    sortByRaw === 'publishedAt' ||
-    sortByRaw === 'relevance' ||
-    sortByRaw === 'createdAt'
-      ? sortByRaw
-      : DEFAULT_SORT_BY;
-
-  const sortOrder: VehicleSortOrder =
-    sortOrderRaw === 'asc' || sortOrderRaw === 'desc'
-      ? sortOrderRaw
-      : DEFAULT_SORT_ORDER;
+  const sortBy = parseSortBy(params.get('sortBy'));
+  const sortOrder = sortBy
+    ? (parseSortOrder(params.get('sortOrder')) ?? 'desc')
+    : undefined;
 
   return {
     q: params.get('q') ?? '',
@@ -125,8 +132,12 @@ export function serializeVehicleSearchParams(
   if (state.maxMileage < MILEAGE_MAX) set('maxMileage', state.maxMileage);
   if (state.featured) set('featured', '1');
 
-  if (state.sortBy !== DEFAULT_SORT_BY) set('sortBy', state.sortBy);
-  if (state.sortOrder !== DEFAULT_SORT_ORDER) set('sortOrder', state.sortOrder);
+  // Persist any explicit sort (including createdAt/desc) so it stays distinct
+  // from "unspecified" (omitted → API keyword relevance default).
+  if (state.sortBy) {
+    set('sortBy', state.sortBy);
+    set('sortOrder', state.sortOrder ?? 'desc');
+  }
   if (state.page > 1) set('page', state.page);
 
   return sp;
