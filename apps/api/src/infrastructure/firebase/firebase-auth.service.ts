@@ -4,8 +4,6 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { cert, getApps, initializeApp } from 'firebase-admin/app';
-import { getAuth, type Auth } from 'firebase-admin/auth';
 import { AppConfigService } from '../config/app-config.service';
 import { AppLoggerService } from '../logger/app-logger.service';
 import type { FirebasePhoneIdentity } from '../../domains/auth/domain/auth.types';
@@ -18,12 +16,32 @@ type DecodedIdTokenLike = {
   firebase?: { sign_in_provider?: string };
 };
 
+type FirebaseAuthLike = {
+  verifyIdToken: (token: string, checkRevoked?: boolean) => Promise<DecodedIdTokenLike>;
+};
+
+type FirebaseAdminLike = {
+  apps: unknown[];
+  initializeApp: (options: { credential: unknown }) => void;
+  credential: {
+    cert: (serviceAccount: {
+      projectId: string;
+      clientEmail: string;
+      privateKey: string;
+    }) => unknown;
+  };
+  auth: () => FirebaseAuthLike;
+};
+
 /**
  * Firebase Authentication integration for phone sign-in verification.
- * Uses firebase-admin v14 modular APIs (`firebase-admin/app` + `firebase-admin/auth`).
+ *
+ * Uses the firebase-admin namespaced entry (require) so Jest can load the module
+ * without ESM-only transitive deps from `firebase-admin/auth`.
  */
 @Injectable()
 export class FirebaseAuthService implements OnModuleInit {
+  private admin: FirebaseAdminLike | null = null;
   private ready = false;
 
   constructor(
@@ -44,9 +62,12 @@ export class FirebaseAuthService implements OnModuleInit {
     }
 
     try {
-      if (getApps().length === 0) {
-        initializeApp({
-          credential: cert({
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const firebaseAdmin = require('firebase-admin') as FirebaseAdminLike;
+      this.admin = firebaseAdmin;
+      if (!firebaseAdmin.apps.length) {
+        firebaseAdmin.initializeApp({
+          credential: firebaseAdmin.credential.cert({
             projectId,
             clientEmail,
             privateKey,
@@ -57,6 +78,7 @@ export class FirebaseAuthService implements OnModuleInit {
       this.logger.log('Firebase Admin SDK initialized');
     } catch (error) {
       this.ready = false;
+      this.admin = null;
       this.logger.error(
         'Failed to initialize Firebase Admin SDK',
         error instanceof Error ? error.stack : String(error),
@@ -68,9 +90,9 @@ export class FirebaseAuthService implements OnModuleInit {
     return this.ready;
   }
 
-  getAuth(): Auth | null {
-    if (!this.ready) return null;
-    return getAuth();
+  getAuth(): FirebaseAuthLike | null {
+    if (!this.ready || !this.admin) return null;
+    return this.admin.auth();
   }
 
   /**

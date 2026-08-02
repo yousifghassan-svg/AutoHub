@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { loadVerification } from '@/features/auth/data/verification-storage';
+import { safeNextPath } from '@/features/auth/domain/safe-next-path';
 import { Button, Input } from '@/components/ui';
 import { config } from '@/lib/config';
 
@@ -79,12 +80,8 @@ export default function OtpPage() {
 
   useEffect(() => {
     if (status !== 'authenticated') return;
-    const next = readQuery('next');
-    if (next === 'profile-setup') {
-      router.replace('/profile-setup');
-      return;
-    }
-    router.replace(next && next.startsWith('/') ? next : '/');
+    const next = safeNextPath(readQuery('next'));
+    router.replace(next ?? '/');
   }, [status, router]);
 
   const onResend = async () => {
@@ -119,11 +116,11 @@ export default function OtpPage() {
         if (phone) await sendOtp(phone);
       }
       const session = await verifyOtp(trimmed);
-      const next = readQuery('next');
-      if (!session.profileSetupComplete || next === 'profile-setup') {
+      const next = safeNextPath(readQuery('next'));
+      if (!session.profileSetupComplete || next === '/profile-setup') {
         router.replace('/profile-setup');
       } else {
-        router.replace(next && next.startsWith('/') ? next : '/');
+        router.replace(next ?? '/');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code');

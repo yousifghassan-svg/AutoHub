@@ -4,14 +4,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { safeNextPath } from '@/features/auth/domain/safe-next-path';
 import { Button, Input } from '@/components/ui';
 import { config } from '@/lib/config';
 
 function nextPath(): string | null {
   if (typeof window === 'undefined') return null;
   try {
-    const n = new URLSearchParams(window.location.search).get('next');
-    return n && n.startsWith('/') ? n : null;
+    return safeNextPath(new URLSearchParams(window.location.search).get('next'));
   } catch {
     return null;
   }
@@ -20,15 +20,15 @@ function nextPath(): string | null {
 export default function LoginPage() {
   const router = useRouter();
   const { sendOtp, authMode } = useAuth();
-  const [phone, setPhone] = useState('+9647700010006');
+  const [phone, setPhone] = useState('+9647');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const normalized = phone.trim();
-    if (!/^\+[1-9]\d{7,14}$/.test(normalized.replace(/\s/g, ''))) {
-      setError('Enter a valid E.164 phone (e.g. +9647700010006)');
+    const normalized = phone.trim().replace(/\s/g, '');
+    if (!/^\+[1-9]\d{7,14}$/.test(normalized)) {
+      setError('Enter a valid phone number with country code (e.g. +9647XXXXXXXXX)');
       return;
     }
     setLoading(true);
@@ -55,8 +55,8 @@ export default function LoginPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-ink">Log in</h1>
           <p className="mt-1 text-sm text-ink-secondary">
-            Phone OTP via the Nest auth API ({authMode} mode).
-            {authMode === 'dev' ? ` Use code ${config.authDevOtp}.` : ''}
+            Enter your mobile number to receive a verification code.
+            {authMode === 'dev' ? ` Dev code: ${config.authDevOtp}.` : ''}
           </p>
         </div>
         <Input

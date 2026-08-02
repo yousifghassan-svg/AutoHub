@@ -49,10 +49,11 @@ export const config = {
   /**
    * When true, disables reCAPTCHA app verification for Firebase phone auth.
    * Only valid with Firebase Console "Phone numbers for testing".
-   * Never enable in production builds.
+   * Forced off when NODE_ENV=production (and blocked at next build).
    */
   firebasePhoneTesting:
     process.env.NEXT_PUBLIC_FIREBASE_PHONE_TESTING === 'true' &&
-    process.env.NODE_ENV !== 'production',
+    process.env.NODE_ENV !== 'production' &&
+    authMode === 'firebase',
   firebase,
 };

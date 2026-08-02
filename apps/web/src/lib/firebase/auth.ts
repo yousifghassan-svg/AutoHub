@@ -71,35 +71,47 @@ function mapFirebaseAuthError(error: unknown): Error {
 
   switch (code) {
     case 'auth/invalid-phone-number':
+    case 'auth/missing-phone-number':
       return new Error('Invalid phone number. Use E.164 format (e.g. +9647XXXXXXXXX).');
     case 'auth/too-many-requests':
       return new Error('Too many verification attempts. Try again later.');
     case 'auth/invalid-verification-code':
     case 'auth/code-expired':
-      return new Error('Invalid or expired verification code.');
+    case 'auth/session-expired':
+    case 'auth/invalid-verification-id':
+      return new Error('Invalid or expired verification code. Request a new code.');
     case 'auth/missing-verification-code':
       return new Error('Enter the verification code from SMS.');
     case 'auth/captcha-check-failed':
     case 'auth/invalid-app-credential':
+    case 'auth/app-not-authorized':
       return new Error(
-        'reCAPTCHA verification failed. Check Firebase authorized domains and Web API key.',
+        'Security verification failed. Refresh the page and try again. If this continues, check that this site is an authorized Firebase domain.',
       );
     case 'auth/quota-exceeded':
-      return new Error('SMS quota exceeded for this Firebase project.');
+      return new Error('SMS quota exceeded. Try again later.');
+    case 'auth/operation-not-allowed':
+      return new Error('Phone sign-in is not enabled for this app. Contact support.');
+    case 'auth/billing-not-enabled':
+      return new Error('Phone verification is temporarily unavailable. Try again later.');
+    case 'auth/user-disabled':
+      return new Error('This account has been disabled. Contact support.');
+    case 'auth/network-request-failed':
+    case 'auth/timeout':
+      return new Error('Network error during verification. Check your connection and try again.');
     case 'auth/error-code':
     case 'auth/error-code:-39':
       // Identity Toolkit "Error code: 39" / backendError — SMS anti-abuse gate.
       return new Error(
-        'Firebase could not deliver the SMS (backend error 39). Wait and retry, use a Firebase test phone number locally, or check Firebase Console SMS / Support for project autohub-v2-c039b.',
+        'Could not send the verification SMS. Wait a few minutes and try again, or contact support if it keeps failing.',
       );
     default:
-      // SDK sometimes surfaces as auth/error-code with message "Firebase: Error (auth/error-code:-39)."
       if (/error-code:-39|Error code:\s*39/i.test(message) || /error-code:-39/i.test(code)) {
         return new Error(
-          'Firebase could not deliver the SMS (backend error 39). Wait and retry, use a Firebase test phone number locally, or check Firebase Console SMS / Support for project autohub-v2-c039b.',
+          'Could not send the verification SMS. Wait a few minutes and try again, or contact support if it keeps failing.',
         );
       }
-      return new Error(message);
+      return new Error('Phone verification failed. Please try again.');
   }
 }
 
