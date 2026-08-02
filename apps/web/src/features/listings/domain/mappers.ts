@@ -22,6 +22,7 @@ export type ApiListing = {
   translations?: Array<{ language: string; title: string; description?: string }>;
   media?: Array<{
     id?: string;
+    mediaAssetId?: string | null;
     r2Key: string;
     thumbnailKey: string | null;
     sortOrder: number;
@@ -41,8 +42,11 @@ export type ApiListing = {
   longitude?: number | null;
   locationText?: string | null;
   features?: string[];
+  draftStep?: string | null;
+  categoryId?: string | null;
   cityId?: string | null;
   governorateId?: string | null;
+  vehicleDetails?: ApiListing['carDetails'] & { vin?: string | null; engineTypeId?: string | null };
   phoneClicks?: number | null;
   whatsappClicks?: number | null;
   sellerContact?: {
@@ -71,11 +75,13 @@ export type ApiListing = {
     colorId?: string | null;
     bodyTypeId?: string | null;
     driveTypeId?: string | null;
+    engineTypeId?: string | null;
     doors?: number | null;
     seats?: number | null;
     engineSizeCc?: number | null;
     trim?: string | null;
     interiorColor?: string | null;
+    vin?: string | null;
   } | null;
   motorcycleDetails?: {
     year: number | null;
@@ -104,7 +110,7 @@ export type ApiListing = {
     regionCode?: string | null;
     plateType?: string | null;
   } | null;
-  category?: { code: string };
+  category?: { id?: string; code: string };
 };
 
 export function resolveCurrencyCode(
@@ -206,6 +212,7 @@ export function mapListingToDetail(listing: ApiListing): ListingDetailModel {
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((m) => ({
       id: m.id ?? m.r2Key,
+      mediaAssetId: m.mediaAssetId ?? null,
       url: mediaPublicUrl(m.r2Key) ?? mediaPublicUrl(m.thumbnailKey),
       kind: m.mediaType ?? 'IMAGE',
       blurDataUrl: m.blurDataUrl ?? null,
@@ -214,7 +221,11 @@ export function mapListingToDetail(listing: ApiListing): ListingDetailModel {
     }));
 
   const details =
-    listing.carDetails ?? listing.motorcycleDetails ?? listing.truckDetails ?? null;
+    listing.vehicleDetails ??
+    listing.carDetails ??
+    listing.motorcycleDetails ??
+    listing.truckDetails ??
+    null;
 
   const locationText = listing.locationText?.trim() || null;
 
@@ -246,6 +257,8 @@ export function mapListingToDetail(listing: ApiListing): ListingDetailModel {
     longitude: listing.longitude ?? null,
     locationText,
     features: listing.features ?? [],
+    categoryId: listing.categoryId ?? listing.category?.id ?? null,
+    draftStep: listing.draftStep ?? null,
     sellerContact,
     dealerBadge: Boolean(sellerContact?.dealerSlug ?? listing.isVerified),
     phoneClicks: listing.phoneClicks ?? null,
@@ -260,14 +273,31 @@ export function mapListingToDetail(listing: ApiListing): ListingDetailModel {
               ? ((details as { transmissionTypeId?: string | null }).transmissionTypeId ?? null)
               : null,
           colorId: details.colorId ?? null,
-          bodyTypeId: listing.carDetails?.bodyTypeId ?? null,
-          driveTypeId: listing.carDetails?.driveTypeId ?? null,
+          bodyTypeId:
+            'bodyTypeId' in details
+              ? ((details as { bodyTypeId?: string | null }).bodyTypeId ?? null)
+              : null,
+          driveTypeId:
+            'driveTypeId' in details
+              ? ((details as { driveTypeId?: string | null }).driveTypeId ?? null)
+              : null,
+          engineTypeId:
+            'engineTypeId' in details
+              ? ((details as { engineTypeId?: string | null }).engineTypeId ?? null)
+              : null,
           conditionTypeId: listing.conditionTypeId ?? null,
           doors: listing.carDetails?.doors ?? null,
           seats: listing.carDetails?.seats ?? null,
-          engineSizeCc: listing.carDetails?.engineSizeCc ?? null,
+          engineSizeCc:
+            'engineSizeCc' in details
+              ? ((details as { engineSizeCc?: number | null }).engineSizeCc ?? null)
+              : null,
           trim: listing.carDetails?.trim ?? null,
           interiorColor: listing.carDetails?.interiorColor ?? null,
+          vin:
+            'vin' in details
+              ? ((details as { vin?: string | null }).vin ?? null)
+              : null,
         }
       : null,
   };

@@ -1,7 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { ListingStatus, Prisma, type SavedSearch, type SearchEvent } from '@autohub/database';
+import {
+  ListingStatus,
+  MarketplaceDomain,
+  Prisma,
+  type SavedSearch,
+  type SearchEvent,
+} from '@autohub/database';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
-import { SearchFilters, SearchSort } from '../domain/search.types';
+import {
+  SearchFilters,
+  SearchSort,
+  type SearchFacets,
+} from '../domain/search.types';
 
 /** Lean include — one query, no N+1 for list cards. */
 const discoveryInclude = {
@@ -110,8 +120,16 @@ export class DiscoveryRepository {
   }> {
     const page = filters.page ?? 1;
     const pageSize = Math.min(filters.pageSize ?? 20, 100);
-    const where = this.buildWhere(filters);
-    const orderBy = this.buildOrderBy(filters.sort, Boolean(filters.q?.trim()));
+    const where = await this.buildWhere(filters);
+    const q = filters.q?.trim();
+    const useTsRank =
+      filters.sort === SearchSort.MOST_RELEVANT && Boolean(q);
+
+    if (useTsRank) {
+      return this.searchWithTsRank(where, q!, page, pageSize);
+    }
+
+    const orderBy = this.buildOrderBy(filters.sort, Boolean(q));
 
     const [total, items] = await this.prisma.$transaction([
       this.prisma.listing.count({ where }),
@@ -127,11 +145,248 @@ export class DiscoveryRepository {
     return { items, total };
   }
 
-  private buildWhere(filters: SearchFilters): Prisma.ListingWhereInput {
+  /**
+   * MOST_RELEVANT + keyword: order by Postgres ts_rank over translation FTS,
+   * then featured / verified / views / publishedAt.
+   */
+  private async searchWithTsRank(
+    where: Prisma.ListingWhereInput,
+    q: string,
+    page: number,
+    pageSize: number,
+  ): Promise<{ items: DiscoveryListing[]; total: number }> {
+    const total = await this.prisma.listing.count({ where });
+    if (total === 0) return { items: [], total: 0 };
+
+    const candidates = await this.prisma.listing.findMany({
+      where,
+      select: { id: true },
+      take: 2500,
+    });
+    if (candidates.length === 0) return { items: [], total };
+
+    const ids = candidates.map((c) => c.id);
+    const skip = (page - 1) * pageSize;
+    const ranked = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT l.id
+      FROM "Listing" l
+      INNER JOIN "ListingTranslation" t
+        ON t."listingId" = l.id AND t."deletedAt" IS NULL
+      WHERE l.id IN (${Prisma.join(ids)})
+      GROUP BY l.id, l."isFeatured", l."isVerified", l."viewsCount", l."publishedAt"
+      ORDER BY
+        MAX(
+          ts_rank(
+            to_tsvector('simple', coalesce(t.title, '') || ' ' || coalesce(t.description, '')),
+            websearch_to_tsquery('simple', ${q})
+          )
+        ) DESC,
+        l."isFeatured" DESC,
+        l."isVerified" DESC,
+        l."viewsCount" DESC,
+        l."publishedAt" DESC NULLS LAST
+      LIMIT ${pageSize}
+      OFFSET ${skip}
+    `;
+
+    if (ranked.length === 0) return { items: [], total };
+
+    const order = new Map(ranked.map((r, i) => [r.id, i]));
+    const items = await this.prisma.listing.findMany({
+      where: { id: { in: ranked.map((r) => r.id) } },
+      include: discoveryInclude,
+    });
+    items.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    return { items, total };
+  }
+
+  /** Facet counts for the active filter set (disjunctive per dimension). */
+  async facets(filters: SearchFilters): Promise<SearchFacets> {
+    const base = await this.buildWhere({
+      ...filters,
+      categoryId: undefined,
+      categoryCode: undefined,
+      brandId: undefined,
+      governorateId: undefined,
+      cityId: undefined,
+      featuredOnly: undefined,
+      verifiedOnly: undefined,
+      page: undefined,
+      pageSize: undefined,
+      sort: undefined,
+    });
+
+    const [
+      categoryRows,
+      brandRows,
+      govRows,
+      cityRows,
+      featuredCount,
+      verifiedCount,
+    ] = await Promise.all([
+      this.prisma.listing.groupBy({
+        by: ['categoryId'],
+        where: base,
+        _count: { _all: true },
+        orderBy: { _count: { categoryId: 'desc' } },
+        take: 40,
+      }),
+      this.facetBrandCounts(base),
+      this.facetGovernorateCounts(base),
+      this.facetCityCounts(base),
+      this.prisma.listing.count({
+        where: { AND: [base, { isFeatured: true }] },
+      }),
+      this.prisma.listing.count({
+        where: { AND: [base, { isVerified: true }] },
+      }),
+    ]);
+
+    const categoryIds = categoryRows.map((r) => r.categoryId);
+    const categories = categoryIds.length
+      ? await this.prisma.category.findMany({
+          where: { id: { in: categoryIds } },
+          select: { id: true, nameEn: true, code: true },
+        })
+      : [];
+    const catMeta = new Map(
+      categories.map((c) => [c.id, { label: c.nameEn || c.code, code: c.code }]),
+    );
+
+    return {
+      categories: categoryRows.map((r) => {
+        const meta = catMeta.get(r.categoryId);
+        return {
+          id: r.categoryId,
+          label: meta?.label ?? r.categoryId,
+          code: meta?.code,
+          count: r._count._all,
+        };
+      }),
+      brands: brandRows,
+      governorates: govRows,
+      cities: cityRows,
+      featured: { count: featuredCount },
+      verified: { count: verifiedCount },
+    };
+  }
+
+  private async facetBrandCounts(
+    base: Prisma.ListingWhereInput,
+  ): Promise<Array<{ id: string; label: string; count: number }>> {
+    const listings = await this.prisma.listing.findMany({
+      where: {
+        AND: [
+          base,
+          {
+            OR: [
+              { carDetails: { is: { brandId: { not: null }, deletedAt: null } } },
+              {
+                motorcycleDetails: {
+                  is: { brandId: { not: null }, deletedAt: null },
+                },
+              },
+              {
+                truckDetails: { is: { brandId: { not: null }, deletedAt: null } },
+              },
+            ],
+          },
+        ],
+      },
+      select: {
+        carDetails: { select: { brandId: true } },
+        motorcycleDetails: { select: { brandId: true } },
+        truckDetails: { select: { brandId: true } },
+      },
+      take: 5000,
+    });
+    const counts = new Map<string, number>();
+    for (const l of listings) {
+      const brandId =
+        l.carDetails?.brandId ??
+        l.motorcycleDetails?.brandId ??
+        l.truckDetails?.brandId;
+      if (!brandId) continue;
+      counts.set(brandId, (counts.get(brandId) ?? 0) + 1);
+    }
+    const top = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 40);
+    if (!top.length) return [];
+    const brands = await this.prisma.vehicleBrand.findMany({
+      where: { id: { in: top.map(([id]) => id) } },
+      select: { id: true, nameEn: true },
+    });
+    const labels = new Map(brands.map((b) => [b.id, b.nameEn]));
+    return top.map(([id, count]) => ({
+      id,
+      label: labels.get(id) ?? id,
+      count,
+    }));
+  }
+
+  private async facetGovernorateCounts(
+    base: Prisma.ListingWhereInput,
+  ): Promise<Array<{ id: string; label: string; count: number }>> {
+    const listings = await this.prisma.listing.findMany({
+      where: base,
+      select: {
+        city: { select: { governorateId: true, governorate: { select: { nameEn: true } } } },
+      },
+      take: 8000,
+    });
+    const counts = new Map<string, { label: string; count: number }>();
+    for (const l of listings) {
+      const id = l.city?.governorateId;
+      if (!id) continue;
+      const cur = counts.get(id);
+      if (cur) cur.count += 1;
+      else
+        counts.set(id, {
+          label: l.city?.governorate?.nameEn ?? id,
+          count: 1,
+        });
+    }
+    return [...counts.entries()]
+      .map(([id, v]) => ({ id, label: v.label, count: v.count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 40);
+  }
+
+  private async facetCityCounts(
+    base: Prisma.ListingWhereInput,
+  ): Promise<Array<{ id: string; label: string; count: number }>> {
+    const rows = await this.prisma.listing.groupBy({
+      by: ['cityId'],
+      where: base,
+      _count: { _all: true },
+      orderBy: { _count: { cityId: 'desc' } },
+      take: 40,
+    });
+    if (!rows.length) return [];
+    const cities = await this.prisma.city.findMany({
+      where: { id: { in: rows.map((r) => r.cityId) } },
+      select: { id: true, nameEn: true },
+    });
+    const labels = new Map(cities.map((c) => [c.id, c.nameEn]));
+    return rows.map((r) => ({
+      id: r.cityId,
+      label: labels.get(r.cityId) ?? r.cityId,
+      count: r._count._all,
+    }));
+  }
+
+  private async buildWhere(
+    filters: SearchFilters,
+  ): Promise<Prisma.ListingWhereInput> {
     const and: Prisma.ListingWhereInput[] = [
       { deletedAt: null },
       { status: ListingStatus.ACTIVE },
     ];
+
+    if (filters.domain) {
+      and.push({ domain: filters.domain });
+    }
 
     if (filters.categoryId) and.push({ categoryId: filters.categoryId });
     if (filters.categoryCode) and.push({ categoryCode: filters.categoryCode });
@@ -168,6 +423,9 @@ export class DiscoveryRepository {
 
     const vehicleFilter = this.buildVehicleFilter(filters);
     if (vehicleFilter) and.push(vehicleFilter);
+
+    const plateFilter = await this.buildPlateFilter(filters);
+    if (plateFilter) and.push(plateFilter);
 
     const q = filters.q?.trim();
     if (q) {
@@ -252,47 +510,152 @@ export class DiscoveryRepository {
       deletedAt: null as null,
     };
 
-    return {
-      OR: [
-        {
-          carDetails: {
-            is: {
-              ...shared,
-              transmissionTypeId: filters.transmissionTypeId,
-              bodyTypeId: filters.bodyTypeId,
-              colorId: filters.colorId,
-              driveTypeId: filters.driveTypeId,
-            },
+    const or: Prisma.ListingWhereInput[] = [
+      {
+        carDetails: {
+          is: {
+            ...shared,
+            transmissionTypeId: filters.transmissionTypeId,
+            bodyTypeId: filters.bodyTypeId,
+            colorId: filters.colorId,
+            driveTypeId: filters.driveTypeId,
           },
         },
-        {
-          motorcycleDetails: {
-            is: {
-              brandId: filters.brandId,
-              modelId: filters.modelId,
-              year,
-              mileageKm,
-              fuelTypeId: filters.fuelTypeId,
-              colorId: filters.colorId,
-              deletedAt: null,
-            },
+      },
+      {
+        motorcycleDetails: {
+          is: {
+            brandId: filters.brandId,
+            modelId: filters.modelId,
+            year,
+            mileageKm,
+            fuelTypeId: filters.fuelTypeId,
+            colorId: filters.colorId,
+            deletedAt: null,
           },
         },
-        {
-          truckDetails: {
-            is: {
-              brandId: filters.brandId,
-              modelId: filters.modelId,
-              year,
-              mileageKm,
-              fuelTypeId: filters.fuelTypeId,
-              transmissionTypeId: filters.transmissionTypeId,
-              deletedAt: null,
-            },
+      },
+      {
+        truckDetails: {
+          is: {
+            brandId: filters.brandId,
+            modelId: filters.modelId,
+            year,
+            mileageKm,
+            fuelTypeId: filters.fuelTypeId,
+            transmissionTypeId: filters.transmissionTypeId,
+            deletedAt: null,
           },
         },
-      ],
-    };
+      },
+    ];
+
+    // Heavy equipment has year only (no brandId FKs) — include when year filtered.
+    if (year && !filters.brandId && !filters.modelId) {
+      or.push({
+        heavyEquipmentDetails: {
+          is: {
+            year,
+            deletedAt: null,
+          },
+        },
+      });
+    }
+
+    return { OR: or };
+  }
+
+  private async buildPlateFilter(
+    filters: SearchFilters,
+  ): Promise<Prisma.ListingWhereInput | undefined> {
+    const hasPlateDims =
+      filters.formatCode ||
+      filters.prefix ||
+      filters.series ||
+      filters.number ||
+      filters.digits != null ||
+      filters.plateCategoryId ||
+      filters.platePrefixId ||
+      filters.plateVerificationStatus ||
+      filters.domain === MarketplaceDomain.PLATE;
+
+    if (
+      !hasPlateDims &&
+      filters.domain !== MarketplaceDomain.PLATE &&
+      !filters.formatCode &&
+      !filters.prefix &&
+      !filters.series &&
+      !filters.number &&
+      filters.digits == null &&
+      !filters.plateCategoryId &&
+      !filters.platePrefixId &&
+      !filters.plateVerificationStatus
+    ) {
+      return undefined;
+    }
+
+    // Only apply plate detail constraints when plate-specific filters are set.
+    const plateSpecific =
+      filters.formatCode ||
+      filters.prefix ||
+      filters.series ||
+      filters.number ||
+      filters.digits != null ||
+      filters.plateCategoryId ||
+      filters.platePrefixId ||
+      filters.plateVerificationStatus;
+
+    if (!plateSpecific) return undefined;
+
+    const plate: Prisma.PlateDetailsWhereInput = { deletedAt: null };
+    if (filters.formatCode) {
+      plate.formatCode = filters.formatCode.trim();
+    }
+    if (filters.series) {
+      plate.series = { equals: filters.series.trim().toUpperCase() };
+    }
+    if (filters.prefix) {
+      const p = filters.prefix.trim().toUpperCase();
+      plate.OR = [
+        { series: { equals: p } },
+        { platePrefix: { is: { letter: p } } },
+      ];
+    }
+    if (filters.number) {
+      plate.number = { contains: filters.number.trim() };
+    }
+    if (filters.plateCategoryId) {
+      plate.plateCategoryId = filters.plateCategoryId;
+    }
+    if (filters.platePrefixId) {
+      plate.platePrefixId = filters.platePrefixId;
+    }
+    if (filters.plateVerificationStatus) {
+      plate.verificationStatus = filters.plateVerificationStatus;
+    }
+
+    const and: Prisma.ListingWhereInput[] = [
+      { plateDetails: { is: plate } },
+    ];
+
+    if (filters.digits != null) {
+      const rows = await this.prisma.$queryRaw<{ listingId: string }[]>`
+        SELECT "listingId"
+        FROM "PlateDetails"
+        WHERE "deletedAt" IS NULL
+          AND length(
+            regexp_replace(COALESCE("number", ''), '[^0-9]', '', 'g')
+          ) = ${filters.digits}
+      `;
+      const ids = rows.map((r) => r.listingId);
+      if (ids.length === 0) {
+        and.push({ id: { in: [] } });
+      } else {
+        and.push({ id: { in: ids } });
+      }
+    }
+
+    return { AND: and };
   }
 
   private buildOrderBy(

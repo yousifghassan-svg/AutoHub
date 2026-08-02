@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ListingStatus, Prisma } from '@autohub/database';
+import { DealerVerificationStatus, ListingStatus, Prisma } from '@autohub/database';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 
 const inventoryInclude = {
@@ -87,12 +87,26 @@ export class PublicDealersService {
     pageSize?: number;
     q?: string;
     verifiedOnly?: boolean;
+    cityId?: string;
+    governorateId?: string;
   }) {
     const page = query.page ?? 1;
     const pageSize = Math.min(query.pageSize ?? 20, 100);
     const where: Prisma.DealerOrganizationWhereInput = {
       deletedAt: null,
-      verified: query.verifiedOnly ? true : undefined,
+      // Public directory never lists PENDING/REJECTED applications.
+      verificationStatus: query.verifiedOnly
+        ? DealerVerificationStatus.VERIFIED
+        : {
+            in: [
+              DealerVerificationStatus.VERIFIED,
+              DealerVerificationStatus.UNVERIFIED,
+            ],
+          },
+      cityId: query.cityId || undefined,
+      city: query.governorateId
+        ? { governorateId: query.governorateId }
+        : undefined,
       OR: query.q?.trim()
         ? [
             { name: { contains: query.q.trim(), mode: 'insensitive' } },
@@ -154,7 +168,8 @@ export class PublicDealersService {
         id: dealer.id,
         name: dealer.name,
         slug: dealer.slug,
-        verified: dealer.verified,
+        verificationStatus: dealer.verificationStatus,
+        verified: dealer.verificationStatus === DealerVerificationStatus.VERIFIED,
         bio: dealer.bio,
         phone: dealer.phone,
         whatsapp: dealer.whatsapp,
@@ -208,6 +223,12 @@ export class PublicDealersService {
 
     if (!dealer) throw new NotFoundException('Dealer not found');
 
+    await this.prisma.dealerOrganization.update({
+      where: { id: dealer.id },
+      data: { viewsCount: { increment: 1 } },
+    });
+    dealer.viewsCount += 1;
+
     const memberIds = dealer.members.map((m) => m.userId);
     const inventoryPageSize = 20;
     const listingWhere: Prisma.ListingWhereInput = {
@@ -253,7 +274,8 @@ export class PublicDealersService {
       id: dealer.id,
       name: dealer.name,
       slug: dealer.slug,
-      verified: dealer.verified,
+      verificationStatus: dealer.verificationStatus,
+      verified: dealer.verificationStatus === DealerVerificationStatus.VERIFIED,
       bio: dealer.bio,
       phone: dealer.phone,
       whatsapp: dealer.whatsapp,

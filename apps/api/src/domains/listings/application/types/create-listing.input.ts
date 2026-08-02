@@ -34,8 +34,9 @@ export type CreateListingInput = {
   cityId: string;
   countryId?: string;
   conditionTypeId?: string;
-  title: string;
-  description: string;
+  /** Optional for sparse DRAFT create; placeholders used when omitted. */
+  title?: string;
+  description?: string;
   language?: LanguageCode;
   slug?: string;
   metaTitle?: string;
@@ -46,6 +47,8 @@ export type CreateListingInput = {
   primaryCurrencyId?: string;
   secondaryPrice?: number;
   secondaryCurrencyId?: string;
+  features?: string[];
+  draftStep?: string | null;
   carDetails?: VehicleDetailsInput;
   vehicleDetails?: VehicleDetailsInput;
   plateDetails?: PlateDetailsInput;

@@ -1,11 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { DealerVerificationStatus } from '@autohub/database';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
   Matches,
+  MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
@@ -17,6 +20,19 @@ export class AdminDealersQueryDto extends AdminPaginationDto {
   @Type(() => Boolean)
   @IsBoolean()
   verified?: boolean;
+
+  @ApiPropertyOptional({ enum: DealerVerificationStatus })
+  @IsOptional()
+  @IsEnum(DealerVerificationStatus)
+  status?: DealerVerificationStatus;
+}
+
+export class AdminRejectDealerDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(1000)
+  reason!: string;
 }
 
 export class AdminCreateDealerDto {

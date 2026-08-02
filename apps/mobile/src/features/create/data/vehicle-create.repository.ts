@@ -3,41 +3,64 @@ import { uploadMediaAsset } from './media-upload';
 import { createJsonDraftStore } from './draft-store';
 import type { VehicleDraft } from '../domain/vehicle-draft';
 import type { CreateMediaItem } from '../domain/media';
+import { formatCompletenessMessage } from './listing-completeness';
 
 const drafts = createJsonDraftStore<VehicleDraft>('autohub.create.vehicles.v1');
 
-function buildPayload(draft: VehicleDraft) {
-  const title =
-    draft.title.trim() ||
-    [draft.brandLabel, draft.modelLabel, draft.year].filter(Boolean).join(' ');
+function buildPayload(draft: VehicleDraft, opts?: { sparse?: boolean }) {
+  const sparse = opts?.sparse ?? false;
+  const generatedTitle = [draft.brandLabel, draft.modelLabel, draft.year]
+    .filter(Boolean)
+    .join(' ');
+  const title = draft.title.trim() || generatedTitle;
+  const descriptionBase = draft.description.trim();
   const description =
-    draft.description.trim() +
-    (draft.negotiable ? '\n\nPrice is negotiable.' : '');
+    descriptionBase + (draft.negotiable ? '\n\nPrice is negotiable.' : '');
 
-  return {
+  const payload: Record<string, unknown> = {
     categoryId: draft.categoryId!,
     cityId: draft.cityId!,
-    title,
-    description,
-    language: 'ar' as const,
-    primaryPrice: Number(draft.primaryPrice),
+    language: 'ar',
     currencyCode: draft.currencyCode || 'IQD',
-    conditionTypeId: draft.conditionTypeId ?? undefined,
-    vehicleDetails: {
-      makeId: draft.brandId ?? undefined,
-      modelId: draft.modelId ?? undefined,
-      year: Number(draft.year) || undefined,
-      mileageKm: draft.mileageKm ? Number(draft.mileageKm) : undefined,
-      fuelTypeId: draft.fuelTypeId ?? undefined,
-      transmissionTypeId: draft.transmissionTypeId ?? undefined,
-      bodyTypeId: draft.bodyTypeId ?? undefined,
-      driveTypeId: draft.driveTypeId ?? undefined,
-      colorId: draft.colorId ?? undefined,
-      engineTypeId: draft.engineTypeId ?? undefined,
-      engineSizeCc: draft.engineSizeCc ? Number(draft.engineSizeCc) : undefined,
-      vin: draft.vin.trim() || undefined,
-    },
+    draftStep: draft.step,
   };
+
+  if (draft.conditionTypeId) payload.conditionTypeId = draft.conditionTypeId;
+
+  // Sparse create: omit incomplete title/description/price so API placeholders apply.
+  if (!sparse || title.trim().length >= 3) {
+    payload.title = title.trim();
+  }
+  if (!sparse || description.trim().length >= 10) {
+    payload.description = description;
+  }
+  if (draft.primaryPrice !== '' && !Number.isNaN(Number(draft.primaryPrice))) {
+    payload.primaryPrice = Number(draft.primaryPrice);
+  }
+
+  const vehicleDetails: Record<string, unknown> = {
+    makeId: draft.brandId ?? undefined,
+    brandId: draft.brandId ?? undefined,
+    modelId: draft.modelId ?? undefined,
+    year: Number(draft.year) || undefined,
+    mileageKm: draft.mileageKm ? Number(draft.mileageKm) : undefined,
+    fuelTypeId: draft.fuelTypeId ?? undefined,
+    transmissionTypeId: draft.transmissionTypeId ?? undefined,
+    bodyTypeId: draft.bodyTypeId ?? undefined,
+    driveTypeId: draft.driveTypeId ?? undefined,
+    colorId: draft.colorId ?? undefined,
+    engineTypeId: draft.engineTypeId ?? undefined,
+    engineSizeCc: draft.engineSizeCc ? Number(draft.engineSizeCc) : undefined,
+    vin: draft.vin.trim() || undefined,
+  };
+  const cleanedDetails = Object.fromEntries(
+    Object.entries(vehicleDetails).filter(([, v]) => v !== undefined && v !== ''),
+  );
+  if (Object.keys(cleanedDetails).length) {
+    payload.vehicleDetails = cleanedDetails;
+  }
+
+  return payload;
 }
 
 /** Diff only changed scalar fields for PATCH. */
@@ -83,22 +106,23 @@ export function createVehicleCreateRepository(http: HttpClient): VehicleCreateRe
     removeDraft: (id) => drafts.remove(id),
 
     async syncDraftRemote(draft, previousPayload = lastPayload) {
-      const payload = buildPayload(draft);
       let listingId = draft.listingId;
+      const payload = buildPayload(draft, { sparse: !listingId });
 
       if (!listingId) {
         const created = await http.post<{ id: string }>('/v1/vehicles', payload, true);
         listingId = created.id;
         lastPayload = payload;
       } else {
-        const patch = changedFields(previousPayload, payload);
+        const full = buildPayload(draft, { sparse: false });
+        const patch = changedFields(previousPayload, full);
         if (Object.keys(patch).length > 0) {
           await http.request(`/v1/vehicles/${listingId}`, {
             method: 'PATCH',
             body: patch,
           });
         }
-        lastPayload = payload;
+        lastPayload = full;
       }
 
       const next: VehicleDraft = {
@@ -170,10 +194,14 @@ export function createVehicleCreateRepository(http: HttpClient): VehicleCreateRe
           });
         }
       }
-      await http.request(`/v1/vehicles/${next.listingId}/status`, {
-        method: 'PATCH',
-        body: { status: 'PENDING' },
-      });
+      try {
+        await http.request(`/v1/vehicles/${next.listingId}/status`, {
+          method: 'PATCH',
+          body: { status: 'PENDING' },
+        });
+      } catch (error) {
+        throw new Error(formatCompletenessMessage(error));
+      }
       const published: VehicleDraft = {
         ...next,
         status: 'pending',

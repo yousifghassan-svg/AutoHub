@@ -14,6 +14,8 @@ export type SellWorkflowDefinition = {
 
 /** Marketplace-common fields shared across all sell domains. */
 export type SellCommonState = {
+  /** Server DRAFT listing id when sticky autosave has created/resumed a listing. */
+  listingId: string | null;
   categoryCode: string;
   categoryId: string;
   governorateId: string;
@@ -24,6 +26,8 @@ export type SellCommonState = {
   currencyCode: string;
   imageAssetIds: string[];
   videoAssetIds: string[];
+  /** Asset ids already attached via ListingMedia (avoid re-attach). */
+  attachedMediaAssetIds: string[];
 };
 
 /** Wizard state: common fields + opaque domain payload. */
@@ -112,13 +116,26 @@ export type SellDraftV2 = {
   domainId: string;
   workflowId: string;
   stepId: SellStepId;
+  common: Omit<SellCommonState, 'listingId' | 'attachedMediaAssetIds'> & {
+    listingId?: string | null;
+    attachedMediaAssetIds?: string[];
+  };
+  domainData: unknown;
+};
+
+export type SellDraftV3 = {
+  version: 3;
+  domainId: string;
+  workflowId: string;
+  stepId: SellStepId;
   common: SellCommonState;
   domainData: unknown;
 };
 
-export type PersistedSellDraft = LegacySellDraftV1 | SellDraftV2;
+export type PersistedSellDraft = LegacySellDraftV1 | SellDraftV2 | SellDraftV3;
 
 export const DEFAULT_COMMON_STATE: SellCommonState = {
+  listingId: null,
   categoryCode: 'CAR',
   categoryId: '',
   governorateId: '',
@@ -129,4 +146,5 @@ export const DEFAULT_COMMON_STATE: SellCommonState = {
   currencyCode: 'IQD',
   imageAssetIds: [],
   videoAssetIds: [],
+  attachedMediaAssetIds: [],
 };

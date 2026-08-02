@@ -85,12 +85,16 @@ export const ListingActions = {
     const actions: ListingAction[] = [];
 
     if (status !== 'SOLD' && status !== 'ARCHIVED') {
+      const vehicleWizardHref = `/sell?listingId=${encodeURIComponent(ctx.listingId)}`;
       actions.push({
         id: 'edit',
-        label: 'Edit',
+        label: status === 'DRAFT' ? 'Continue' : 'Edit',
         variant: 'secondary',
         kind: 'navigate',
-        href: `/my-listings/${ctx.listingId}/edit`,
+        href:
+          ctx.domain === 'VEHICLE'
+            ? vehicleWizardHref
+            : `/my-listings/${ctx.listingId}/edit`,
       });
     }
 

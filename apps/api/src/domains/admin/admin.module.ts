@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PlatesModule } from '../plates/plates.module';
+import { DealersModule } from '../dealers/dealers.module';
 import { CommunicationModule } from '../communication/communication.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AdminAuditService } from './application/admin-audit.service';
@@ -31,7 +32,7 @@ import { ReportsController } from './presentation/reports.controller';
  * Admin platform — dashboard, moderation, CRM, settings, audit, stats.
  */
 @Module({
-  imports: [PlatesModule, CommunicationModule, NotificationsModule],
+  imports: [PlatesModule, DealersModule, CommunicationModule, NotificationsModule],
   controllers: [
     AdminDashboardController,
     AdminListingsController,

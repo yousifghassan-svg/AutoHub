@@ -187,6 +187,12 @@ export class UsersService {
     if (avatarMediaId !== undefined) data.avatarMediaId = avatarMediaId;
     if (dateOfBirth !== undefined) data.dateOfBirth = dateOfBirth;
 
+    if (patch.sellerType === 'DEALER') {
+      throw new BadRequestException(
+        'Dealer status is granted through dealer organization verification. Use POST /v1/dealers/applications',
+      );
+    }
+
     const sellerTouch =
       patch.sellerType !== undefined ||
       Object.prototype.hasOwnProperty.call(patch, 'bio') ||

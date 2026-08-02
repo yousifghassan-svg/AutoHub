@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   useCallback,
   useEffect,
@@ -13,6 +13,14 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { Button, Skeleton } from '@/components/ui';
 import { useDomainMutations } from '@/features/listings/hooks/useDomainMutations';
 import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch';
+import { createVehiclesRepository } from '@/features/vehicles/data/vehicles.repository';
+import {
+  buildPatchBody,
+  buildSparseCreateBody,
+  hydrateStateFromVehicle,
+  parseCompletenessErrors,
+} from '@/features/vehicles/sell/server-sync';
+import { getHttpClient } from '@/lib/api/client';
 import {
   clearDraftStorage,
   loadDraftFromStorage,
@@ -47,14 +55,17 @@ function resolveStepComponent(
 
 export function SellWizard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const resumeListingId = searchParams.get('listingId');
   const { status, authMode } = useAuth();
   const catalog = useCatalogFilters();
-  const { addMedia } = useDomainMutations();
+  const { addMedia, createVehicle, updateVehicle } = useDomainMutations();
   const plugins = useSellDomainPlugins();
   const fallbackPlugin = plugins[0]!;
 
   const [stepId, setStepId] = useState<SellStepId>('category');
   const [error, setError] = useState<string | null>(null);
+  const [syncNote, setSyncNote] = useState<string | null>(null);
   const [draftRestored, setDraftRestored] = useState(false);
   const [busy, setBusy] = useState(false);
   const [state, setState] = useState<SellWizardState>(() => ({
@@ -62,7 +73,10 @@ export function SellWizard() {
     domainData: fallbackPlugin.createInitialDomainData(),
   }));
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const serverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const softCreateInFlight = useRef(false);
   const prevCategoryRef = useRef(state.categoryCode);
+  const attachingRef = useRef(false);
 
   const plugin = resolvePluginFromList(plugins, state.categoryCode);
   const workflow = getWorkflow(plugin.workflowId);
@@ -99,21 +113,55 @@ export function SellWizard() {
 
   useEffect(() => {
     if (draftRestored) return;
-    const hydrated = loadDraftFromStorage(fallbackPlugin);
-    if (hydrated) {
-      setState(hydrated.state);
-      setStepId(hydrated.stepId);
-      prevCategoryRef.current = hydrated.state.categoryCode;
-    } else {
-      setState({
-        ...DEFAULT_COMMON_STATE,
-        domainData: fallbackPlugin.createInitialDomainData(),
-      });
-    }
-    setDraftRestored(true);
-  }, [draftRestored, fallbackPlugin]);
+    if (status !== 'authenticated') return;
 
-  // When category switches domain, reset domain payload and clamp step.
+    let cancelled = false;
+    (async () => {
+      if (resumeListingId) {
+        try {
+          const listing = await createVehiclesRepository(
+            getHttpClient(),
+          ).getById(resumeListingId);
+          if (cancelled) return;
+          const hydrated = hydrateStateFromVehicle(listing, {
+            ...DEFAULT_COMMON_STATE,
+            domainData: fallbackPlugin.createInitialDomainData(),
+          });
+          setState(hydrated.state);
+          setStepId(clampStepId(hydrated.stepId, getWorkflow(plugin.workflowId)));
+          prevCategoryRef.current = hydrated.state.categoryCode;
+          setDraftRestored(true);
+          return;
+        } catch {
+          // fall through to local draft
+        }
+      }
+
+      const local = loadDraftFromStorage(fallbackPlugin);
+      if (local) {
+        setState(local.state);
+        setStepId(local.stepId);
+        prevCategoryRef.current = local.state.categoryCode;
+      } else {
+        setState({
+          ...DEFAULT_COMMON_STATE,
+          domainData: fallbackPlugin.createInitialDomainData(),
+        });
+      }
+      setDraftRestored(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    draftRestored,
+    fallbackPlugin,
+    plugin.workflowId,
+    resumeListingId,
+    status,
+  ]);
+
   useEffect(() => {
     if (!draftRestored) return;
     if (prevCategoryRef.current === state.categoryCode) return;
@@ -141,6 +189,7 @@ export function SellWizard() {
     setStepId((id) => clampStepId(id, nextWorkflow));
   }, [draftRestored, plugins, state.categoryCode]);
 
+  // Local cache
   useEffect(() => {
     if (!draftRestored) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -151,6 +200,111 @@ export function SellWizard() {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
   }, [draftRestored, plugin, state, stepId]);
+
+  // Server autosave (vehicles only)
+  useEffect(() => {
+    if (!draftRestored) return;
+    if (status !== 'authenticated') return;
+    if (plugin.id !== 'VEHICLE') return;
+    if (currentStep.id === 'publish') return;
+    if (!state.categoryId || !state.cityId) return;
+
+    if (serverTimer.current) clearTimeout(serverTimer.current);
+    serverTimer.current = setTimeout(() => {
+      void (async () => {
+        try {
+          if (!state.listingId) {
+            if (softCreateInFlight.current) return;
+            softCreateInFlight.current = true;
+            const created = await createVehicle.mutateAsync(
+              buildSparseCreateBody(state),
+            );
+            softCreateInFlight.current = false;
+            setState((prev) =>
+              prev.listingId ? prev : { ...prev, listingId: created.id },
+            );
+            setSyncNote('Draft saved to your account');
+            return;
+          }
+          await updateVehicle.mutateAsync({
+            id: state.listingId,
+            body: buildPatchBody(state, stepId),
+          });
+          setSyncNote('Draft synced');
+        } catch {
+          softCreateInFlight.current = false;
+          setSyncNote('Offline — changes kept locally');
+        }
+      })();
+    }, 500);
+
+    return () => {
+      if (serverTimer.current) clearTimeout(serverTimer.current);
+    };
+  }, [
+    createVehicle,
+    currentStep.id,
+    draftRestored,
+    plugin.id,
+    state,
+    status,
+    stepId,
+    updateVehicle,
+  ]);
+
+  // Attach newly uploaded media while DRAFT exists
+  useEffect(() => {
+    if (!state.listingId) return;
+    if (attachingRef.current) return;
+    const pending = [
+      ...state.imageAssetIds.map((mediaAssetId) => ({
+        mediaAssetId,
+        mediaType: 'IMAGE' as const,
+      })),
+      ...state.videoAssetIds.map((mediaAssetId) => ({
+        mediaAssetId,
+        mediaType: 'VIDEO' as const,
+      })),
+    ].filter((item) => !state.attachedMediaAssetIds.includes(item.mediaAssetId));
+
+    if (!pending.length) return;
+
+    attachingRef.current = true;
+    void (async () => {
+      const attached: string[] = [];
+      try {
+        for (let i = 0; i < pending.length; i++) {
+          const item = pending[i];
+          if (!item) continue;
+          await addMedia.mutateAsync({
+            listingId: state.listingId!,
+            mediaAssetId: item.mediaAssetId,
+            mediaType: item.mediaType,
+            sortOrder: state.attachedMediaAssetIds.length + i,
+          });
+          attached.push(item.mediaAssetId);
+        }
+        if (attached.length) {
+          setState((prev) => ({
+            ...prev,
+            attachedMediaAssetIds: [
+              ...new Set([...prev.attachedMediaAssetIds, ...attached]),
+            ],
+          }));
+        }
+      } catch {
+        setSyncNote('Media attach failed — will retry on publish');
+      } finally {
+        attachingRef.current = false;
+      }
+    })();
+  }, [
+    addMedia,
+    state.attachedMediaAssetIds,
+    state.imageAssetIds,
+    state.listingId,
+    state.videoAssetIds,
+  ]);
 
   useEffect(() => {
     if (!catalog.data?.categories) return;
@@ -185,7 +339,9 @@ export function SellWizard() {
           mediaAssetId,
           mediaType: 'VIDEO' as const,
         })),
-      ];
+      ].filter(
+        (item) => !state.attachedMediaAssetIds.includes(item.mediaAssetId),
+      );
       for (let i = 0; i < assets.length; i++) {
         const item = assets[i];
         if (!item) continue;
@@ -193,11 +349,11 @@ export function SellWizard() {
           listingId,
           mediaAssetId: item.mediaAssetId,
           mediaType: item.mediaType,
-          sortOrder: i,
+          sortOrder: state.attachedMediaAssetIds.length + i,
         });
       }
     },
-    [addMedia, state.imageAssetIds, state.videoAssetIds],
+    [addMedia, state.attachedMediaAssetIds, state.imageAssetIds, state.videoAssetIds],
   );
 
   const publish = useCallback(
@@ -214,7 +370,14 @@ export function SellWizard() {
         clearDraftStorage();
         router.push('/my-listings');
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Publish failed');
+        const parsed = parseCompletenessErrors(e);
+        setError(parsed.message);
+        if (parsed.step) {
+          const workflowSteps = getWorkflow(plugin.workflowId);
+          if (workflowSteps.steps.some((s) => s.id === parsed.step)) {
+            setStepId(parsed.step);
+          }
+        }
       } finally {
         setBusy(false);
       }
@@ -236,10 +399,12 @@ export function SellWizard() {
 
   return (
     <div className="page-container max-w-2xl py-10">
-      <h1 className="section-title">Create listing</h1>
+      <h1 className="section-title">
+        {state.listingId ? 'Edit listing' : 'Create listing'}
+      </h1>
       <p className="mt-2 text-ink-secondary">
-        Multi-step wizard with autosaved draft. Progress is saved locally as you
-        go.
+        Multi-step wizard with server drafts. Progress syncs to your account as
+        you go.
       </p>
 
       <div className="mt-6 h-2 overflow-hidden rounded-full bg-surface-muted">
@@ -252,7 +417,9 @@ export function SellWizard() {
         <p className="font-medium text-ink-secondary">
           Step {stepIndex + 1} of {workflow.steps.length}: {currentStep.label}
         </p>
-        <p className="text-xs text-ink-secondary">Draft saved automatically</p>
+        <p className="text-xs text-ink-secondary">
+          {syncNote ?? (state.listingId ? 'Draft synced' : 'Draft saving locally')}
+        </p>
       </div>
 
       <div className="mt-8 space-y-4 rounded-xl border border-border bg-surface p-6 shadow-card">

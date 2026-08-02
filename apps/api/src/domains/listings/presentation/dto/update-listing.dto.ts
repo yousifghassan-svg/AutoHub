@@ -1,12 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
-  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { LanguageCode } from '@autohub/database';
@@ -32,13 +33,11 @@ export class UpdateListingDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @MinLength(3)
   title?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @MinLength(10)
   description?: string;
 
   @ApiPropertyOptional({ enum: LanguageCode })
@@ -88,6 +87,19 @@ export class UpdateListingDto {
   @IsOptional()
   @IsBoolean()
   isFeatured?: boolean;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(64, { each: true })
+  features?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  draftStep?: string | null;
 
   @ApiPropertyOptional({ type: VehicleDetailsDto })
   @IsOptional()

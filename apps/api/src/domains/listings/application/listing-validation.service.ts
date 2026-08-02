@@ -70,6 +70,26 @@ export class ListingValidationService {
     }
   }
 
+  normalizeFeatures(features?: string[] | null): string[] | undefined {
+    if (features === undefined || features === null) return undefined;
+    const cleaned = features
+      .map((f) => f.trim())
+      .filter((f) => f.length > 0)
+      .slice(0, 50)
+      .map((f) => (f.length > 64 ? f.slice(0, 64) : f));
+    return [...new Set(cleaned)];
+  }
+
+  assertVin(vin?: string | null) {
+    if (vin == null || vin.trim() === '') return;
+    const normalized = vin.trim().toUpperCase();
+    if (!/^[A-HJ-NPR-Z0-9]{11,17}$/.test(normalized)) {
+      throw new BadRequestException(
+        'VIN must be 11–17 alphanumeric characters (excluding I, O, Q)',
+      );
+    }
+  }
+
   async assertBrandModel(input: {
     categoryCode: ListingCategoryCode;
     brandId?: string;

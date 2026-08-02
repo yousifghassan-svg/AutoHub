@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Button, Input, Select, TextArea } from '@/components/ui';
 import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch';
@@ -34,7 +35,6 @@ function valuesFromUser(user: AuthenticatedUser | null | undefined): ProfileForm
     dateOfBirth: user.dateOfBirth ?? '',
     avatarUrl: user.avatarUrl ?? '',
     avatarMediaId: user.avatarMediaId ?? '',
-    sellerType: user.sellerProfile?.type ?? 'INDIVIDUAL',
     bio: user.sellerProfile?.bio ?? '',
     notificationPreferences: {
       ...DEFAULT_NOTIFICATION_PREFERENCES,
@@ -229,23 +229,24 @@ export function ProfileForm({
         </p>
       )}
 
-      <Select
-        label="I am a"
-        value={values.sellerType}
-        onChange={(e) =>
-          patch('sellerType', e.target.value as ProfileFormValues['sellerType'])
-        }
-        required
-      >
-        <option value="INDIVIDUAL">Private seller</option>
-        <option value="DEALER">Dealer</option>
-      </Select>
+      <div className="rounded-lg border border-border bg-surface-muted/40 px-3 py-3 text-sm">
+        <p className="font-medium text-ink">
+          Seller type:{' '}
+          {user?.sellerProfile?.type === 'DEALER' ? 'Dealer (verified org)' : 'Private seller'}
+        </p>
+        <p className="mt-1 text-ink-secondary">
+          Dealer status comes from organization verification — not a free profile toggle.
+        </p>
+        <Link href="/dealer/dashboard" className="mt-2 inline-block font-medium text-brand hover:underline">
+          Dealer account / apply
+        </Link>
+      </div>
 
       <TextArea
         label="Bio"
         value={values.bio}
         onChange={(e) => patch('bio', e.target.value)}
-        placeholder="Tell buyers about yourself or your dealership"
+        placeholder="Tell buyers about yourself"
         maxLength={2000}
       />
 

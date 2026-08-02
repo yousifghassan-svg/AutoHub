@@ -10,7 +10,11 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { ListingCategoryCode } from '@autohub/database';
+import {
+  ListingCategoryCode,
+  MarketplaceDomain,
+  PlateVerificationStatus,
+} from '@autohub/database';
 import { SearchSort } from '../../domain/search.types';
 
 export class SearchQueryDto {
@@ -18,6 +22,14 @@ export class SearchQueryDto {
   @IsOptional()
   @IsString()
   q?: string;
+
+  @ApiPropertyOptional({
+    enum: MarketplaceDomain,
+    description: 'Scope discovery to VEHICLE or PLATE',
+  })
+  @IsOptional()
+  @IsEnum(MarketplaceDomain)
+  domain?: MarketplaceDomain;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -137,6 +149,49 @@ export class SearchQueryDto {
   @Transform(({ value }) => value === true || value === 'true' || value === '1')
   @IsBoolean()
   verifiedOnly?: boolean;
+
+  @ApiPropertyOptional({ description: 'Plate format code' })
+  @IsOptional()
+  @IsString()
+  formatCode?: string;
+
+  @ApiPropertyOptional({ description: 'Plate letter/prefix' })
+  @IsOptional()
+  @IsString()
+  prefix?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  series?: string;
+
+  @ApiPropertyOptional({ description: 'Plate number fragment' })
+  @IsOptional()
+  @IsString()
+  number?: string;
+
+  @ApiPropertyOptional({ description: 'Exact digit length of plate number' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  digits?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  plateCategoryId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  platePrefixId?: string;
+
+  @ApiPropertyOptional({ enum: PlateVerificationStatus })
+  @IsOptional()
+  @IsEnum(PlateVerificationStatus)
+  plateVerificationStatus?: PlateVerificationStatus;
 
   @ApiPropertyOptional({ enum: SearchSort, default: SearchSort.NEWEST })
   @IsOptional()

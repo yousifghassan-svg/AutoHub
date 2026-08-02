@@ -37,6 +37,11 @@ export function useDomainMutations() {
       mutationFn: (body: Record<string, unknown>) => vehicles().create(body),
       onSuccess: invalidate,
     }),
+    updateVehicle: useMutation({
+      mutationFn: (input: { id: string; body: Record<string, unknown> }) =>
+        vehicles().update(input.id, input.body),
+      onSuccess: invalidate,
+    }),
     createPlate: useMutation({
       mutationFn: (body: Record<string, unknown>) => plates().create(body),
       onSuccess: invalidate,

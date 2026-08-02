@@ -28,6 +28,11 @@ describe('ListingsService', () => {
     assertBrandModel: jest.fn(),
     assertMediaType: jest.fn(),
     assertMediaLimits: jest.fn(),
+    normalizeFeatures: jest.fn((f?: string[]) => f),
+    assertVin: jest.fn(),
+  };
+  const publishCompleteness = {
+    assertReadyForPending: jest.fn().mockResolvedValue(undefined),
   };
   const thumbnails = {
     generate: jest.fn().mockResolvedValue({ thumbnailKey: 'x.thumb.jpg' }),
@@ -52,6 +57,7 @@ describe('ListingsService', () => {
     listings as never,
     media as never,
     validation as never,
+    publishCompleteness as never,
     thumbnails as never,
     r2 as never,
     mediaAssets as never,

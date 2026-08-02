@@ -37,7 +37,7 @@ export class SearchController {
   @ApiOperation({
     summary: 'Full-text multi-filter listing search',
     description:
-      'Searches ACTIVE listings. Optional Bearer links the query to the user for recent/trending analytics.',
+      'Searches ACTIVE listings. Optional domain=VEHICLE|PLATE. Optional Bearer links analytics.',
   })
   searchListings(
     @Query() query: SearchQueryDto,
@@ -45,6 +45,17 @@ export class SearchController {
     @Headers('x-session-id') sessionId?: string,
   ) {
     return this.search.search(query, user, sessionId);
+  }
+
+  @Public()
+  @Get('facets')
+  @ApiOperation({
+    summary: 'Facet counts for the current search filters',
+    description:
+      'Returns category/brand/governorate/city/featured/verified counts for ACTIVE listings.',
+  })
+  facets(@Query() query: SearchQueryDto) {
+    return this.search.facets(query);
   }
 
   @Public()

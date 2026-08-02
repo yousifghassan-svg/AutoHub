@@ -11,11 +11,19 @@ function repo() {
 export function useDealers(query: {
   page?: number;
   pageSize?: number;
+  q?: string;
   verifiedOnly?: boolean;
+  cityId?: string;
+  governorateId?: string;
 } = {}) {
   return useQuery({
     queryKey: ['dealers', query],
-    queryFn: () => repo().list({ pageSize: 8, verifiedOnly: true, ...query }),
+    queryFn: () =>
+      repo().list({
+        pageSize: query.pageSize ?? 8,
+        verifiedOnly: query.verifiedOnly,
+        ...query,
+      }),
     staleTime: 60_000,
   });
 }

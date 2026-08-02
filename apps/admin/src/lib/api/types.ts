@@ -257,11 +257,19 @@ export type AdminPlate = AdminListing & {
   };
 };
 
+export type DealerVerificationStatus =
+  | 'UNVERIFIED'
+  | 'PENDING'
+  | 'VERIFIED'
+  | 'REJECTED';
+
 export type DealerOrganization = {
   id: string;
   name: string;
   slug: string;
   verified: boolean;
+  verificationStatus?: DealerVerificationStatus;
+  rejectionReason?: string | null;
   bio: string | null;
   phone: string | null;
   followersCount: number;

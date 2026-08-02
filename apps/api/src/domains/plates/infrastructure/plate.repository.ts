@@ -251,13 +251,6 @@ export class PlateRepository {
     if (params.number) {
       plateFilter.number = { contains: params.number.trim() };
     }
-    if (params.digits != null) {
-      plateFilter.number = {
-        ...(typeof plateFilter.number === 'object' ? plateFilter.number : {}),
-        // PostgreSQL length filter via raw would be ideal; approximate with regex
-      };
-    }
-
     if (params.province?.trim()) {
       const province = params.province.trim();
       plateFilter.OR = [
@@ -330,20 +323,20 @@ export class PlateRepository {
       }
     }
 
-    if (params.digits != null) {
-      where.AND = [
-        ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
-        {
-          plateDetails: {
-            is: {
-              number: { not: null },
-            },
-          },
-        },
-      ];
-    }
-
     return where;
+  }
+
+  /** Digit-length filter via SQL (no post-filter pagination). */
+  async listingIdsWithDigitLength(digits: number): Promise<string[]> {
+    const rows = await this.prisma.$queryRaw<{ listingId: string }[]>`
+      SELECT "listingId"
+      FROM "PlateDetails"
+      WHERE "deletedAt" IS NULL
+        AND length(
+          regexp_replace(COALESCE("number", ''), '[^0-9]', '', 'g')
+        ) = ${digits}
+    `;
+    return rows.map((r) => r.listingId);
   }
 
   resolveSearchParams(params: PlateSearchParams): {
@@ -374,20 +367,33 @@ export class PlateRepository {
 
   async search(params: PlateSearchParams) {
     const resolved = this.resolveSearchParams(params);
-    let items = await this.findMany({
-      where: resolved.where,
-      skip: resolved.skip,
-      take: resolved.pageSize,
-      orderBy: resolved.orderBy,
-    });
+    let where = resolved.where;
 
     if (params.digits != null) {
-      items = items.filter(
-        (item) => item.plateDetails?.number?.replace(/\D/g, '').length === params.digits,
-      );
+      const ids = await this.listingIdsWithDigitLength(params.digits);
+      if (ids.length === 0) {
+        return {
+          items: [],
+          page: resolved.page,
+          pageSize: resolved.pageSize,
+          total: 0,
+          totalPages: 0,
+        };
+      }
+      where = {
+        AND: [where, { id: { in: ids } }],
+      };
     }
 
-    const total = await this.count(resolved.where);
+    const [items, total] = await Promise.all([
+      this.findMany({
+        where,
+        skip: resolved.skip,
+        take: resolved.pageSize,
+        orderBy: resolved.orderBy,
+      }),
+      this.count(where),
+    ]);
 
     return {
       items,

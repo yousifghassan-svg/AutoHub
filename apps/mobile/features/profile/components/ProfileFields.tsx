@@ -38,7 +38,6 @@ export function ProfileFields({
   const governorateId = watch('governorateId');
   const cityId = watch('cityId');
   const preferredLanguage = watch('preferredLanguage');
-  const sellerType = watch('sellerType');
   const pushEnabled = watch('pushEnabled');
   const emailEnabled = watch('emailEnabled');
   const newMessage = watch('newMessage');
@@ -156,21 +155,9 @@ export function ProfileFields({
         ) : null}
       </View>
 
-      <View style={{ gap: theme.spacing.sm }}>
-        <Text variant="label">I am a</Text>
-        <OptionPicker
-          options={[
-            { id: 'INDIVIDUAL', label: 'Private seller' },
-            { id: 'DEALER', label: 'Dealer' },
-          ]}
-          selectedId={sellerType}
-          onSelect={(item) =>
-            setValue('sellerType', item.id as ProfileFormValues['sellerType'], {
-              shouldValidate: true,
-            })
-          }
-        />
-      </View>
+      <Text variant="caption" color="secondary">
+        Dealer status comes from organization verification, not this form.
+      </Text>
 
       <Controller
         control={control}

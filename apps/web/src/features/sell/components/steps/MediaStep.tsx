@@ -4,17 +4,24 @@ import { MediaUploader } from '@/features/media';
 import type { SellStepProps } from '../../core/types';
 
 export function MediaStep({ state, patchCommon }: SellStepProps) {
+  const ownerEntityId = state.listingId ?? undefined;
   return (
     <div className="space-y-8">
+      {!state.listingId ? (
+        <p className="rounded-lg bg-surface-muted px-3 py-2 text-sm text-ink-secondary">
+          Save category and city first so photos attach to your server draft.
+        </p>
+      ) : null}
       <div>
         <h2 className="font-display text-lg font-semibold text-ink">Photos</h2>
         <p className="mt-1 text-sm text-ink-secondary">
-          Upload listing images. Star the primary photo before continuing.
+          Upload listing images. At least one photo is required before submit.
         </p>
         <MediaUploader
           className="mt-4"
           mediaType="IMAGE"
-          ownerModule="listings"
+          ownerModule="listing"
+          ownerEntityId={ownerEntityId}
           onAssetsChange={(imageAssetIds) => patchCommon({ imageAssetIds })}
         />
         {state.imageAssetIds.length ? (
@@ -31,7 +38,8 @@ export function MediaStep({ state, patchCommon }: SellStepProps) {
         <MediaUploader
           className="mt-4"
           mediaType="VIDEO"
-          ownerModule="listings"
+          ownerModule="listing"
+          ownerEntityId={ownerEntityId}
           onAssetsChange={(videoAssetIds) => patchCommon({ videoAssetIds })}
         />
         {state.videoAssetIds.length ? (

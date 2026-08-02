@@ -15,6 +15,7 @@ export function mapVehicleDraftToDomain(
 ): Record<string, unknown> {
   if (legacy?.form) {
     return {
+      ...DEFAULT_VEHICLE_DOMAIN_DATA,
       year: legacy.form.year ?? DEFAULT_VEHICLE_DOMAIN_DATA.year,
       mileageKm: legacy.form.mileageKm ?? '',
       brandId: legacy.form.brandId ?? '',

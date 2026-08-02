@@ -91,6 +91,11 @@ export class SellersService {
     userId: string,
     input: UpdateSellerProfileInput,
   ): Promise<SellerProfileView> {
+    if (input.type === 'DEALER') {
+      throw new BadRequestException(
+        'Dealer status is granted through dealer organization verification. Use POST /v1/dealers/applications',
+      );
+    }
     if (input.displayName !== undefined) {
       const trimmed = input.displayName.trim();
       if (trimmed.length < 2 || trimmed.length > 80) {

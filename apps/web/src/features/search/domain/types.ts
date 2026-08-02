@@ -6,17 +6,23 @@ export type SearchSort =
   | 'MOST_VIEWED'
   | 'MOST_RELEVANT';
 
+export type MarketplaceDomainFilter = 'VEHICLE' | 'PLATE';
+
 export type MarketplaceSearchQuery = {
   q?: string;
+  domain?: MarketplaceDomainFilter;
   categoryCode?: string;
   brandId?: string;
   modelId?: string;
   bodyTypeId?: string;
   colorId?: string;
+  driveTypeId?: string;
+  conditionTypeId?: string;
   governorateId?: string;
   cityId?: string;
   minPrice?: number;
   maxPrice?: number;
+  currencyCode?: string;
   minYear?: number;
   maxYear?: number;
   minMileage?: number;
@@ -25,9 +31,23 @@ export type MarketplaceSearchQuery = {
   transmissionTypeId?: string;
   featuredOnly?: boolean;
   verifiedOnly?: boolean;
+  formatCode?: string;
+  prefix?: string;
+  series?: string;
+  number?: string;
+  digits?: number;
   sort?: SearchSort;
   page?: number;
   pageSize?: number;
+};
+
+export type SearchFacets = {
+  categories: Array<{ id: string; label: string; count: number; code?: string }>;
+  brands: Array<{ id: string; label: string; count: number }>;
+  governorates: Array<{ id: string; label: string; count: number }>;
+  cities: Array<{ id: string; label: string; count: number }>;
+  featured: { count: number };
+  verified: { count: number };
 };
 
 export const SEARCH_SORTS: Array<{ id: SearchSort; label: string }> = [

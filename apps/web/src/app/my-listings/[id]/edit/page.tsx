@@ -1,17 +1,22 @@
 'use client';
 
-import Link from 'next/link';
+import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Input, Skeleton, TextArea } from '@/components/ui';
+import { Skeleton } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { CurrencySelect } from '@/features/currencies/components/CurrencySelect';
 import { isPlateListing } from '@/features/listings/domain/marketplace-path';
 import { createPlatesRepository } from '@/features/plates/data/plates.repository';
 import { createVehiclesRepository } from '@/features/vehicles/data/vehicles.repository';
 import { getHttpClient } from '@/lib/api/client';
+import { Button, Input, TextArea } from '@/components/ui';
+import { CurrencySelect } from '@/features/currencies/components/CurrencySelect';
+import { useState } from 'react';
+import Link from 'next/link';
 
+/**
+ * Vehicles open the sell wizard (server draft). Plates keep thin edit form.
+ */
 export default function EditListingPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -22,7 +27,7 @@ export default function EditListingPage() {
   const [currencyCode, setCurrencyCode] = useState('IQD');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [domain, setDomain] = useState<'VEHICLE' | 'PLATE'>('VEHICLE');
+  const [isPlate, setIsPlate] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login?next=/my-listings');
@@ -34,46 +39,41 @@ export default function EditListingPage() {
     queryFn: async () => {
       try {
         const vehicle = await createVehiclesRepository(getHttpClient()).getById(id);
-        setDomain('VEHICLE');
-        setTitle(vehicle.title);
-        setDescription(vehicle.description ?? '');
-        setPrice(vehicle.price != null ? String(vehicle.price) : '');
-        setCurrencyCode(vehicle.currencyCode || 'IQD');
-        return vehicle;
+        if (!isPlateListing(vehicle)) {
+          router.replace(`/sell?listingId=${encodeURIComponent(id)}`);
+          return vehicle;
+        }
       } catch {
-        const plate = await createPlatesRepository(getHttpClient()).getById(id);
-        setDomain('PLATE');
-        setTitle(plate.title);
-        setDescription(plate.description ?? '');
-        setPrice(plate.price != null ? String(plate.price) : '');
-        setCurrencyCode(plate.currencyCode || 'IQD');
-        return plate;
+        // try plate
       }
+      const plate = await createPlatesRepository(getHttpClient()).getById(id);
+      setIsPlate(true);
+      setTitle(plate.title);
+      setDescription(plate.description ?? '');
+      setPrice(plate.price != null ? String(plate.price) : '');
+      setCurrencyCode(plate.currencyCode || 'IQD');
+      return plate;
     },
   });
 
   const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isPlate) return;
     setSaving(true);
     setError(null);
     try {
       const body: Record<string, unknown> = {
         title: title.trim(),
-        description: description.trim() || undefined,
+        description: description.trim(),
       };
-      const n = Number(price);
-      if (Number.isFinite(n) && n > 0) {
-        body.primaryPrice = n;
-        body.currencyCode = currencyCode || 'IQD';
+      if (price) {
+        body.primaryPrice = Number(price);
+        body.currencyCode = currencyCode;
       }
-      if (domain === 'PLATE' || (query.data && isPlateListing(query.data))) {
-        await createPlatesRepository(getHttpClient()).update(id, body);
-      } else {
-        await createVehiclesRepository(getHttpClient()).update(id, body);
-      }
-      router.replace('/my-listings');
+      await createPlatesRepository(getHttpClient()).update(id, body);
+      router.push('/my-listings');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
+      setError(err instanceof Error ? err.message : 'Save failed');
     } finally {
       setSaving(false);
     }
@@ -81,46 +81,51 @@ export default function EditListingPage() {
 
   if (status === 'bootstrapping' || query.isLoading) {
     return (
-      <div className="page-container py-10">
-        <Skeleton className="h-10 w-56" />
+      <div className="page-container max-w-xl space-y-4 py-10">
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    );
+  }
+
+  if (!isPlate) {
+    return (
+      <div className="page-container max-w-xl space-y-4 py-10">
+        <Skeleton className="h-10 w-48" />
+        <p className="text-sm text-ink-secondary">Opening listing wizard…</p>
       </div>
     );
   }
 
   return (
     <div className="page-container max-w-xl py-10">
-      <Link href="/my-listings" className="text-sm font-semibold text-brand">
+      <Link href="/my-listings" className="text-sm text-brand">
         ← My listings
       </Link>
-      <h1 className="mt-3 font-display text-2xl font-bold text-ink">Edit listing</h1>
-      <p className="mt-1 text-sm text-ink-secondary">Updates title, description, and price.</p>
-
+      <h1 className="section-title mt-4">Edit plate listing</h1>
       <form onSubmit={onSave} className="mt-6 space-y-4">
-        <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <Input
+          label="Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+        />
         <TextArea
           label="Description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <CurrencySelect value={currencyCode} onChange={setCurrencyCode} />
         <Input
-          label={`Price (${currencyCode})`}
+          label="Price"
           type="number"
-          min={0}
           value={price}
           onChange={(e) => setPrice(e.target.value)}
         />
+        <CurrencySelect value={currencyCode} onChange={setCurrencyCode} />
         {error ? <p className="text-sm text-error">{error}</p> : null}
-        <div className="flex gap-2">
-          <Button type="submit" disabled={saving}>
-            {saving ? 'Saving…' : 'Save changes'}
-          </Button>
-          <Link href="/my-listings">
-            <Button type="button" variant="secondary">
-              Cancel
-            </Button>
-          </Link>
-        </div>
+        <Button type="submit" disabled={saving}>
+          {saving ? 'Saving…' : 'Save changes'}
+        </Button>
       </form>
     </div>
   );

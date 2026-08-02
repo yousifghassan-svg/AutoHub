@@ -20,6 +20,7 @@ import { adminRequestContext } from './admin-request.util';
 import {
   AdminCreateDealerDto,
   AdminDealersQueryDto,
+  AdminRejectDealerDto,
   AdminUpdateDealerDto,
 } from './dto/admin-dealers.dto';
 
@@ -31,9 +32,43 @@ export class AdminDealersController {
 
   @Get()
   @Permissions(Permission.ADMIN_ACCESS, Permission.DEALERS_MANAGE)
-  @ApiOperation({ summary: 'List dealers' })
+  @ApiOperation({ summary: 'List dealers (filter with status=PENDING for queue)' })
   list(@Query() query: AdminDealersQueryDto): Promise<unknown> {
     return this.dealers.list(query);
+  }
+
+  @Post()
+  @Permissions(Permission.ADMIN_ACCESS, Permission.DEALERS_MANAGE)
+  @ApiOperation({ summary: 'Create dealer organization (ops/emergency)' })
+  create(
+    @Body() body: AdminCreateDealerDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+  ): Promise<unknown> {
+    return this.dealers.create(body, user, adminRequestContext(req));
+  }
+
+  @Post(':id/approve')
+  @Permissions(Permission.ADMIN_ACCESS, Permission.DEALERS_VERIFY)
+  @ApiOperation({ summary: 'Approve pending dealer application' })
+  approve(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+  ): Promise<unknown> {
+    return this.dealers.approve(id, user, adminRequestContext(req));
+  }
+
+  @Post(':id/reject')
+  @Permissions(Permission.ADMIN_ACCESS, Permission.DEALERS_VERIFY)
+  @ApiOperation({ summary: 'Reject pending dealer application' })
+  reject(
+    @Param('id') id: string,
+    @Body() body: AdminRejectDealerDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+  ): Promise<unknown> {
+    return this.dealers.reject(id, user, body.reason, adminRequestContext(req));
   }
 
   @Get(':id')
@@ -41,17 +76,6 @@ export class AdminDealersController {
   @ApiOperation({ summary: 'Get dealer with statistics' })
   findOne(@Param('id') id: string): Promise<unknown> {
     return this.dealers.findById(id);
-  }
-
-  @Post()
-  @Permissions(Permission.ADMIN_ACCESS, Permission.DEALERS_MANAGE)
-  @ApiOperation({ summary: 'Create dealer organization' })
-  create(
-    @Body() body: AdminCreateDealerDto,
-    @CurrentUser() user: AuthenticatedUser,
-    @Req() req: Request,
-  ): Promise<unknown> {
-    return this.dealers.create(body, user, adminRequestContext(req));
   }
 
   @Patch(':id')

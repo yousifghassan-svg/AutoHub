@@ -73,6 +73,9 @@ export function SiteHeader() {
           </button>
           {showAccount ? (
             <>
+              <Link href="/dealer/dashboard" className="text-sm font-medium text-ink-secondary">
+                Dealer
+              </Link>
               <Link href="/my-listings" className="text-sm font-medium text-ink-secondary">
                 My listings
               </Link>

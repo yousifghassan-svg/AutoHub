@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { InfiniteSentinel } from '@/components/InfiniteSentinel';
 import { ListingCard } from '@/components/ListingCard';
@@ -13,60 +13,102 @@ import {
   Select,
   Skeleton,
 } from '@/components/ui';
-import {
-  GOVERNORATES,
-  formatCodeFor,
-} from '@/features/plates';
-import type { IraqiGovernorate } from '@/features/plates/domain/types';
 import { CurrencySelect } from '@/features/currencies/components/CurrencySelect';
 import { priceRangeForCurrency } from '@/features/currencies/domain/types';
-import { usePlateSearchInfinite } from '@/features/plates/hooks/usePlates';
+import { formatCodeFor } from '@/features/plates';
+import {
+  IRAQI_GOVERNORATES,
+  type IraqiGovernorate,
+} from '@/features/plates/domain/types';
+import { SearchExtras } from '@/features/search/components/SearchExtras';
+import {
+  SEARCH_SORTS,
+  type MarketplaceSearchQuery,
+  type SearchSort,
+} from '@/features/search/domain/types';
+import { useMarketplaceSearchInfinite } from '@/features/search/hooks/useMarketplaceSearch';
+import {
+  parseSearchParams,
+  pushSearchUrl,
+} from '@/features/search/lib/url-search-state';
 
 function PlateSearchInner() {
+  const router = useRouter();
   const params = useSearchParams();
-  const [governorate, setGovernorate] = useState(params.get('province') ?? '');
-  const [prefix, setPrefix] = useState(params.get('prefix') ?? '');
-  const [series, setSeries] = useState(params.get('letter') ?? '');
-  const [number, setNumber] = useState(params.get('number') ?? '');
-  const [keyword, setKeyword] = useState(params.get('q') ?? '');
-  const [submitted, setSubmitted] = useState({
-    prefix,
-    series,
-    number,
-    keyword,
-  });
-  const [currencyCode, setCurrencyCode] = useState(params.get('currency') ?? 'IQD');
-  const priceBounds = priceRangeForCurrency(currencyCode);
-  const [price, setPrice] = useState<[number, number]>([0, priceBounds.max]);
-  const [sortIndex, setSortIndex] = useState(0);
 
-  const sortOptions = [
-    { sortBy: 'createdAt' as const, sortOrder: 'desc' as const, label: 'Newest' },
-    { sortBy: 'primaryPrice' as const, sortOrder: 'asc' as const, label: 'Price: low to high' },
-    { sortBy: 'primaryPrice' as const, sortOrder: 'desc' as const, label: 'Price: high to low' },
+  const initial = useMemo(
+    () =>
+      parseSearchParams(params, { domain: 'PLATE', pageSize: 24, sort: 'NEWEST' }),
+    [params],
+  );
+
+  const [state, setState] = useState<MarketplaceSearchQuery>(initial);
+  const [keywordDraft, setKeywordDraft] = useState(initial.q ?? '');
+  const [province, setProvince] = useState(params.get('province') ?? '');
+
+  useEffect(() => {
+    const next = parseSearchParams(params, {
+      domain: 'PLATE',
+      pageSize: 24,
+      sort: 'NEWEST',
+    });
+    setState(next);
+    setKeywordDraft(next.q ?? '');
+    setProvince(params.get('province') ?? '');
+  }, [params]);
+
+  const patch = useCallback(
+    (partial: Partial<MarketplaceSearchQuery> & { province?: string }) => {
+      const { province: nextProvince, ...rest } = partial;
+      setState((prev) => {
+        const prov = nextProvince !== undefined ? nextProvince : province;
+        const formatCode = prov
+          ? formatCodeFor(prov as IraqiGovernorate)
+          : rest.formatCode !== undefined
+            ? rest.formatCode
+            : prev.formatCode;
+        const next: MarketplaceSearchQuery = {
+          ...prev,
+          ...rest,
+          domain: 'PLATE',
+          formatCode: formatCode || undefined,
+          pageSize: 24,
+        };
+        // reuse push via custom to include province alias
+        pushSearchUrl('/plates/search', next, {
+          replace: (href) => {
+            if (prov) {
+              const u = new URL(href, 'http://local');
+              u.searchParams.set('province', prov);
+              router.replace(`/plates/search?${u.searchParams.toString()}`);
+            } else {
+              router.replace(href);
+            }
+          },
+        });
+        if (nextProvince !== undefined) setProvince(nextProvince);
+        return next;
+      });
+    },
+    [province, router],
+  );
+
+  const priceBounds = priceRangeForCurrency(state.currencyCode ?? 'IQD');
+  const price: [number, number] = [
+    state.minPrice ?? 0,
+    state.maxPrice ?? priceBounds.max,
   ];
-  const sort = sortOptions[sortIndex] ?? sortOptions[0]!;
-
-  const formatCode = governorate ? formatCodeFor(governorate as IraqiGovernorate) : undefined;
 
   const query = useMemo(
     () => ({
-      formatCode,
-      prefix: submitted.prefix.trim() || undefined,
-      series: submitted.series.trim() || undefined,
-      number: submitted.number.trim() || undefined,
-      keyword: submitted.keyword.trim() || undefined,
-      currencyCode,
-      minPrice: price[0] > 0 ? price[0] : undefined,
-      maxPrice: price[1] < priceBounds.max ? price[1] : undefined,
-      sortBy: sort.sortBy,
-      sortOrder: sort.sortOrder,
+      ...state,
+      domain: 'PLATE' as const,
       pageSize: 24,
     }),
-    [formatCode, submitted, currencyCode, price, priceBounds.max, sort.sortBy, sort.sortOrder],
+    [state],
   );
 
-  const search = usePlateSearchInfinite(query, true);
+  const search = useMarketplaceSearchInfinite(query, true);
   const items = search.data?.pages.flatMap((p) => p.items) ?? [];
   const total = search.data?.pages[0]?.total ?? 0;
 
@@ -89,12 +131,12 @@ function PlateSearchInner() {
         </div>
         <Select
           label="Sort"
-          value={String(sortIndex)}
-          onChange={(e) => setSortIndex(Number(e.target.value))}
+          value={state.sort ?? 'NEWEST'}
+          onChange={(e) => patch({ sort: e.target.value as SearchSort })}
           className="w-56"
         >
-          {sortOptions.map((s, i) => (
-            <option key={`${s.sortBy}-${s.sortOrder}`} value={i}>
+          {SEARCH_SORTS.filter((s) => s.id !== 'MOST_VIEWED').map((s) => (
+            <option key={s.id} value={s.id}>
               {s.label}
             </option>
           ))}
@@ -102,48 +144,71 @@ function PlateSearchInner() {
       </div>
 
       <form
-        className="mb-6 grid gap-3 rounded-xl border border-border bg-surface p-4 shadow-card sm:grid-cols-2 lg:grid-cols-6"
+        className="mb-4 grid gap-3 rounded-xl border border-border bg-surface p-4 shadow-card md:grid-cols-4"
         onSubmit={(e) => {
           e.preventDefault();
-          setSubmitted({ prefix, series, number, keyword });
+          patch({
+            q: keywordDraft.trim() || undefined,
+            prefix: state.prefix,
+            series: state.series,
+            number: state.number,
+          });
         }}
       >
         <Select
           label="Province"
-          value={governorate}
-          onChange={(e) => setGovernorate(e.target.value)}
+          value={province}
+          onChange={(e) => patch({ province: e.target.value })}
         >
-          <option value="">All governorates</option>
-          {(Object.keys(GOVERNORATES) as IraqiGovernorate[]).map((g) => (
+          <option value="">Any</option>
+          {IRAQI_GOVERNORATES.map((g) => (
             <option key={g} value={g}>
-              {GOVERNORATES[g].nameEn}
+              {g}
             </option>
           ))}
         </Select>
         <Input
-          label="Prefix / code"
-          value={prefix}
-          onChange={(e) => setPrefix(e.target.value)}
-          placeholder="11"
+          label="Prefix"
+          value={state.prefix ?? ''}
+          onChange={(e) =>
+            setState((s) => ({ ...s, prefix: e.target.value || undefined }))
+          }
         />
         <Input
           label="Letter"
-          value={series}
-          onChange={(e) => setSeries(e.target.value.toUpperCase())}
-          placeholder="A"
-          maxLength={3}
+          value={state.series ?? ''}
+          onChange={(e) =>
+            setState((s) => ({ ...s, series: e.target.value || undefined }))
+          }
         />
         <Input
           label="Number"
-          value={number}
-          onChange={(e) => setNumber(e.target.value.replace(/\D/g, ''))}
-          placeholder="12345"
+          value={state.number ?? ''}
+          onChange={(e) =>
+            setState((s) => ({ ...s, number: e.target.value || undefined }))
+          }
         />
+        <Select
+          label="Digits"
+          value={state.digits != null ? String(state.digits) : ''}
+          onChange={(e) =>
+            patch({
+              digits: e.target.value ? Number(e.target.value) : undefined,
+            })
+          }
+        >
+          <option value="">Any</option>
+          {[3, 4, 5, 6].map((d) => (
+            <option key={d} value={d}>
+              {d} digits
+            </option>
+          ))}
+        </Select>
         <Input
           label="Keyword"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="VIP, repeating…"
+          value={keywordDraft}
+          onChange={(e) => setKeywordDraft(e.target.value)}
+          className="md:col-span-2"
         />
         <div className="flex items-end">
           <Button type="submit" className="w-full">
@@ -152,70 +217,76 @@ function PlateSearchInner() {
         </div>
       </form>
 
-      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-        <aside className="space-y-5 rounded-xl border border-border bg-surface p-4 shadow-card">
-          <p className="text-sm font-semibold text-ink">Filters</p>
-          <CurrencySelect
-            value={currencyCode}
-            onChange={(code) => {
-              const next = priceRangeForCurrency(code);
-              setCurrencyCode(code);
-              setPrice([0, next.max]);
+      <div className="mb-6 rounded-xl border border-border bg-surface p-4 shadow-card">
+        <SearchExtras
+          keyword={keywordDraft}
+          query={query}
+          onApplyKeyword={(q) => {
+            setKeywordDraft(q);
+            patch({ q });
+          }}
+          onApplyFilters={(p) => patch(p)}
+        />
+      </div>
+
+      <div className="mb-6 grid gap-4 rounded-xl border border-border bg-surface p-4 shadow-card sm:grid-cols-2">
+        <CurrencySelect
+          value={state.currencyCode ?? 'IQD'}
+          onChange={(code) => {
+            const next = priceRangeForCurrency(code);
+            patch({
+              currencyCode: code,
+              minPrice: undefined,
+              maxPrice: next.max,
+            });
+          }}
+        />
+        <RangeField
+          label={`Price (${state.currencyCode ?? 'IQD'})`}
+          min={0}
+          max={priceBounds.max}
+          step={priceBounds.step}
+          value={price}
+          onChange={([min, max]) =>
+            patch({
+              minPrice: min > 0 ? min : undefined,
+              maxPrice: max < priceBounds.max ? max : undefined,
+            })
+          }
+          format={(n) => n.toLocaleString()}
+        />
+      </div>
+
+      {search.isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-[4/3] w-full" />
+          ))}
+        </div>
+      ) : search.isError ? (
+        <EmptyState
+          title="Search failed"
+          description={
+            search.error instanceof Error ? search.error.message : 'Try again'
+          }
+        />
+      ) : items.length === 0 ? (
+        <EmptyState title="No plates found" description="Adjust filters and try again." />
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {items.map((item) => (
+              <ListingCard key={item.id} listing={item} href={`/plates/${item.id}`} />
+            ))}
+          </div>
+          <InfiniteSentinel
+            disabled={!search.hasNextPage || search.isFetchingNextPage}
+            onVisible={() => {
+              if (search.hasNextPage) void search.fetchNextPage();
             }}
           />
-          <RangeField
-            label={`Price (${currencyCode})`}
-            min={0}
-            max={priceBounds.max}
-            step={priceBounds.step}
-            value={price}
-            onChange={setPrice}
-            format={(n) => n.toLocaleString()}
-          />
-        </aside>
-
-        <div>
-          {search.isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="aspect-[700/220] w-full" />
-              ))}
-            </div>
-          ) : search.isError ? (
-            <EmptyState
-              title="Search failed"
-              description={search.error instanceof Error ? search.error.message : 'Try again'}
-              action={
-                <Button variant="secondary" onClick={() => void search.refetch()}>
-                  Retry
-                </Button>
-              }
-            />
-          ) : items.length === 0 ? (
-            <EmptyState
-              title="No plates found"
-              description="Try different filters or broaden your search."
-            />
-          ) : (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {items.map((item) => (
-                  <ListingCard key={item.id} listing={item} href={`/plates/${item.id}`} />
-                ))}
-              </div>
-              <InfiniteSentinel
-                disabled={!search.hasNextPage || search.isFetchingNextPage}
-                onVisible={() => {
-                  if (search.hasNextPage) void search.fetchNextPage();
-                }}
-              />
-              {search.isFetchingNextPage ? (
-                <p className="py-6 text-center text-sm text-ink-secondary">Loading more…</p>
-              ) : null}
-            </>
-          )}
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

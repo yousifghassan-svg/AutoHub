@@ -28,7 +28,6 @@ export function profileFormToUpdateInput(
     dateOfBirth: dob ? dob : clear ? null : undefined,
     firstName: firstName ? firstName : clear ? null : undefined,
     lastName: lastName ? lastName : clear ? null : undefined,
-    sellerType: values.sellerType,
     bio: bio ? bio : clear ? null : undefined,
     notificationPreferences: {
       pushEnabled: values.pushEnabled,

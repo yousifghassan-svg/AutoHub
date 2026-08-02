@@ -74,6 +74,11 @@ export class SearchService {
     };
   }
 
+  async facets(filters: SearchFilters) {
+    const facets = await this.discovery.facets(filters);
+    return { facets };
+  }
+
   async suggestions(q: string, limit = 8): Promise<SearchSuggestion[]> {
     const query = q.trim();
     if (query.length < 1) return [];

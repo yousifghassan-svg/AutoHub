@@ -14,6 +14,16 @@ export class DealersQueryDto {
   @IsBoolean()
   verifiedOnly?: boolean;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  governorateId?: string;
+
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   @Type(() => Number)

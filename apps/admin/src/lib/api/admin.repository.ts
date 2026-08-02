@@ -88,14 +88,22 @@ export const adminApi = {
   },
 
   dealers: {
-    list: (params: PaginationQuery & { verified?: boolean }) =>
-      http().get<Paginated<DealerOrganization>>(`/v1/admin/dealers${buildQuery(params)}`),
+    list: (
+      params: PaginationQuery & {
+        verified?: boolean;
+        status?: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+      },
+    ) => http().get<Paginated<DealerOrganization>>(`/v1/admin/dealers${buildQuery(params)}`),
     get: (id: string) => http().get<DealerOrganization>(`/v1/admin/dealers/${id}`),
     create: (body: Record<string, unknown>) =>
       http().post<DealerOrganization>('/v1/admin/dealers', body),
     update: (id: string, body: Record<string, unknown>) =>
       http().patch<DealerOrganization>(`/v1/admin/dealers/${id}`, body),
     delete: (id: string) => http().delete<DealerOrganization>(`/v1/admin/dealers/${id}`),
+    approve: (id: string) =>
+      http().post<DealerOrganization>(`/v1/admin/dealers/${id}/approve`),
+    reject: (id: string, reason: string) =>
+      http().post<DealerOrganization>(`/v1/admin/dealers/${id}/reject`, { reason }),
   },
 
   users: {

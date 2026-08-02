@@ -3,24 +3,38 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ListingStatus, Prisma } from '@autohub/database';
+import {
+  DealerMemberRole,
+  DealerVerificationStatus,
+  ListingStatus,
+  Prisma,
+} from '@autohub/database';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { AdminAuditService } from './admin-audit.service';
 import type { AuthenticatedUser } from '../../auth/domain/auth.types';
+import { DealerAccountsService } from '../../dealers/application/dealer-accounts.service';
 
 @Injectable()
 export class AdminDealersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
+    private readonly accounts: DealerAccountsService,
   ) {}
 
-  async list(query: { page?: number; pageSize?: number; q?: string; verified?: boolean }) {
+  async list(query: {
+    page?: number;
+    pageSize?: number;
+    q?: string;
+    verified?: boolean;
+    status?: DealerVerificationStatus;
+  }) {
     const page = query.page ?? 1;
     const pageSize = Math.min(query.pageSize ?? 20, 100);
     const where: Prisma.DealerOrganizationWhereInput = {
       deletedAt: null,
       verified: query.verified,
+      verificationStatus: query.status,
       OR: query.q?.trim()
         ? [
             { name: { contains: query.q.trim(), mode: 'insensitive' } },
@@ -126,11 +140,17 @@ export class AdminDealersService {
       throw new ConflictException('Dealer slug already exists');
     }
 
+    const verified = input.verified ?? false;
     const created = await this.prisma.dealerOrganization.create({
       data: {
         name: input.name,
         slug: input.slug,
-        verified: input.verified ?? false,
+        verified,
+        verificationStatus: verified
+          ? DealerVerificationStatus.VERIFIED
+          : DealerVerificationStatus.UNVERIFIED,
+        verifiedAt: verified ? new Date() : null,
+        verifiedById: verified ? actor.id : null,
         bio: input.bio,
         phone: input.phone,
         whatsapp: input.whatsapp,
@@ -145,7 +165,7 @@ export class AdminDealersService {
           ? {
               create: {
                 userId: input.ownerUserId,
-                role: 'OWNER',
+                role: DealerMemberRole.OWNER,
               },
             }
           : undefined,
@@ -192,11 +212,24 @@ export class AdminDealersService {
     ctx?: { ip?: string; userAgent?: string },
   ) {
     const before = await this.findById(id);
+    const verifiedPatch =
+      input.verified === undefined
+        ? {}
+        : {
+            verified: input.verified,
+            verificationStatus: input.verified
+              ? DealerVerificationStatus.VERIFIED
+              : DealerVerificationStatus.UNVERIFIED,
+            verifiedAt: input.verified ? new Date() : null,
+            verifiedById: input.verified ? actor.id : null,
+            rejectedAt: input.verified ? null : undefined,
+            rejectionReason: input.verified ? null : undefined,
+          };
     const updated = await this.prisma.dealerOrganization.update({
       where: { id },
       data: {
         name: input.name,
-        verified: input.verified,
+        ...verifiedPatch,
         bio: input.bio,
         phone: input.phone,
         whatsapp: input.whatsapp,
@@ -222,6 +255,47 @@ export class AdminDealersService {
       after: updated,
     });
     return updated;
+  }
+
+  async approve(
+    id: string,
+    actor: AuthenticatedUser,
+    ctx?: { ip?: string; userAgent?: string },
+  ) {
+    const before = await this.findById(id);
+    const after = await this.accounts.approve(id, actor);
+    await this.audit.log({
+      actorId: actor.id,
+      action: 'dealer.approve',
+      module: 'dealers',
+      entityId: id,
+      ip: ctx?.ip,
+      userAgent: ctx?.userAgent,
+      before,
+      after,
+    });
+    return after;
+  }
+
+  async reject(
+    id: string,
+    actor: AuthenticatedUser,
+    reason: string,
+    ctx?: { ip?: string; userAgent?: string },
+  ) {
+    const before = await this.findById(id);
+    const after = await this.accounts.reject(id, actor, reason);
+    await this.audit.log({
+      actorId: actor.id,
+      action: 'dealer.reject',
+      module: 'dealers',
+      entityId: id,
+      ip: ctx?.ip,
+      userAgent: ctx?.userAgent,
+      before,
+      after,
+    });
+    return after;
   }
 
   async remove(

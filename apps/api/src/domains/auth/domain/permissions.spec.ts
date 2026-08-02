@@ -29,6 +29,15 @@ describe('permissionsForRole', () => {
   it('maps SUPPORT and DEALER_MANAGER staff permissions', () => {
     expect(permissionsForRole('SUPPORT')).toContain(Permission.REPORTS_READ);
     expect(permissionsForRole('DEALER_MANAGER')).toContain(Permission.DEALERS_MANAGE);
+    expect(permissionsForRole('DEALER_MANAGER')).toContain(Permission.DEALERS_VERIFY);
+  });
+
+  it('gives marketplace users dealer apply/org permissions without admin manage', () => {
+    const user = permissionsForRole('USER');
+    expect(user).toContain(Permission.DEALERS_APPLY);
+    expect(user).toContain(Permission.DEALERS_ORG_READ);
+    expect(user).not.toContain(Permission.DEALERS_MANAGE);
+    expect(permissionsForRole('DEALER')).not.toContain(Permission.DEALERS_MANAGE);
   });
 
   it('gives SUPER_ADMIN system manage', () => {

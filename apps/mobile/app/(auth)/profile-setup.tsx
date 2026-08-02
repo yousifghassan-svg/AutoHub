@@ -39,7 +39,6 @@ export default function ProfileSetupScreen() {
       dateOfBirth: session?.user.dateOfBirth ?? '',
       avatarUrl: session?.user.avatarUrl ?? '',
       avatarMediaId: session?.user.avatarMediaId ?? '',
-      sellerType: session?.user.sellerProfile?.type ?? 'INDIVIDUAL',
       bio: session?.user.sellerProfile?.bio ?? '',
       pushEnabled: session?.user.notificationPreferences?.pushEnabled ?? true,
       emailEnabled: session?.user.notificationPreferences?.emailEnabled ?? true,

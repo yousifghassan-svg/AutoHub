@@ -34,6 +34,7 @@ import { R2StorageService } from '../../../infrastructure/storage/r2-storage.ser
 import { MediaAssetRepository } from '../../media/infrastructure/media-asset.repository';
 import { DOCUMENT_PURPOSES } from '../../media/domain/media.policies';
 import { ListingValidationService } from './listing-validation.service';
+import { ListingPublishCompletenessService } from './listing-publish-completeness.service';
 import { NotificationsService } from '../../notifications/application/notifications.service';
 import { CurrenciesService } from '../../currencies/application/currencies.service';
 import type { CreateListingInput } from './types/create-listing.input';
@@ -41,12 +42,15 @@ import type { UpdateListingInput } from './types/update-listing.input';
 import type { SearchListingsInput } from './types/search-listings.input';
 import type { AddMediaInput } from './types/add-media.input';
 
+const DRAFT_TITLE_PLACEHOLDER = 'Draft';
+
 @Injectable()
 export class ListingsService {
   constructor(
     private readonly listings: ListingRepository,
     private readonly media: ListingMediaRepository,
     private readonly validation: ListingValidationService,
+    private readonly publishCompleteness: ListingPublishCompletenessService,
     private readonly thumbnails: ThumbnailService,
     private readonly r2: R2StorageService,
     private readonly mediaAssets: MediaAssetRepository,
@@ -70,13 +74,21 @@ export class ListingsService {
       await this.currencies.assertActiveId(input.secondaryCurrencyId);
     }
 
+    const vehicleDetails = input.carDetails ?? input.vehicleDetails;
+    this.validation.assertVin(vehicleDetails?.vin);
+
     await this.validation.assertBrandModel({
       categoryCode: category.code,
-      brandId: input.carDetails?.brandId ?? input.vehicleDetails?.brandId,
-      modelId: input.carDetails?.modelId ?? input.vehicleDetails?.modelId,
+      brandId: vehicleDetails?.brandId,
+      modelId: vehicleDetails?.modelId,
     });
 
-    const title = input.title.trim();
+    const title =
+      input.title?.trim() && input.title.trim().length > 0
+        ? input.title.trim()
+        : DRAFT_TITLE_PLACEHOLDER;
+    const description = input.description?.trim() ?? '';
+    const features = this.validation.normalizeFeatures(input.features);
     const slug = uniqueSlug(input.slug?.trim() || title);
 
     const listing = await this.listings.create({
@@ -100,15 +112,17 @@ export class ListingsService {
         ? { connect: { id: input.secondaryCurrencyId } }
         : undefined,
       slug,
-      metaTitle: input.metaTitle ?? title,
+      metaTitle: input.metaTitle ?? (title !== DRAFT_TITLE_PLACEHOLDER ? title : undefined),
       metaDescription: input.metaDescription,
+      features: features ?? [],
+      draftStep: input.draftStep ?? undefined,
       createdBy: { connect: { id: actor.id } },
       updatedBy: { connect: { id: actor.id } },
       translations: {
         create: {
           language: input.language ?? LanguageCode.ar,
           title,
-          description: input.description,
+          description,
           createdById: actor.id,
           updatedById: actor.id,
         },
@@ -226,15 +240,31 @@ export class ListingsService {
       throw new BadRequestException('categoryId cannot be changed after creation');
     }
 
+    const vehicleDetails = input.carDetails ?? input.vehicleDetails;
+    this.validation.assertVin(vehicleDetails?.vin);
+
     await this.validation.assertBrandModel({
       categoryCode: listing.categoryCode,
-      brandId: input.carDetails?.brandId ?? input.vehicleDetails?.brandId,
-      modelId: input.carDetails?.modelId ?? input.vehicleDetails?.modelId,
+      brandId: vehicleDetails?.brandId,
+      modelId: vehicleDetails?.modelId,
     });
 
-    const detailsUpdate = await this.buildDetailsUpdate(listing.categoryCode, input);
+    const features = this.validation.normalizeFeatures(input.features);
+
+    const existingYear =
+      listing.carDetails?.year ??
+      listing.motorcycleDetails?.year ??
+      listing.truckDetails?.year ??
+      listing.heavyEquipmentDetails?.year ??
+      null;
+
+    const detailsUpdate = await this.buildDetailsUpdate(
+      listing.categoryCode,
+      input,
+      existingYear,
+    );
     const translationInput =
-      input.title || input.description
+      input.title !== undefined || input.description !== undefined
         ? (() => {
             const existing =
               listing.translations.find(
@@ -276,6 +306,9 @@ export class ListingsService {
           : undefined,
         metaTitle: input.metaTitle,
         metaDescription: input.metaDescription,
+        features,
+        draftStep:
+          input.draftStep === undefined ? undefined : input.draftStep,
         isFeatured: canModerateListings(actor.role, actor.permissions)
           ? input.isFeatured
           : undefined,
@@ -337,6 +370,14 @@ export class ListingsService {
       })
     ) {
       throw new ForbiddenException('Not allowed to submit this listing');
+    }
+
+    const submittingForReview =
+      status === ListingStatus.PENDING &&
+      (listing.status === ListingStatus.DRAFT ||
+        listing.status === ListingStatus.REJECTED);
+    if (submittingForReview) {
+      await this.publishCompleteness.assertReadyForPending(listing.id);
     }
 
     const previousStatus = listing.status;
@@ -625,12 +666,10 @@ export class ListingsService {
     }
 
     const vehicle = input.carDetails ?? input.vehicleDetails;
-    if (!vehicle) return {};
+    // Sparse DRAFT: skip detail row until year is known (Prisma year is required).
+    if (!vehicle || vehicle.year == null) return {};
 
     if (categoryCode === ListingCategoryCode.CAR) {
-      if (vehicle.year == null) {
-        throw new BadRequestException('carDetails.year is required for CAR listings');
-      }
       return {
         carDetails: {
           create: {
@@ -656,9 +695,6 @@ export class ListingsService {
     }
 
     if (categoryCode === ListingCategoryCode.MOTORCYCLE) {
-      if (vehicle.year == null) {
-        throw new BadRequestException('year is required for MOTORCYCLE listings');
-      }
       return {
         motorcycleDetails: {
           create: {
@@ -675,9 +711,6 @@ export class ListingsService {
     }
 
     if (categoryCode === ListingCategoryCode.TRUCK) {
-      if (vehicle.year == null) {
-        throw new BadRequestException('year is required for TRUCK listings');
-      }
       return {
         truckDetails: {
           create: {
@@ -699,6 +732,7 @@ export class ListingsService {
   private async buildDetailsUpdate(
     categoryCode: ListingCategoryCode,
     input: UpdateListingInput,
+    existingYear?: number | null,
   ): Promise<Partial<Prisma.ListingUpdateInput>> {
     if (categoryCode === ListingCategoryCode.PLATE && input.plateDetails) {
       const plate = input.plateDetails;
@@ -728,7 +762,12 @@ export class ListingsService {
     const vehicle = input.carDetails ?? input.vehicleDetails;
     if (!vehicle) return {};
 
-    const year = vehicle.year ?? new Date().getFullYear();
+    const yearForCreate = vehicle.year ?? existingYear ?? null;
+    // Cannot create detail row without year; allow update of existing row fields.
+    if (yearForCreate == null && existingYear == null) {
+      return {};
+    }
+
     const data = {
       brandId: vehicle.brandId,
       modelId: vehicle.modelId,
@@ -748,16 +787,17 @@ export class ListingsService {
     };
 
     if (categoryCode === ListingCategoryCode.CAR) {
+      if (yearForCreate == null) return {};
       return {
         carDetails: {
           upsert: {
             create: {
               ...data,
-              year,
+              year: yearForCreate,
             },
             update: {
               ...data,
-              year: vehicle.year,
+              ...(vehicle.year != null ? { year: vehicle.year } : {}),
             },
           },
         },
@@ -765,11 +805,12 @@ export class ListingsService {
     }
 
     if (categoryCode === ListingCategoryCode.MOTORCYCLE) {
+      if (yearForCreate == null) return {};
       return {
         motorcycleDetails: {
           upsert: {
             create: {
-              year,
+              year: yearForCreate,
               brandId: vehicle.brandId,
               modelId: vehicle.modelId,
               mileageKm: vehicle.mileageKm,
@@ -780,7 +821,7 @@ export class ListingsService {
             update: {
               brandId: vehicle.brandId,
               modelId: vehicle.modelId,
-              year: vehicle.year,
+              ...(vehicle.year != null ? { year: vehicle.year } : {}),
               mileageKm: vehicle.mileageKm,
               engineSizeCc: vehicle.engineSizeCc,
               fuelTypeId: vehicle.fuelTypeId,
@@ -792,11 +833,12 @@ export class ListingsService {
     }
 
     if (categoryCode === ListingCategoryCode.TRUCK) {
+      if (yearForCreate == null) return {};
       return {
         truckDetails: {
           upsert: {
             create: {
-              year,
+              year: yearForCreate,
               brandId: vehicle.brandId,
               modelId: vehicle.modelId,
               mileageKm: vehicle.mileageKm,
@@ -807,7 +849,7 @@ export class ListingsService {
             update: {
               brandId: vehicle.brandId,
               modelId: vehicle.modelId,
-              year: vehicle.year,
+              ...(vehicle.year != null ? { year: vehicle.year } : {}),
               mileageKm: vehicle.mileageKm,
               fuelTypeId: vehicle.fuelTypeId,
               transmissionTypeId: vehicle.transmissionTypeId,
@@ -889,6 +931,7 @@ export class ListingsService {
       longitude: listing.longitude != null ? Number(listing.longitude) : null,
       locationText: listing.locationText,
       features: listing.features ?? [],
+      draftStep: listing.draftStep ?? null,
       translations: listing.translations.map((t) => ({
         language: t.language,
         title: t.title,

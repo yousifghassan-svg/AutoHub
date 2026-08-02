@@ -9,10 +9,15 @@ import {
 } from 'class-validator';
 
 export class VehicleDetailsDto {
-  @ApiPropertyOptional({ description: 'Make / brand id' })
+  @ApiPropertyOptional({ description: 'Make / brand id (alias of brandId)' })
   @IsOptional()
   @IsString()
   makeId?: string;
+
+  @ApiPropertyOptional({ description: 'Brand id (preferred)' })
+  @IsOptional()
+  @IsString()
+  brandId?: string;
 
   @ApiPropertyOptional({ description: 'Model id' })
   @IsOptional()
@@ -107,7 +112,7 @@ export class VehicleDetailsDto {
 export function toVehicleDetailsInput(dto?: VehicleDetailsDto) {
   if (!dto) return undefined;
   return {
-    brandId: dto.makeId,
+    brandId: dto.brandId ?? dto.makeId,
     modelId: dto.modelId,
     year: dto.year,
     mileageKm: dto.mileageKm,

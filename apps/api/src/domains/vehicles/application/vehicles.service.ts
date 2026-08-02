@@ -54,6 +54,8 @@ export class VehiclesService {
       primaryCurrencyId: input.primaryCurrencyId,
       secondaryPrice: input.secondaryPrice,
       secondaryCurrencyId: input.secondaryCurrencyId,
+      features: input.features,
+      draftStep: input.draftStep,
       carDetails: input.vehicleDetails,
       vehicleDetails: input.vehicleDetails,
     });
@@ -156,6 +158,8 @@ export class VehiclesService {
       secondaryPrice: input.secondaryPrice,
       secondaryCurrencyId: input.secondaryCurrencyId,
       isFeatured: input.isFeatured,
+      features: input.features,
+      draftStep: input.draftStep,
       carDetails: input.vehicleDetails,
       vehicleDetails: input.vehicleDetails,
     });
@@ -280,6 +284,7 @@ export class VehiclesService {
       longitude: vehicle.longitude != null ? Number(vehicle.longitude) : null,
       locationText: vehicle.locationText,
       features: vehicle.features ?? [],
+      draftStep: vehicle.draftStep ?? null,
       translations: vehicle.translations.map((t) => ({
         language: t.language,
         title: t.title,

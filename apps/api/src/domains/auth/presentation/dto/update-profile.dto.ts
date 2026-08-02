@@ -159,8 +159,9 @@ export class UpdateProfileDto {
   dateOfBirth?: string | null;
 
   @ApiPropertyOptional({
-    enum: SellerType,
-    description: 'Upserts SellerProfile.type (INDIVIDUAL | DEALER).',
+    enum: [SellerType.INDIVIDUAL],
+    description:
+      'SellerProfile.type. DEALER cannot be self-assigned; use dealer applications + verification.',
   })
   @IsOptional()
   @IsEnum(SellerType)

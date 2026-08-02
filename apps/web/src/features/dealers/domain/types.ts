@@ -31,6 +31,7 @@ export type DealerCard = {
   name: string;
   slug: string;
   verified: boolean;
+  verificationStatus?: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
   bio: string | null;
   phone: string | null;
   whatsapp?: string | null;

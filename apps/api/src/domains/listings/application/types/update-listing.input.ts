@@ -17,6 +17,8 @@ export type UpdateListingInput = {
   secondaryPrice?: number;
   secondaryCurrencyId?: string;
   isFeatured?: boolean;
+  features?: string[];
+  draftStep?: string | null;
   carDetails?: VehicleDetailsInput;
   vehicleDetails?: VehicleDetailsInput;
   plateDetails?: PlateDetailsInput;

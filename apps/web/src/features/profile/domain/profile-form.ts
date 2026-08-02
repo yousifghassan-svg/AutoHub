@@ -1,9 +1,5 @@
 import { z } from 'zod';
-import type {
-  NotificationPreferences,
-  SellerType,
-  UpdateProfileInput,
-} from '@/lib/api/types';
+import type { NotificationPreferences, UpdateProfileInput } from '@/lib/api/types';
 
 const optionalName = z.union([
   z.literal(''),
@@ -56,7 +52,6 @@ export const profileFormSchema = z.object({
       .max(2048, { message: 'Avatar URL is too long' }),
   ]),
   avatarMediaId: z.string(),
-  sellerType: z.enum(['INDIVIDUAL', 'DEALER']),
   bio: z.string().max(2000, { message: 'Bio must be at most 2000 characters' }),
   notificationPreferences: z.object({
     pushEnabled: z.boolean(),
@@ -99,7 +94,6 @@ export function emptyProfileFormValues(): ProfileFormValues {
     dateOfBirth: '',
     avatarUrl: '',
     avatarMediaId: '',
-    sellerType: 'INDIVIDUAL',
     bio: '',
     notificationPreferences: { ...DEFAULT_NOTIFICATION_PREFERENCES },
   };
@@ -133,7 +127,6 @@ export function profileFormValuesToUpdateInput(
     dateOfBirth: dob ? dob : clear ? null : undefined,
     firstName: firstName ? firstName : clear ? null : undefined,
     lastName: lastName ? lastName : clear ? null : undefined,
-    sellerType: values.sellerType as SellerType,
     bio: bio ? bio : clear ? null : undefined,
     notificationPreferences: values.notificationPreferences,
   };

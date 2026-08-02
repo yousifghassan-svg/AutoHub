@@ -1,12 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
-  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { LanguageCode } from '@autohub/database';
@@ -28,16 +29,18 @@ export class UpdateVehicleDto {
   @IsString()
   conditionTypeId?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: 'DRAFT autosave allows short titles; completeness enforced on submit',
+  })
   @IsOptional()
   @IsString()
-  @MinLength(3)
   title?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: 'DRAFT autosave allows short descriptions; completeness enforced on submit',
+  })
   @IsOptional()
   @IsString()
-  @MinLength(10)
   description?: string;
 
   @ApiPropertyOptional({ enum: LanguageCode })
@@ -88,6 +91,19 @@ export class UpdateVehicleDto {
   @IsBoolean()
   isFeatured?: boolean;
 
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(64, { each: true })
+  features?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  draftStep?: string | null;
+
   @ApiPropertyOptional({ type: VehicleDetailsDto })
   @IsOptional()
   @ValidateNested()
@@ -111,6 +127,8 @@ export function mapUpdateVehicleDto(dto: UpdateVehicleDto) {
     secondaryPrice: dto.secondaryPrice,
     secondaryCurrencyId: dto.secondaryCurrencyId,
     isFeatured: dto.isFeatured,
+    features: dto.features,
+    draftStep: dto.draftStep,
     vehicleDetails: toVehicleDetailsInput(dto.vehicleDetails),
   };
 }

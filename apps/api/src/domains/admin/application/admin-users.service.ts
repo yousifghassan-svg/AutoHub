@@ -193,7 +193,15 @@ export class AdminUsersService {
       }),
       this.prisma.dealerOrganization.update({
         where: { id: membership.organizationId },
-        data: { verified: true, updatedById: actor.id },
+        data: {
+          verified: true,
+          verificationStatus: 'VERIFIED',
+          verifiedAt: new Date(),
+          verifiedById: actor.id,
+          rejectedAt: null,
+          rejectionReason: null,
+          updatedById: actor.id,
+        },
       }),
       this.prisma.sellerProfile.upsert({
         where: { userId: id },

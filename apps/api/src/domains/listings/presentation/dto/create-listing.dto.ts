@@ -1,10 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   MinLength,
   ValidateNested,
@@ -34,15 +36,21 @@ export class CreateListingDto {
   @IsString()
   conditionTypeId?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({
+    description: 'Optional for sparse DRAFT create; completeness enforced on submit',
+  })
+  @IsOptional()
   @IsString()
   @MinLength(3)
-  title!: string;
+  title?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({
+    description: 'Optional for sparse DRAFT create; completeness enforced on submit',
+  })
+  @IsOptional()
   @IsString()
   @MinLength(10)
-  description!: string;
+  description?: string;
 
   @ApiPropertyOptional({ enum: LanguageCode, default: LanguageCode.ar })
   @IsOptional()
@@ -90,6 +98,19 @@ export class CreateListingDto {
   @IsOptional()
   @IsString()
   secondaryCurrencyId?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(64, { each: true })
+  features?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  draftStep?: string;
 
   @ApiPropertyOptional({ type: VehicleDetailsDto })
   @IsOptional()

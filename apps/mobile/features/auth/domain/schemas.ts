@@ -50,7 +50,6 @@ export const profileFormSchema = z.object({
     z.string().trim().url({ message: 'Enter a valid URL' }),
   ]),
   avatarMediaId: z.string(),
-  sellerType: z.enum(['INDIVIDUAL', 'DEALER']),
   bio: z.string().max(2000),
   pushEnabled: z.boolean(),
   emailEnabled: z.boolean(),

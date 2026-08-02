@@ -44,6 +44,7 @@ export type ListingMediaModel = {
   id: string;
   url: string | null;
   kind: string;
+  mediaAssetId?: string | null;
   blurDataUrl?: string | null;
   isPrimary?: boolean;
   variants?: Array<{
@@ -63,12 +64,14 @@ export type ListingSpecs = {
   colorId?: string | null;
   bodyTypeId?: string | null;
   driveTypeId?: string | null;
+  engineTypeId?: string | null;
   conditionTypeId?: string | null;
   doors?: number | null;
   seats?: number | null;
   engineSizeCc?: number | null;
   trim?: string | null;
   interiorColor?: string | null;
+  vin?: string | null;
 };
 
 export type SellerContactModel = {
@@ -97,6 +100,8 @@ export type ListingDetailModel = ListingCardModel & {
   publishedAt: string | null;
   sellerId: string | null;
   specs: ListingSpecs | null;
+  categoryId?: string | null;
+  draftStep?: string | null;
   cityId?: string | null;
   governorateId?: string | null;
   cityNameEn?: string | null;

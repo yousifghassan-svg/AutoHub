@@ -134,6 +134,25 @@ enum SellerType {
   DEALER
 }
 
+enum DealerVerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum DealerMemberRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum DealerDocumentReviewStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 enum VerificationStatus {
   UNVERIFIED
   PENDING
@@ -594,6 +613,8 @@ model User {
   conversationReportsFiled ConversationReport[]      @relation("ConversationReportReporter")
   conversationReportsResolved ConversationReport[]   @relation("ConversationReportResolver")
   dealerFollows            DealerFollow[]
+  dealersVerified          DealerOrganization[]         @relation("DealerVerifiedBy")
+  dealerDocumentsReviewed  DealerVerificationDocument[] @relation("DealerDocumentReviewedBy")
   devicePushTokens         DevicePushToken[]
   appNotifications         AppNotification[]
   presence                 UserPresence?
@@ -724,12 +745,15 @@ model MediaAsset {
   updatedById     String?
   deletedAt       DateTime?
 
-  owner         User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
-  avatarForUser User?          @relation("UserAvatarMedia")
-  createdBy     User?          @relation("MediaAssetCreatedBy", fields: [createdById], references: [id])
-  updatedBy     User?          @relation("MediaAssetUpdatedBy", fields: [updatedById], references: [id])
-  variants      MediaVariant[]
-  listingMedia  ListingMedia[]
+  owner              User?                       @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  avatarForUser      User?                       @relation("UserAvatarMedia")
+  logoForDealer      DealerOrganization?         @relation("DealerLogoMedia")
+  coverForDealer     DealerOrganization?         @relation("DealerCoverMedia")
+  dealerDocuments    DealerVerificationDocument[]
+  createdBy          User?                       @relation("MediaAssetCreatedBy", fields: [createdById], references: [id])
+  updatedBy          User?                       @relation("MediaAssetUpdatedBy", fields: [updatedById], references: [id])
+  variants           MediaVariant[]
+  listingMedia       ListingMedia[]
 
   @@index([ownerId, deletedAt])
   @@index([status, mediaType])
@@ -841,6 +865,8 @@ model Listing {
   locationText         String?
   /// Optional equipment / feature tags shown on marketplace detail
   features             String[]            @default([])
+  /// Wizard resume cursor (e.g. category | vehicleDetails | media | saleInformation | publish)
+  draftStep            String?
 
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
@@ -1153,52 +1179,89 @@ model PlateVerification {
   @@index([status])
 }
 
-// ─── Future: dealers ─────────────────────────────────────────────────────────
+// ─── Dealers ─────────────────────────────────────────────────────────────────
 
 model DealerOrganization {
-  id             String   @id @default(cuid())
-  name           String
-  slug           String   @unique
-  verified       Boolean  @default(false)
-  bio            String?
-  phone          String?
-  whatsapp       String?
-  address        String?
-  coverImageUrl  String?
-  logoUrl        String?
+  id                 String                    @id @default(cuid())
+  name               String
+  slug               String                    @unique
+  /// Legacy denormalized flag; keep in sync with verificationStatus === VERIFIED
+  verified           Boolean                   @default(false)
+  verificationStatus DealerVerificationStatus  @default(UNVERIFIED)
+  verifiedAt         DateTime?
+  verifiedById       String?
+  rejectedAt         DateTime?
+  rejectionReason    String?
+  bio                String?
+  phone              String?
+  whatsapp           String?
+  address            String?
+  coverImageUrl      String?
+  logoUrl            String?
+  logoMediaId        String?                   @unique
+  coverMediaId       String?                   @unique
   /// Free-form opening hours text or JSON string, e.g. "Sat–Thu 9:00–18:00"
-  openingHours   String?
-  cityId         String?
-  followersCount Int      @default(0)
-  viewsCount     Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  createdById    String?
-  updatedById    String?
-  deletedAt      DateTime?
+  openingHours       String?
+  cityId             String?
+  followersCount     Int                       @default(0)
+  viewsCount         Int                       @default(0)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  createdById        String?
+  updatedById        String?
+  deletedAt          DateTime?
 
-  city    City?          @relation(fields: [cityId], references: [id])
-  members DealerMember[]
-  follows DealerFollow[]
-  conversations Conversation[]
+  city               City?                        @relation(fields: [cityId], references: [id])
+  verifiedBy         User?                        @relation("DealerVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  logoMedia          MediaAsset?                  @relation("DealerLogoMedia", fields: [logoMediaId], references: [id], onDelete: SetNull)
+  coverMedia         MediaAsset?                  @relation("DealerCoverMedia", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  members            DealerMember[]
+  follows            DealerFollow[]
+  conversations      Conversation[]
+  verificationDocs   DealerVerificationDocument[]
 
   @@index([verified, deletedAt])
+  @@index([verificationStatus, deletedAt])
   @@index([cityId])
 }
 
 model DealerMember {
-  id             String   @id @default(cuid())
+  id             String           @id @default(cuid())
   organizationId String
   userId         String
-  role           String   @default("MEMBER")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  role           DealerMemberRole @default(STAFF)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
   deletedAt      DateTime?
 
   organization DealerOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, userId])
+  @@index([userId, deletedAt])
+  @@index([organizationId, deletedAt])
+}
+
+/// KYC / business documents for dealer verification (extensible).
+model DealerVerificationDocument {
+  id             String                     @id @default(cuid())
+  organizationId String
+  mediaAssetId   String
+  /// BUSINESS_LICENSE | OWNER_ID | OTHER
+  purpose        String
+  status         DealerDocumentReviewStatus @default(PENDING)
+  note           String?
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+  reviewedAt     DateTime?
+  reviewedById   String?
+
+  organization DealerOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mediaAsset   MediaAsset         @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+  reviewedBy   User?              @relation("DealerDocumentReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([mediaAssetId])
 }
 
 // ─── Future: auctions ────────────────────────────────────────────────────────

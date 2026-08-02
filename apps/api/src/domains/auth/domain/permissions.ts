@@ -21,7 +21,18 @@ export enum Permission {
   MEDIA_READ = 'media:read',
   MEDIA_DELETE = 'media:delete',
 
+  /** Staff admin dealer CRUD (requires ADMIN_ACCESS on admin routes). */
   DEALERS_MANAGE = 'dealers:manage',
+  /** Self-serve dealer application. */
+  DEALERS_APPLY = 'dealers:apply',
+  /** Read own org membership / dashboard (service checks membership). */
+  DEALERS_ORG_READ = 'dealers:org:read',
+  /** Update own org profile (service checks OWNER/MANAGER). */
+  DEALERS_ORG_WRITE = 'dealers:org:write',
+  /** Manage org members (service checks OWNER/MANAGER). */
+  DEALERS_MEMBERS_MANAGE = 'dealers:members:manage',
+  /** Admin approve/reject verification queue. */
+  DEALERS_VERIFY = 'dealers:verify',
 
   REPORTS_READ = 'reports:read',
   REPORTS_WRITE = 'reports:write',
@@ -39,6 +50,13 @@ export enum Permission {
   SYSTEM_MANAGE = 'system:manage',
 }
 
+const DEALER_ORG_PERMISSIONS: Permission[] = [
+  Permission.DEALERS_APPLY,
+  Permission.DEALERS_ORG_READ,
+  Permission.DEALERS_ORG_WRITE,
+  Permission.DEALERS_MEMBERS_MANAGE,
+];
+
 const USER_PERMISSIONS: Permission[] = [
   Permission.PROFILE_READ,
   Permission.PROFILE_WRITE,
@@ -52,11 +70,11 @@ const USER_PERMISSIONS: Permission[] = [
   Permission.REPORTS_WRITE,
   Permission.MESSAGES_READ,
   Permission.MESSAGES_WRITE,
+  ...DEALER_ORG_PERMISSIONS,
 ];
 
 const DEALER_PERMISSIONS: Permission[] = [
   ...USER_PERMISSIONS,
-  Permission.DEALERS_MANAGE,
 ];
 
 const SUPPORT_PERMISSIONS: Permission[] = [
@@ -77,9 +95,11 @@ const DEALER_MANAGER_PERMISSIONS: Permission[] = [
   Permission.PROFILE_WRITE,
   Permission.ADMIN_ACCESS,
   Permission.DEALERS_MANAGE,
+  Permission.DEALERS_VERIFY,
   Permission.LISTINGS_READ,
   Permission.STATS_READ,
   Permission.USERS_READ,
+  ...DEALER_ORG_PERMISSIONS,
 ];
 
 const MODERATOR_PERMISSIONS: Permission[] = [
@@ -100,6 +120,7 @@ const ADMIN_PERMISSIONS: Permission[] = [
   ...MODERATOR_PERMISSIONS,
   Permission.USERS_WRITE,
   Permission.DEALERS_MANAGE,
+  Permission.DEALERS_VERIFY,
   Permission.SETTINGS_READ,
   Permission.SETTINGS_WRITE,
   Permission.MEDIA_DELETE,

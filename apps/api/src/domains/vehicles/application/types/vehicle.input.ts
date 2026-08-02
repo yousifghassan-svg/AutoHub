@@ -6,8 +6,8 @@ export type CreateVehicleInput = {
   cityId: string;
   countryId?: string;
   conditionTypeId?: string;
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   language?: LanguageCode;
   slug?: string;
   metaTitle?: string;
@@ -17,6 +17,8 @@ export type CreateVehicleInput = {
   primaryCurrencyId?: string;
   secondaryPrice?: number;
   secondaryCurrencyId?: string;
+  features?: string[];
+  draftStep?: string | null;
   vehicleDetails?: VehicleDetailsInput;
 };
 
@@ -35,6 +37,8 @@ export type UpdateVehicleInput = {
   secondaryPrice?: number;
   secondaryCurrencyId?: string;
   isFeatured?: boolean;
+  features?: string[];
+  draftStep?: string | null;
   vehicleDetails?: VehicleDetailsInput;
 };
 

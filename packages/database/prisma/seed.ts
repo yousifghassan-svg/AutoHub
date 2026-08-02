@@ -739,11 +739,14 @@ async function seedUsersAndDealers(cityIds: string[]) {
 
   for (let i = 0; i < 5; i += 1) {
     const owner = users[i]!;
+    const verified = i < 3;
     const org = await prisma.dealerOrganization.create({
       data: {
         name: dealerNames[i]!,
         slug: `seed-dealer-${String(i + 1).padStart(2, '0')}`,
-        verified: i < 3,
+        verified,
+        verificationStatus: verified ? 'VERIFIED' : 'UNVERIFIED',
+        verifiedAt: verified ? new Date() : null,
         createdById: owner.id,
         updatedById: owner.id,
         members: {
