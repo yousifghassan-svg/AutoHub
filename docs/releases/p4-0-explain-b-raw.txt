@@ -1,0 +1,160 @@
+﻿Pager usage is off.
+=== B2 KEYWORD + BRAND (FTS + ILIKE) ===
+                                                                                                                     QUERY PLAN                                                                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=3573.78..3573.83 rows=20 width=34) (actual time=42.016..42.025 rows=8 loops=1)
+   Output: l.id, l."publishedAt"
+   Buffers: shared hit=78
+   ->  Sort  (cost=3573.78..3573.89 rows=45 width=34) (actual time=42.013..42.020 rows=8 loops=1)
+         Output: l.id, l."publishedAt"
+         Sort Key: l."publishedAt" DESC NULLS LAST
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=78
+         ->  Bitmap Heap Scan on public."Listing" l  (cost=5.16..3572.58 rows=45 width=34) (actual time=41.488..41.873 rows=8 loops=1)
+               Output: l.id, l."publishedAt"
+               Recheck Cond: ((l.domain = 'VEHICLE'::"MarketplaceDomain") AND (l.status = 'ACTIVE'::"ListingStatus"))
+               Filter: ((l."deletedAt" IS NULL) AND ((hashed SubPlan 2) OR (l.slug ~~* '%bmw%'::text) OR (l."metaTitle" ~~* '%bmw%'::text)) AND ((hashed SubPlan 4) OR (hashed SubPlan 6) OR (hashed SubPlan 8)))
+               Rows Removed by Filter: 80
+               Heap Blocks: exact=9
+               Buffers: shared hit=75
+               ->  Bitmap Index Scan on "Listing_domain_status_cityId_idx"  (cost=0.00..5.15 rows=100 width=0) (actual time=0.073..0.074 rows=101 loops=1)
+                     Index Cond: ((l.domain = 'VEHICLE'::"MarketplaceDomain") AND (l.status = 'ACTIVE'::"ListingStatus"))
+                     Buffers: shared hit=1
+               SubPlan 2
+                 ->  Seq Scan on public."ListingTranslation" lt  (cost=0.00..220.50 rows=58 width=26) (actual time=1.410..41.017 rows=20 loops=1)
+                       Output: lt."listingId"
+                       Filter: ((to_tsvector('simple'::regconfig, ((COALESCE(lt.title, ''::text) || ' '::text) || COALESCE(lt.description, ''::text))) @@ '''bmw'''::tsquery) OR (lt.title ~~* '%bmw%'::text) OR (lt.description ~~* '%bmw%'::text))
+                       Rows Removed by Filter: 581
+                       Buffers: shared hit=57
+               SubPlan 4
+                 ->  Seq Scan on public."CarDetails" cd  (cost=0.00..9.25 rows=10 width=26) (actual time=0.115..0.166 rows=10 loops=1)
+                       Output: cd."listingId"
+                       Filter: (cd."brandId" = 'cmrxj7fif003xehjgo6otf1sd'::text)
+                       Rows Removed by Filter: 90
+                       Buffers: shared hit=8
+               SubPlan 6
+                 ->  Bitmap Heap Scan on public."MotorcycleDetails" md  (cost=4.16..9.50 rows=2 width=32) (never executed)
+                       Output: md."listingId"
+                       Recheck Cond: (md."brandId" = 'cmrxj7fif003xehjgo6otf1sd'::text)
+                       ->  Bitmap Index Scan on "MotorcycleDetails_brandId_idx"  (cost=0.00..4.16 rows=2 width=0) (never executed)
+                             Index Cond: (md."brandId" = 'cmrxj7fif003xehjgo6otf1sd'::text)
+               SubPlan 8
+                 ->  Bitmap Heap Scan on public."TruckDetails" td  (cost=4.16..9.50 rows=2 width=32) (never executed)
+                       Output: td."listingId"
+                       Recheck Cond: (td."brandId" = 'cmrxj7fif003xehjgo6otf1sd'::text)
+                       ->  Bitmap Index Scan on "TruckDetails_brandId_idx"  (cost=0.00..4.16 rows=2 width=0) (never executed)
+                             Index Cond: (td."brandId" = 'cmrxj7fif003xehjgo6otf1sd'::text)
+ Planning:
+   Buffers: shared hit=913
+ Planning Time: 32.800 ms
+ Execution Time: 42.489 ms
+(46 rows)
+
+
+=== B4 KEYWORD + BRAND + PRICE (FTS + ILIKE, IQD) ===
+                                                                                                                                                                    QUERY PLAN                                                                                                                                                                     
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=258.36..258.37 rows=1 width=34) (actual time=0.695..0.698 rows=6 loops=1)
+   Output: l.id, l."publishedAt"
+   Buffers: shared hit=83
+   ->  Sort  (cost=258.36..258.37 rows=1 width=34) (actual time=0.693..0.695 rows=6 loops=1)
+         Output: l.id, l."publishedAt"
+         Sort Key: l."publishedAt" DESC NULLS LAST
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=83
+         ->  Nested Loop  (cost=0.42..258.35 rows=1 width=34) (actual time=0.209..0.678 rows=6 loops=1)
+               Output: l.id, l."publishedAt"
+               Inner Unique: true
+               Buffers: shared hit=83
+               ->  Nested Loop  (cost=0.27..253.64 rows=2 width=60) (actual time=0.181..0.635 rows=6 loops=1)
+                     Output: l.id, l."publishedAt", l."primaryCurrencyId"
+                     Inner Unique: true
+                     Buffers: shared hit=71
+                     ->  Seq Scan on public."CarDetails" cd  (cost=0.00..9.25 rows=15 width=26) (actual time=0.013..0.050 rows=15 loops=1)
+                           Output: cd."listingId", cd."brandId", cd."modelId", cd.year, cd."mileageKm", cd."fuelTypeId", cd."transmissionTypeId", cd."driveTypeId", cd."bodyTypeId", cd."colorId", cd."engineTypeId", cd."engineSizeCc", cd.doors, cd."createdAt", cd."updatedAt", cd."deletedAt", cd.vin, cd."trim", cd.seats, cd."interiorColor"
+                           Filter: (cd."brandId" = 'cmrxj7fgi0036ehjgyqtw2n7t'::text)
+                           Rows Removed by Filter: 85
+                           Buffers: shared hit=8
+                     ->  Index Scan using "Listing_pkey" on public."Listing" l  (cost=0.27..16.23 rows=1 width=60) (actual time=0.038..0.038 rows=0 loops=15)
+                           Output: l.id, l."publishedAt", l."primaryCurrencyId"
+                           Index Cond: (l.id = cd."listingId")
+                           Filter: ((l."deletedAt" IS NULL) AND (l."primaryPrice" >= '10000000'::numeric) AND (l."primaryPrice" <= '80000000'::numeric) AND (l.domain = 'VEHICLE'::"MarketplaceDomain") AND (l.status = 'ACTIVE'::"ListingStatus") AND ((SubPlan 1) OR (l.slug ~~* '%toyota%'::text) OR (l."metaTitle" ~~* '%toyota%'::text)))
+                           Rows Removed by Filter: 1
+                           Buffers: shared hit=63
+                           SubPlan 1
+                             ->  Index Scan using "ListingTranslation_listingId_language_key" on public."ListingTranslation" lt  (cost=0.28..10.59 rows=1 width=0) (actual time=0.070..0.070 rows=1 loops=6)
+                                   Index Cond: (lt."listingId" = l.id)
+                                   Filter: ((to_tsvector('simple'::regconfig, ((COALESCE(lt.title, ''::text) || ' '::text) || COALESCE(lt.description, ''::text))) @@ '''toyota'''::tsquery) OR (lt.title ~~* '%toyota%'::text) OR (lt.description ~~* '%toyota%'::text))
+                                   Buffers: shared hit=18
+               ->  Index Scan using "Currency_pkey" on public."Currency" c  (cost=0.14..1.62 rows=1 width=32) (actual time=0.006..0.006 rows=1 loops=6)
+                     Output: c.id
+                     Index Cond: (c.id = l."primaryCurrencyId")
+                     Filter: (c.code = 'IQD'::text)
+                     Buffers: shared hit=12
+ Planning:
+   Buffers: shared hit=222
+ Planning Time: 6.443 ms
+ Execution Time: 0.850 ms
+(41 rows)
+
+
+=== B1b FTS-ONLY (expression matches GIN index; no ILIKE OR) ===
+                                                                                      QUERY PLAN                                                                                       
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=54.28..103.33 rows=5 width=26) (actual time=4.885..5.499 rows=16 loops=1)
+   Output: lt."listingId"
+   Buffers: shared hit=51 read=2
+   ->  Hash Join  (cost=54.28..103.33 rows=5 width=26) (actual time=4.883..5.493 rows=16 loops=1)
+         Output: lt."listingId"
+         Hash Cond: (l.id = lt."listingId")
+         Buffers: shared hit=51 read=2
+         ->  Seq Scan on public."Listing" l  (cost=0.00..48.50 rows=100 width=26) (actual time=0.012..0.618 rows=88 loops=1)
+               Output: l.id
+               Filter: ((l."deletedAt" IS NULL) AND (l.domain = 'VEHICLE'::"MarketplaceDomain") AND (l.status = 'ACTIVE'::"ListingStatus"))
+               Rows Removed by Filter: 213
+               Buffers: shared hit=44
+         ->  Hash  (cost=54.08..54.08 rows=16 width=26) (actual time=4.820..4.823 rows=16 loops=1)
+               Output: lt."listingId"
+               Buckets: 1024  Batches: 1  Memory Usage: 9kB
+               Buffers: shared hit=7 read=2
+               ->  Bitmap Heap Scan on public."ListingTranslation" lt  (cost=12.88..54.08 rows=16 width=26) (actual time=4.781..4.796 rows=16 loops=1)
+                     Output: lt."listingId"
+                     Recheck Cond: (to_tsvector('simple'::regconfig, ((COALESCE(lt.title, ''::text) || ' '::text) || COALESCE(lt.description, ''::text))) @@ '''tesla'''::tsquery)
+                     Heap Blocks: exact=5
+                     Buffers: shared hit=7 read=2
+                     ->  Bitmap Index Scan on "ListingTranslation_fts_idx"  (cost=0.00..12.88 rows=16 width=0) (actual time=4.762..4.762 rows=16 loops=1)
+                           Index Cond: (to_tsvector('simple'::regconfig, ((COALESCE(lt.title, ''::text) || ' '::text) || COALESCE(lt.description, ''::text))) @@ '''tesla'''::tsquery)
+                           Buffers: shared hit=2 read=2
+ Planning:
+   Buffers: shared hit=20
+ Planning Time: 1.359 ms
+ Execution Time: 5.791 ms
+(28 rows)
+
+
+=== Prisma-like per-field search (title.search / description.search shape) ===
+                                                                                           QUERY PLAN                                                                                           
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.27..411.92 rows=2 width=26) (actual time=2.044..24.207 rows=16 loops=1)
+   Output: lt."listingId"
+   Buffers: shared hit=105
+   ->  Nested Loop  (cost=0.27..411.92 rows=2 width=26) (actual time=2.042..24.198 rows=16 loops=1)
+         Output: lt."listingId"
+         Inner Unique: true
+         Buffers: shared hit=105
+         ->  Seq Scan on public."ListingTranslation" lt  (cost=0.00..366.00 rows=6 width=26) (actual time=1.995..24.000 rows=16 loops=1)
+               Output: lt.id, lt."listingId", lt.language, lt.title, lt.description, lt."createdAt", lt."updatedAt", lt."createdById", lt."updatedById", lt."deletedAt"
+               Filter: ((to_tsvector('simple'::regconfig, lt.title) @@ '''tesla'''::tsquery) OR (to_tsvector('simple'::regconfig, COALESCE(lt.description, ''::text)) @@ '''tesla'''::tsquery))
+               Rows Removed by Filter: 585
+               Buffers: shared hit=57
+         ->  Index Scan using "Listing_pkey" on public."Listing" l  (cost=0.27..7.63 rows=1 width=26) (actual time=0.010..0.010 rows=1 loops=16)
+               Output: l.id
+               Index Cond: (l.id = lt."listingId")
+               Filter: ((l."deletedAt" IS NULL) AND (l.domain = 'VEHICLE'::"MarketplaceDomain") AND (l.status = 'ACTIVE'::"ListingStatus"))
+               Buffers: shared hit=48
+ Planning:
+   Buffers: shared hit=14
+ Planning Time: 1.134 ms
+ Execution Time: 24.564 ms
+(21 rows)
+

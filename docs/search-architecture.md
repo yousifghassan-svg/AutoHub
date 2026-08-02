@@ -7,6 +7,12 @@
 - Avoid N+1; lean card projections
 - No AI ranking/recommendations
 
+## Priority 4 (vehicle web path)
+
+**Tracking + performance baseline:** [`releases/PRIORITY_4_SEARCH_DISCOVERY.md`](./releases/PRIORITY_4_SEARCH_DISCOVERY.md)
+
+Web product search is `GET /v1/vehicles/search` (`domain = VEHICLE`). Legacy `GET /v1/search` remains for trending / suggestions / saved-search.
+
 ## Components
 
 ```
