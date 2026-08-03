@@ -22,4 +22,4 @@
 
 ### Explicitly not debt of 0.4 (deferred products)
 
-Payments, AI, dealer platform, chat/notifications product completion, media trust pipeline, Firebase C–E — see Go/No-Go **Deferred** section.
+Payments (0.7), AI, dealer platform (0.9), chat/notifications (0.6), media trust pipeline (absorbed by Release **0.5**), Firebase C–E — see Go/No-Go **Deferred** section and [`RELEASE_0.5_MARKETPLACE.md`](./RELEASE_0.5_MARKETPLACE.md).

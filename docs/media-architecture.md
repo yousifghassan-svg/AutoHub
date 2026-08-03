@@ -1,5 +1,7 @@
 # Media Platform Architecture (Sprint 6 + Sprint 17)
 
+> **Normative for Release 0.5 seller attach trust:** [`architecture/media-pipeline.md`](./architecture/media-pipeline.md). This file remains the broader media platform reference.
+
 ## Independence
 
 `MediaAsset` / `MediaVariant` live outside the Listing aggregate. Any domain can own media via:

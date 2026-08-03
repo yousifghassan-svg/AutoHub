@@ -8,6 +8,8 @@
 
 **RC decision (2026-08-01 reassessment):** **GO FOR CLOSED BETA** (75% overall) — invite-only staging with conditions; not public beta. See [`RELEASE_0.4_RC_GO_NO_GO.md`](./RELEASE_0.4_RC_GO_NO_GO.md).
 
+> **Follow-on:** Production-ready marketplace hardening is **Release 0.5** ([`RELEASE_0.5_MARKETPLACE.md`](./RELEASE_0.5_MARKETPLACE.md)) — extend this baseline; do not rebuild. Search under 0.4 remains **FROZEN**.
+
 ---
 
 ## Goals

@@ -1,0 +1,158 @@
+# Sell Wizard Architecture (Release 0.5)
+
+**Status:** Normative for Release **0.5**  
+**Baseline:** Domain-agnostic host + VEHICLE/PLATE plugins (Release 0.4)  
+**Master release:** [`../releases/RELEASE_0.5_MARKETPLACE.md`](../releases/RELEASE_0.5_MARKETPLACE.md)  
+**Code:** `apps/web/src/features/sell/`, `apps/web/src/features/vehicles/sell/`, `plates/sell/`
+
+---
+
+## Vision
+
+One plugin-hosted sell experience that is safe to resume, hard to submit incomplete, and reusable for edit—without rebuilding the host.
+
+---
+
+## Goals
+
+- Keep `SellWizard` + registry; extend via plugins only.
+- Fix auth return path (`/login?next=/sell`) using existing `safe-next-path`.
+- Real step/publish gates (completeness).
+- Edit reuses sell field sections (P5-9), not a parallel thin form.
+- Align review preview with visitor-critical detail fields.
+
+---
+
+## Scope
+
+| Slice | Focus |
+| --- | --- |
+| P5-1 | Host foundation, `?next=` |
+| P5-2 | Vehicle details field parity (CAR-first) |
+| P5-3 | Price & location validation polish |
+| P5-6 / P5-7 | Completeness + review/publish |
+| P5-9 | Edit reuse |
+
+---
+
+## Out of scope
+
+- New sell host framework or step engine rewrite.
+- New marketplace domains in 0.5 (plugins later).
+- Mobile Expo plugin host parity with web (deferred).
+- Auth freeze changes.
+
+---
+
+## User journeys
+
+1. Guest opens `/sell` → redirect `/login?next=/sell` → resume wizard.
+2. Authenticated seller completes steps → review → PENDING.
+3. Seller abandons mid-flow → local draft restore (see draft-engine).
+4. Owner opens Edit → same field sections → PATCH (no full wizard forced).
+
+---
+
+## Domain architecture
+
+```mermaid
+flowchart LR
+  Host[SellWizard host]
+  Registry[Plugin registry]
+  VPlugin[Vehicle plugin]
+  PPlugin[Plate plugin]
+  Host --> Registry
+  Registry --> VPlugin
+  Registry --> PPlugin
+  VPlugin --> VehiclesAPI["/v1/vehicles"]
+  PPlugin --> PlatesAPI["/v1/plates"]
+  Host --> MediaAPI["/v1/media + listings media"]
+```
+
+### Typical vehicle step order (baseline)
+
+`category` → `vehicleDetails` → `media` → `saleInformation` → `publish`
+
+### Typical plate step order (baseline)
+
+`category` → `plateDetails` → `saleInformation` → `publish` (media skipped today)
+
+### Plugin contract (conceptual)
+
+- Step list + labels
+- Per-step validate / `canSubmit`
+- Submit: create domain listing → attach media → optional PENDING
+
+Do not invent a second plugin system.
+
+---
+
+## Database impact
+
+None for host. Domain create uses existing Listing + detail rows.
+
+---
+
+## API contracts
+
+- Create/update via `/v1/vehicles` and `/v1/plates` only for new work.
+- Status via dedicated status endpoints.
+- Media attach after create (see media-pipeline).
+
+---
+
+## Web architecture
+
+| Concern | Approach |
+| --- | --- |
+| Login return | `router.replace('/login?next=/sell')` — BUG-004 |
+| Drafts | Existing `draft-store` v2 (harden in P5-5) |
+| Publish validator | Replace noop in `validators/publish.ts` |
+| Edit | Extract shared field sections; edit page composes them |
+
+---
+
+## Mobile compatibility
+
+- Mobile domain create remains canonical; not required to share React components with web.
+- Payload parity for CAR specs is a 0.5 goal (P5-2).
+- Legacy `/sell/wizard` redirected away from new entry points.
+
+---
+
+## AI readiness
+
+- Completeness checklist is structured input for future assistive UX.
+- No AI-generated listing copy in 0.5.
+
+---
+
+## Security considerations
+
+- Reuse `safe-next-path` for `next` (no open redirects).
+- Authenticated create/update only.
+- Never set ACTIVE from client submit (PENDING only).
+
+---
+
+## Performance considerations
+
+- Catalog data cached (existing marketplace catalog hooks).
+- Avoid re-fetching full listing on every step; hydrate edit once.
+
+---
+
+## Testing strategy
+
+- Unit: step validators, publish completeness, safe-next.
+- E2E/smoke: unauth → login → return; full vehicle submit; plate submit.
+- Edit: PATCH round-trip without status change.
+
+---
+
+## Production freeze criteria
+
+- BUG-004 closed.
+- Noop publish validator gone.
+- Edit no longer “title/price only” for vehicle core fields.
+- Host not rewritten; plugins still register the same way.

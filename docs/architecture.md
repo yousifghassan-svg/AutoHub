@@ -18,6 +18,7 @@ See repository root.
 - API DDD: [`docs/api-ddd-architecture.md`](./api-ddd-architecture.md)
 - Sprint 2 foundation: [`docs/sprint-2-backend-foundation.md`](./sprint-2-backend-foundation.md)
 - Sprint 3 auth: [`docs/sprint-3-auth.md`](./sprint-3-auth.md), [`docs/auth-architecture.md`](./auth-architecture.md)
+- **Release 0.5 Marketplace & Listings (normative):** [`docs/releases/RELEASE_0.5_MARKETPLACE.md`](./releases/RELEASE_0.5_MARKETPLACE.md), [`docs/architecture/`](./architecture/)
 - Sprint 4 listings: [`docs/sprint-4-listings.md`](./sprint-4-listings.md), [`docs/listings-architecture.md`](./listings-architecture.md)
 - Sprint 5 search: [`docs/sprint-5-search.md`](./sprint-5-search.md), [`docs/search-architecture.md`](./search-architecture.md)
 - Sprint 6 media: [`docs/sprint-6-media.md`](./sprint-6-media.md), [`docs/media-architecture.md`](./media-architecture.md)

@@ -12,7 +12,7 @@
 - Open AutoHub to real users in Iraq with production-grade reliability and security.  
 - Launch **classifieds** for vehicles and plates: browse, search, sell, message, moderate.  
 - Meet operational readiness (backups, monitoring, runbooks, store listings).  
-- Explicitly decide whether 0.6 Payments is **in** launch scope or **waived** (default: waived — off-platform payment).  
+- Explicitly decide whether 0.7 Payments is **in** launch scope or **waived** (default: waived — off-platform payment).  
 - Freeze scope; ship a trustworthy MVP, not every future vertical.
 
 ---
@@ -23,19 +23,21 @@
 
 | Area | Capability |
 | --- | --- |
-| Auth (0.2) | Firebase phone → JWT; no dev bypass |
-| Media (0.3) | Upload + attach; known P0 media-trust items closed or explicitly accepted with compensating controls |
-| Marketplace (0.4) | Vehicles + plates; sell; search; my listings; admin moderation |
-| Messaging (0.5) | Listing chat + reports/blocks + basic notifications |
+| Auth (0.2) | **FROZEN** — Firebase phone → JWT; no dev bypass |
+| Media (0.3) | Upload + attach; trust items closed under **0.5** or waived |
+| Marketplace closed beta (0.4) | Vehicles + plates baseline; Search **FROZEN** |
+| Marketplace & Listings (0.5) | Production-ready sell/media/draft/edit/completeness |
+| Messaging (0.6) | Listing chat + reports/blocks + basic notifications |
 | Platforms | Production web + API + admin; mobile on App Store / Play (or staged soft launch plan) |
 | Locale/money | Arabic-primary RTL; IQD default; USD supported where built |
 | Ops | Health checks, backups, CORS, separate Firebase/R2/DB, on-call |
 
 ### Explicitly out of launch MVP (unless re-scoped in writing)
 
-- Live payments / escrow (0.6) — remain flagged off  
+- Live payments / escrow (0.7) — remain flagged off  
+- Trust product depth (0.8) beyond baseline moderation  
+- Full dealer multi-user platform (0.9)  
 - Auctions live bidding  
-- Full dealer multi-user platform  
 - New verticals (Real Estate, Boats, Jobs, …)  
 - Perfect search ranking (`ts_rank`)  
 
@@ -54,7 +56,7 @@
 
 ### Engineering / security
 
-- [ ] All prior release ACs for 0.1–0.5 either satisfied or waived with owner  
+- [ ] All prior release ACs for 0.1–0.6 either satisfied or waived with owner  
 - [ ] [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md) fully checked  
 - [ ] Production staff/dev login hard-disabled; all prod clients use Firebase auth modes (no staff/dev/mock)  
 - [ ] Penetration/smoke security pass (authz, visibility, upload)  
@@ -70,7 +72,7 @@
 
 ### Payments decision
 
-- [ ] **Either** 0.6 AC satisfied and flag on **or** written waiver: “1.0 classifieds-only; payments off”  
+- [ ] **Either** 0.7 AC satisfied and flag on **or** written waiver: “1.0 classifieds-only; payments off”  
 
 ---
 
@@ -91,8 +93,9 @@
 
 | Dependency | Need |
 | --- | --- |
-| Releases 0.1–0.5 | Completed and production-hardened |
-| 0.6 Payments | Optional; default waived |
+| Releases 0.1–0.6 | Completed and production-hardened (0.2 Auth + 0.4 Search frozen) |
+| 0.5 Marketplace & Listings | Production-ready listings freeze |
+| 0.7 Payments | Optional; default waived |
 | Hosting | API + web + admin + Postgres + Redis + R2 per [`../deployment.md`](../deployment.md) |
 | EAS / stores | Mobile binaries |
 | Staffing | Moderators + on-call for first 72h |

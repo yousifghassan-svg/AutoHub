@@ -33,36 +33,53 @@ Launch a trusted Iraq marketplace for **vehicles and plates** as classifieds, wi
 
 ---
 
-## 3. Near-term engineering (current focus)
+## 3. Release train (normative)
 
-| Priority | Item | Outcome |
+| Release | Codename | Status |
 | --- | --- | --- |
-| P0 | Keep production classifieds stable | No drive-by refactors; one feature at a time |
-| P1 | Release 0.4 RC follow-up | Go/No-Go: **GO FOR CLOSED BETA** (75%); remaining P1 polish + staging smoke before invites — see `docs/releases/RELEASE_0.4_RC_GO_NO_GO.md` |
-| P1 | Media attach unification | Close `r2Key` trust gap; single validated attach path |
-| P2 | Mobile Firebase phone auth (0.2 Phase D) | Deferred backlog — do not reopen web auth freeze |
-| P2 | Outbox / async workers | Replace Alpha in-process timers where needed |
-| P2 | CI completeness | Add mobile lint/typecheck (and tests where stable) to CI |
-| P2 | Mobile sell alignment | Config/plugin approach parity with web sell host (separate feature) |
+| 0.2 | Authentication | **FROZEN** (`auth-0.2-freeze`) |
+| 0.3 | Media | Shipped; trust gap closed under **0.5** |
+| 0.4 | Marketplace (closed beta) | Closed-beta GO; Search sub-freeze **FROZEN** |
+| **0.5** | **Marketplace & Listings** | **Current** — architecture awaiting approval ([`RELEASE_0.5_MARKETPLACE.md`](../releases/RELEASE_0.5_MARKETPLACE.md)) |
+| 0.6 | Messaging | Next product train (was 0.5) |
+| 0.7 | Payments | Future (was 0.6) |
+| 0.8 | Trust & Verification | Stub |
+| 0.9 | Dealer Platform | Stub |
+| 1.0 | Public Launch | Gate |
 
 ---
 
-## 4. Product candidates (after stability)
+## 4. Near-term engineering (current focus)
+
+| Priority | Item | Outcome |
+| --- | --- | --- |
+| P0 | Keep frozen Auth + Search stable | No drive-by refactors |
+| P1 | **Release 0.5 — Marketplace & Listings** | Production-ready sell/media/draft/edit/completeness — extend 0.4; see architecture under `docs/architecture/` |
+| P1 | Release 0.4 RC follow-up | Closed-beta invites; remaining P1s absorbed into 0.5 where listed |
+| P2 | Mobile Firebase phone auth (0.2 Phase D) | Deferred — do not reopen web auth freeze |
+| P2 | Outbox / async workers | Replace Alpha in-process timers where needed |
+| P2 | CI completeness | Add mobile lint/typecheck (and tests where stable) to CI |
+| P2 | Mobile sell host = web plugin parity | Deferred past 0.5 (domain create remains canonical) |
+
+---
+
+## 5. Product candidates (after 0.5+)
 
 Ordered by dependency, not commitment:
 
-1. **Moderation & trust UX** — stronger report queues, verification workflows for listings/plates/dealers  
-2. **Dealer platform** — multi-user orgs (schema exists; product deferred historically)  
-3. **Billing / featured listings** — subscriptions overlay on listings  
-4. **Payments & escrow** — activate `payments` providers behind flags; never mix currencies silently  
-5. **Auctions** — `Auction` / bids overlay; reserved listing statuses already modeled  
-6. **New marketplace domains** — Real Estate, Boats, Jobs, Services via listing-hub + domain modules + sell plugins  
+1. **Messaging (0.6)** — listing chat, notifications, moderation hooks  
+2. **Trust & Verification (0.8)** — stronger report queues, verification workflows  
+3. **Dealer platform (0.9)** — multi-user orgs (schema exists; product deferred historically)  
+4. **Billing / featured listings** — subscriptions overlay on listings  
+5. **Payments & escrow (0.7)** — activate `payments` providers behind flags; never mix currencies silently  
+6. **Auctions** — `Auction` / bids overlay; reserved listing statuses already modeled  
+7. **New marketplace domains** — Real Estate, Boats, Jobs, Services via listing-hub + domain modules + sell plugins  
 
 Feature flags / env gates (concept from deployment docs): keep billing/auctions/dealers **off** until modules are product-ready.
 
 ---
 
-## 5. Explicitly deferred / out of scope (for now)
+## 6. Explicitly deferred / out of scope (for now)
 
 - Rewriting the listing hub into per-vertical databases  
 - Custom OTP stack replacing Firebase for v1  
@@ -71,10 +88,11 @@ Feature flags / env gates (concept from deployment docs): keep billing/auctions/
 - Treating legacy mobile `/sell/wizard` (`/v1/listings`) as the future create path  
 - **Authentication refactors** while Release 0.2 is **FROZEN** (see deferred list in `RELEASE_0.2_AUTHENTICATION.md`)  
 - **Search & Discovery refactors** while Priority 4 is **FROZEN** (see deferred list in `RELEASE_0.4_SEARCH_DISCOVERY.md`)  
+- **Marketplace rebuild** — Release 0.5 extends existing sell/listings; does not replace the hub  
 
 ---
 
-## 6. Definition of “done” for a sprint
+## 7. Definition of “done” for a sprint
 
 1. Plan approved before code (see [`../AI_GUIDELINES.md`](../AI_GUIDELINES.md))  
 2. One feature per change set  
@@ -84,7 +102,7 @@ Feature flags / env gates (concept from deployment docs): keep billing/auctions/
 
 ---
 
-## 7. Related links
+## 8. Related links
 
 - Architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)  
 - Business rules: [`../BUSINESS_RULES.md`](../BUSINESS_RULES.md)  

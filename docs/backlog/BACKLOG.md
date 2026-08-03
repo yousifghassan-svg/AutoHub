@@ -7,13 +7,13 @@ This file tracks engineering sprints against release trains. Full epic files may
 
 ---
 
-## Release 0.4 — Marketplace (active)
+## Release 0.4 — Marketplace (closed beta)
 
 | Sprint | Focus | Status | Summary |
 | --- | --- | --- | --- |
 | 4 | Marketplace UX & Owner Experience (web) | **Completed** | Owner vs visitor listing detail; full Preview Mode; Action Registry; status badge + help; shared listing UI (`ListingSellerCard`, `ListingStats`, `ListingDescription`, breadcrumbs, share, recommendation strategies); My Listings wired to the same registry. No API/DB changes. Deferred: seller member-since, listing count, MediaAsset avatars. |
 | RC | Release 0.4 Go / No-Go readiness | **Completed (docs)** | Reassessment after BUG-008: **GO FOR CLOSED BETA** (75% overall). Closed-beta marketplace P0 = 0. |
-| 5 | P0/P1 remediation | **In progress** | Closed: plate approve/reject (BUG-001), admin plate create PENDING (BUG-008), lifecycle content-update hardening, **BUG-002 web auth (Release 0.2 FROZEN)**, **BUG-005 search URL + Priority 4 Search FROZEN**. Open P1: sell `next`, delete confirm, admin listing redirect, favorites strategy. |
+| 5 | P0/P1 remediation | **In progress / absorbed by 0.5** | Closed: plate approve/reject (BUG-001), admin plate create PENDING (BUG-008), lifecycle content-update hardening, **BUG-002 web auth (Release 0.2 FROZEN)**, **BUG-005 search URL + Priority 4 Search FROZEN**. Remaining sell/media/edit P1s tracked under **Release 0.5**. |
 
 ### Auth freeze note
 
@@ -26,6 +26,20 @@ Priority **4 Search & Discovery** is **FROZEN** (vehicle web path). Do not refac
 Evidence: `apps/web/src/features/listings/shared/`, vehicle/plate detail pages, `my-listings`.  
 Release notes: [`../releases/RELEASE_0.4_MARKETPLACE.md`](../releases/RELEASE_0.4_MARKETPLACE.md).  
 Go/No-Go: [`../releases/RELEASE_0.4_RC_GO_NO_GO.md`](../releases/RELEASE_0.4_RC_GO_NO_GO.md) · Bugs: [`../releases/RELEASE_0.4_BUG_BACKLOG.md`](../releases/RELEASE_0.4_BUG_BACKLOG.md).
+
+---
+
+## Release 0.5 — Marketplace & Listings (current)
+
+| Item | Status | Summary |
+| --- | --- | --- |
+| Architecture (P5-0) | **Docs landed — awaiting approval** | Extend 0.4 baseline; capability matrix + slices P5-1…P5-10 |
+| Implementation | **Blocked on architecture approval** | No production code until approved |
+
+Release: [`../releases/RELEASE_0.5_MARKETPLACE.md`](../releases/RELEASE_0.5_MARKETPLACE.md)  
+Architecture: [`../architecture/`](../architecture/)
+
+**Train renumber:** Messaging → **0.6**, Payments → **0.7**, Trust → **0.8**, Dealers → **0.9**.
 
 ---
 

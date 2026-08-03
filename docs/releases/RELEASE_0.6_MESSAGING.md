@@ -1,9 +1,11 @@
-# Release 0.5 — Messaging
+# Release 0.6 — Messaging
 
-**Version:** `0.5.x`  
+**Version:** `0.6.x`  
 **Codename:** Messaging  
 **Production intent:** Listing-scoped inquiry chat + notifications for marketplace trust  
 **Master checklist:** [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)
+
+> **Roadmap note (2026-08-03):** Formerly numbered **0.5**. Renumbered to **0.6** so Release **0.5** can mean production Marketplace & Listings. See [`RELEASE_0.5_MARKETPLACE.md`](./RELEASE_0.5_MARKETPLACE.md).
 
 ---
 
@@ -54,7 +56,7 @@
 | Spam / harassment | High | Blocks, reports, throttle, content policy, suspend |
 | Presence leakage | Medium | Minimize presence payload; policy review |
 | Offline/message ordering | Medium | Persist first; realtime is acceleration |
-| Push reliability on Expo | Medium | In-app notifications as source of truth for 0.5 |
+| Push reliability on Expo | Medium | In-app notifications as source of truth for 0.6 |
 
 ---
 
@@ -62,8 +64,9 @@
 
 | Dependency | Need |
 | --- | --- |
-| 0.2 Authentication | Identity + permissions |
-| 0.4 Marketplace | Listing-scoped threads need real listings |
+| 0.2 Authentication | Identity + permissions (FROZEN) |
+| 0.5 Marketplace & Listings | Production-ready listings for listing-scoped threads |
+| 0.4 Search freeze | Discovery unchanged |
 | Redis (optional/as used) | Adapter/support if presence/pubsub relies on it |
 | Content policy / runbook | Abuse response |
 

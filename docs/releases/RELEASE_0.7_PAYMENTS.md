@@ -1,10 +1,12 @@
-# Release 0.6 — Payments
+# Release 0.7 — Payments
 
-**Version:** `0.6.x`  
+**Version:** `0.7.x`  
 **Codename:** Payments  
 **Production intent:** First **live** monetization / payment capture (future — not enabled in classifieds v1)  
 **Current repo state:** Schema scaffolding + `payments` **provider interfaces only**; no live charges  
 **Master checklist:** [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)
+
+> **Roadmap note (2026-08-03):** Formerly numbered **0.6**. Renumbered to **0.7** after Messaging became **0.6** and Marketplace & Listings took **0.5**.
 
 ---
 
@@ -67,9 +69,9 @@
 
 | Dependency | Need |
 | --- | --- |
-| 0.2 Authentication | Payer identity |
-| 0.4 Marketplace | Listings/orders reference |
-| 0.5 Messaging (recommended) | Dispute communication |
+| 0.2 Authentication | Payer identity (FROZEN) |
+| 0.5 Marketplace & Listings | Listings/orders reference |
+| 0.6 Messaging (recommended) | Dispute communication |
 | Provider contracts | Zain Cash / Qi / Stripe (or chosen set) sandbox + prod keys |
 | Legal/compliance sign-off | Before prod flag on |
 | ADR 001 + BUSINESS_RULES payments section | Overlay model |

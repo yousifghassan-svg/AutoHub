@@ -15,10 +15,13 @@ Use this checklist for **every** numbered release document in this folder. A rel
 | [0.1](./RELEASE_0.1_FOUNDATION.md) | Foundation | Monorepo, DB hub, API shell, local infra |
 | [0.2](./RELEASE_0.2_AUTHENTICATION.md) | Authentication | Firebase phone → JWT/RBAC |
 | [0.3](./RELEASE_0.3_MEDIA.md) | Media | R2 / MediaAsset pipeline |
-| [0.4](./RELEASE_0.4_MARKETPLACE.md) | Marketplace | Vehicles/plates, search, sell, web/admin/mobile browse |
-| [0.4 Search](./RELEASE_0.4_SEARCH_DISCOVERY.md) | Search & Discovery | Priority 4 freeze — Postgres FTS vehicle path + URL SSOT (`search-0.4-freeze`) |
-| [0.5](./RELEASE_0.5_MESSAGING.md) | Messaging | Chat, notifications, moderation hooks |
-| [0.6](./RELEASE_0.6_PAYMENTS.md) | Payments | Live payments/escrow/subscriptions (future) |
+| [0.4](./RELEASE_0.4_MARKETPLACE.md) | Marketplace (closed beta) | Vehicles/plates, search, sell, web/admin/mobile browse |
+| [0.4 Search](./RELEASE_0.4_SEARCH_DISCOVERY.md) | Search & Discovery | **FROZEN** — Postgres FTS vehicle path + URL SSOT (`search-0.4-freeze`) |
+| [0.5](./RELEASE_0.5_MARKETPLACE.md) | Marketplace & Listings | Production-ready listings harden (extend 0.4; do not rebuild) |
+| [0.6](./RELEASE_0.6_MESSAGING.md) | Messaging | Chat, notifications, moderation hooks |
+| [0.7](./RELEASE_0.7_PAYMENTS.md) | Payments | Live payments/escrow/subscriptions (future) |
+| [0.8](./RELEASE_0.8_TRUST_VERIFICATION.md) | Trust & Verification | Verification / trust UX (stub) |
+| [0.9](./RELEASE_0.9_DEALER_PLATFORM.md) | Dealer Platform | Multi-user dealers (stub) |
 | [1.0](./RELEASE_1.0_PUBLIC_LAUNCH.md) | Public Launch | Iraq production launch gate |
 
 Releases are **sequential for production promotion**. Later trains may be developed in parallel on branches, but production enablement follows dependencies listed in each release file.
@@ -77,7 +80,7 @@ Releases are **sequential for production promotion**. Later trains may be develo
 | P1 defects | Waived in writing with owner + date |
 | Migrations | Forward-only tested; rollback strategy clear |
 | Flags | Dangerous modules default **off** until their release |
-| Sign-off | Eng lead + product (and security for 0.2+ / 0.6 / 1.0) |
+| Sign-off | Eng lead + product (and security for 0.2+ / 0.7 / 1.0) |
 
 **Decision:** `_ GO / NO-GO _` **Date:** __________ **By:** __________
 
@@ -112,6 +115,6 @@ Any on-call engineer may trigger the release’s **Rollback Plan** if:
 - Auth login broken for real users  
 - Data corruption / failed migration  
 - Media pipeline deleting or exposing wrong objects  
-- Payment capture errors (0.6+)  
+- Payment capture errors (0.7+)  
 
 Record time, version from → to, and whether DB rollback or forward-fix was used.

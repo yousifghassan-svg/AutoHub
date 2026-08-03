@@ -1,5 +1,7 @@
 # Listings Architecture (Sprint 4)
 
+> **Normative for Release 0.5:** [`architecture/listing-lifecycle.md`](./architecture/listing-lifecycle.md) · [`architecture/marketplace-architecture.md`](./architecture/marketplace-architecture.md). This file remains historical Sprint 4 notes.
+
 ## Layering
 
 ```

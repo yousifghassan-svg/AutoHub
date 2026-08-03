@@ -290,8 +290,9 @@ Explicitly out of scope for 0.4 Marketplace release intent (track elsewhere):
 | --- | --- |
 | Firebase Phases C–E (web/mobile production phone auth) | Release 0.2 |
 | Media trust pipeline (`r2Key` attach hardening) | Release 0.3 |
-| Notifications product completeness | Release 0.5 |
-| Chat / messaging product completeness | Release 0.5 |
+| Notifications product completeness | Release **0.6** (Messaging; formerly numbered 0.5) |
+| Chat / messaging product completeness | Release **0.6** (Messaging; formerly numbered 0.5) |
+| Marketplace production harden (sell/media/edit) | Release **0.5** Marketplace & Listings |
 | Payments / escrow / billing | Release 0.6 |
 | AI features | Future |
 | Dealer platform (multi-user orgs, dealer ops) | Deferred product |
