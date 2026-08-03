@@ -1,6 +1,10 @@
 import type { SellSubmitArgs, SellSubmitResult } from '@/features/sell/core/types';
 import { asVehicleDomainData } from './domain-data';
 
+/**
+ * Build POST /v1/vehicles body.
+ * API VehicleDetailsDto uses `makeId` (mapped server-side to brandId).
+ */
 export function buildCreateVehicleBody(state: SellSubmitArgs['state']) {
   const data = asVehicleDomainData(state.domainData);
   return {
@@ -14,8 +18,13 @@ export function buildCreateVehicleBody(state: SellSubmitArgs['state']) {
     vehicleDetails: {
       year: Number(data.year) || undefined,
       mileageKm: data.mileageKm ? Number(data.mileageKm) : undefined,
-      brandId: data.brandId || undefined,
+      makeId: data.brandId || undefined,
       modelId: data.modelId || undefined,
+      fuelTypeId: data.fuelTypeId || undefined,
+      transmissionTypeId: data.transmissionTypeId || undefined,
+      bodyTypeId: data.bodyTypeId || undefined,
+      driveTypeId: data.driveTypeId || undefined,
+      colorId: data.colorId || undefined,
     },
   };
 }

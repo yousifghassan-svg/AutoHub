@@ -156,3 +156,26 @@ None for host. Domain create uses existing Listing + detail rows.
 - Noop publish validator gone.
 - Edit no longer “title/price only” for vehicle core fields.
 - Host not rewritten; plugins still register the same way.
+
+---
+
+## Wizard UX audit (post P5-1 — deferred improvements)
+
+Reviewed end-to-end from the seller’s perspective. **Do not redesign the host.** Capture only gaps for later slices.
+
+| Area | Current | Remaining improvement | Slice |
+| --- | --- | --- | --- |
+| Step navigation | Back/Next + per-step validators; Next click guarded | Shared completeness should also gate Publish (not only Next) | P5-6 |
+| Browser refresh | localStorage draft v2 restores step + fields | Optional server DRAFT sync after first save | P5-5 |
+| Browser Back/Forward | In-wizard Back is app button only; browser history does not map to steps | Optional `?step=` URL sync (must not break drafts) | Deferred / post-0.5 unless needed |
+| Mobile usability | Responsive grid on details; full-width actions | Touch targets / sticky actions polish if QA fails | P5-8 polish |
+| Draft persistence | Debounced local autosave | Unify dual mobile stores; recover after login (done for path) | P5-5 |
+| Validation consistency | Step validators vary; publish validator still weak | Shared checklist vehicle/plate; kill noop publish | P5-6 |
+| Progress indicator | Bar + “Step N of M” | Announce step changes to AT (`aria-live`) | P5-7 / a11y polish |
+| Accessibility | Native inputs/labels | Focus manage on step change; progress `aria-valuenow` | P5-7 |
+| Keyboard navigation | Tab through fields; buttons focusable | Ensure Enter does not skip validation | P5-6 |
+| Error recovery | Publish error string; no per-field errors | Inline field errors + submit retry messaging | P5-6 / P5-7 |
+| Media compatibility | Media step + asset ids exist | Primary/sortOrder + r2Key trust | P5-4 |
+| Draft engine compatibility | Client-only draft | Align with mobile create sync; no Draft table | P5-5 |
+| Completeness compatibility | `canSubmit` incomplete | Real publish gates + quality tips | P5-6 / P5-7 |
+| Vehicle field parity | Title/year/mileage/brand/model only | Catalog fuel/trans/body (+ API `makeId`) | **P5-2** |

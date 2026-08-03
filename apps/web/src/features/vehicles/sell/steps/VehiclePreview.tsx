@@ -28,6 +28,16 @@ export function VehiclePreview({ state }: SellStepProps) {
   const modelLabel =
     catalog.data?.models.find((m) => m.id === data.modelId)?.nameEn ?? '';
 
+  const fuelLabel =
+    catalog.data?.fuelTypes.find((t) => t.id === data.fuelTypeId)?.nameEn ?? '';
+  const transmissionLabel =
+    catalog.data?.transmissionTypes.find(
+      (t) => t.id === data.transmissionTypeId,
+    )?.nameEn ?? '';
+  const bodyLabel =
+    catalog.data?.bodyTypes.find((t) => t.id === data.bodyTypeId)?.nameEn ??
+    '';
+
   const displayTitle = state.title.trim() || 'Untitled';
   const previewAssetIds = useMemo(
     () => [...state.imageAssetIds, ...state.videoAssetIds],
@@ -59,6 +69,9 @@ export function VehiclePreview({ state }: SellStepProps) {
           {data.mileageKm
             ? ` · ${Number(data.mileageKm).toLocaleString()} km`
             : ''}
+          {fuelLabel ? ` · ${fuelLabel}` : ''}
+          {transmissionLabel ? ` · ${transmissionLabel}` : ''}
+          {bodyLabel ? ` · ${bodyLabel}` : ''}
         </p>
         <p className="text-lg font-semibold text-brand">
           {state.primaryPrice

@@ -12,7 +12,8 @@
     "test:search-ux": "pnpm dlx tsx --test src/features/search/lib/vehicle-search-filters.spec.ts",
     "test:search-api-query": "pnpm dlx tsx --test src/features/vehicles/data/vehicle-search-api-query.spec.ts",
     "test:search": "pnpm dlx tsx --test src/features/search/lib/url-search-state.spec.ts src/features/search/lib/vehicle-search-filters.spec.ts src/features/vehicles/data/vehicle-search-api-query.spec.ts",
-    "test:auth-return": "pnpm dlx tsx --test src/features/auth/domain/safe-next-path.spec.ts"
+    "test:auth-return": "pnpm dlx tsx --test src/features/auth/domain/safe-next-path.spec.ts",
+    "test:vehicle-sell": "pnpm dlx tsx --test src/features/vehicles/sell/submit.spec.ts"
   },
   "dependencies": {
     "@autohub/types": "workspace:*",

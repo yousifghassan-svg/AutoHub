@@ -4,7 +4,10 @@ import { useMemo } from 'react';
 import { Input, Select, TextArea } from '@/components/ui';
 import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch';
 import type { SellStepProps } from '@/features/sell/core/types';
-import { asVehicleDomainData } from '../domain-data';
+import {
+  asVehicleDomainData,
+  vehicleDetailsRequireCatalogSpecs,
+} from '../domain-data';
 
 export function VehicleDetailsStep({
   state,
@@ -13,6 +16,7 @@ export function VehicleDetailsStep({
 }: SellStepProps) {
   const catalog = useCatalogFilters();
   const data = asVehicleDomainData(state.domainData);
+  const requireSpecs = vehicleDetailsRequireCatalogSpecs(state.categoryCode);
 
   const models = useMemo(
     () =>
@@ -22,6 +26,8 @@ export function VehicleDetailsStep({
     [catalog.data?.models, data.brandId],
   );
 
+  const driveTypes = catalog.data?.driveTypes ?? [];
+
   return (
     <div className="space-y-4">
       <Input
@@ -29,6 +35,7 @@ export function VehicleDetailsStep({
         value={state.title}
         onChange={(e) => patchCommon({ title: e.target.value })}
         required
+        autoComplete="off"
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
@@ -37,12 +44,16 @@ export function VehicleDetailsStep({
           value={data.year}
           onChange={(e) => patchDomain({ year: e.target.value })}
           required
+          min={1950}
+          max={new Date().getFullYear() + 1}
         />
         <Input
           label="Mileage (km)"
           type="number"
           value={data.mileageKm}
           onChange={(e) => patchDomain({ mileageKm: e.target.value })}
+          required={requireSpecs}
+          min={0}
         />
       </div>
       <Select
@@ -72,12 +83,96 @@ export function VehicleDetailsStep({
           </option>
         ))}
       </Select>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Select
+          label="Fuel"
+          value={data.fuelTypeId}
+          onChange={(e) => patchDomain({ fuelTypeId: e.target.value })}
+          required={requireSpecs}
+        >
+          <option value="">
+            {requireSpecs ? 'Select fuel' : 'Any / not set'}
+          </option>
+          {(catalog.data?.fuelTypes ?? []).map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.nameEn}
+            </option>
+          ))}
+        </Select>
+        <Select
+          label="Transmission"
+          value={data.transmissionTypeId}
+          onChange={(e) =>
+            patchDomain({ transmissionTypeId: e.target.value })
+          }
+          required={requireSpecs}
+        >
+          <option value="">
+            {requireSpecs ? 'Select transmission' : 'Any / not set'}
+          </option>
+          {(catalog.data?.transmissionTypes ?? []).map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.nameEn}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Select
+          label="Body type"
+          value={data.bodyTypeId}
+          onChange={(e) => patchDomain({ bodyTypeId: e.target.value })}
+        >
+          <option value="">Any / not set</option>
+          {(catalog.data?.bodyTypes ?? []).map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.nameEn}
+            </option>
+          ))}
+        </Select>
+        {driveTypes.length > 0 ? (
+          <Select
+            label="Drive type"
+            value={data.driveTypeId}
+            onChange={(e) => patchDomain({ driveTypeId: e.target.value })}
+          >
+            <option value="">Any / not set</option>
+            {driveTypes.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nameEn}
+              </option>
+            ))}
+          </Select>
+        ) : null}
+      </div>
+
+      <Select
+        label="Color"
+        value={data.colorId}
+        onChange={(e) => patchDomain({ colorId: e.target.value })}
+      >
+        <option value="">Any / not set</option>
+        {(catalog.data?.colors ?? []).map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.nameEn}
+          </option>
+        ))}
+      </Select>
+
       <TextArea
         label="Description"
         value={state.description}
         onChange={(e) => patchCommon({ description: e.target.value })}
+        required
       />
-      <p className="text-xs text-ink-secondary">Minimum 10 characters</p>
+      <p className="text-xs text-ink-secondary">
+        Minimum 10 characters
+        {requireSpecs
+          ? '. Fuel, transmission, and mileage are required for this category.'
+          : '.'}
+      </p>
     </div>
   );
 }
