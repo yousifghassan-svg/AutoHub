@@ -49,9 +49,18 @@ export async function submitPlateListing(
   args: SellSubmitArgs,
 ): Promise<SellSubmitResult> {
   const body = buildCreatePlateBody(args.state);
-  const listingId = args.listingId
-    ? (await deps.updatePlate(args.listingId, body)).id
-    : (await deps.createPlate(body)).id;
+
+  let listingId: string;
+  if (args.mode === 'edit') {
+    if (!args.listingId) {
+      throw new Error('Edit mode requires listingId');
+    }
+    listingId = (await deps.updatePlate(args.listingId, body)).id;
+  } else if (args.listingId) {
+    listingId = (await deps.updatePlate(args.listingId, body)).id;
+  } else {
+    listingId = (await deps.createPlate(body)).id;
+  }
 
   await args.attachMedia(listingId);
 

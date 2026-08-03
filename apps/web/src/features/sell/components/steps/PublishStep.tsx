@@ -27,7 +27,8 @@ export function PublishStep({
   quality,
   ...stepProps
 }: PublishStepProps) {
-  const { state } = stepProps;
+  const { state, mode } = stepProps;
+  const isEdit = mode === 'edit';
 
   return (
     <div className="space-y-8">
@@ -36,11 +37,21 @@ export function PublishStep({
           Final check
         </p>
         <h2 className="mt-1 font-display text-2xl font-semibold text-ink">
-          Review your listing
+          {isEdit ? 'Review your changes' : 'Review your listing'}
         </h2>
         <p className="mt-1 text-sm text-ink-secondary">
-          Take a last look — this is how buyers will first meet{' '}
-          <span className="font-medium text-ink">{displayTitle}</span>.
+          {isEdit ? (
+            <>
+              Confirm updates for{' '}
+              <span className="font-medium text-ink">{displayTitle}</span>{' '}
+              before saving.
+            </>
+          ) : (
+            <>
+              Take a last look — this is how buyers will first meet{' '}
+              <span className="font-medium text-ink">{displayTitle}</span>.
+            </>
+          )}
         </p>
       </div>
 

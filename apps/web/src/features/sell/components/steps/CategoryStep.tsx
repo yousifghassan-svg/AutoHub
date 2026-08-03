@@ -7,8 +7,9 @@ import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch'
 import type { SellStepProps } from '../../core/types';
 import { isCompleteListingLocation } from '../../lib/listing-location';
 
-export function CategoryStep({ state, patchCommon }: SellStepProps) {
+export function CategoryStep({ state, patchCommon, mode }: SellStepProps) {
   const catalog = useCatalogFilters();
+  const categoryLocked = mode === 'edit';
 
   useEffect(() => {
     if (!catalog.data?.categories) return;
@@ -58,6 +59,7 @@ export function CategoryStep({ state, patchCommon }: SellStepProps) {
           className="grid grid-cols-2 gap-2 sm:grid-cols-3"
           role="radiogroup"
           aria-label="Listing type"
+          aria-disabled={categoryLocked || undefined}
         >
           {CATEGORIES.map((c) => (
             <button
@@ -65,12 +67,12 @@ export function CategoryStep({ state, patchCommon }: SellStepProps) {
               type="button"
               role="radio"
               aria-checked={state.categoryCode === c.code}
-              onClick={() =>
-                patchCommon({
-                  categoryCode: c.code,
-                })
-              }
-              className={`rounded-md border px-3 py-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+              disabled={categoryLocked}
+              onClick={() => {
+                if (categoryLocked) return;
+                patchCommon({ categoryCode: c.code });
+              }}
+              className={`rounded-md border px-3 py-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-70 ${
                 state.categoryCode === c.code
                   ? 'border-brand bg-brand-soft text-brand'
                   : 'border-border hover:bg-surface-muted'
@@ -80,6 +82,12 @@ export function CategoryStep({ state, patchCommon }: SellStepProps) {
             </button>
           ))}
         </div>
+        {categoryLocked ? (
+          <p className="mt-2 text-xs text-ink-secondary">
+            Listing type can’t be changed after create. Update location below if
+            needed.
+          </p>
+        ) : null}
       </div>
 
       {catalog.isLoading ? (

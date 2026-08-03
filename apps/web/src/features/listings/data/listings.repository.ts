@@ -70,6 +70,8 @@ export type ListingsRepository = {
   changeStatus(id: string, status: ListingStatus): Promise<ListingDetailModel>;
   addMedia(id: string, body: AddListingMediaInput): Promise<ListingMediaAttachResult>;
   reorderMedia(id: string, orderedIds: string[]): Promise<ListingMediaAttachResult[]>;
+  setPrimaryMedia(id: string, mediaId: string): Promise<ListingMediaAttachResult[]>;
+  removeMedia(id: string, mediaId: string): Promise<{ success: true }>;
   softDelete(id: string): Promise<void>;
   contactClick(listingId: string, channel: ContactChannel): Promise<void>;
   createReport(input: CreateReportInput): Promise<{ id: string }>;
@@ -114,6 +116,19 @@ export function createListingsRepository(http: HttpClient): ListingsRepository {
       return http.patch<ListingMediaAttachResult[]>(
         `/v1/listings/${id}/media/reorder`,
         { orderedIds },
+        true,
+      );
+    },
+    async setPrimaryMedia(id, mediaId) {
+      return http.post<ListingMediaAttachResult[]>(
+        `/v1/listings/${id}/media/${mediaId}/primary`,
+        {},
+        true,
+      );
+    },
+    async removeMedia(id, mediaId) {
+      return http.delete<{ success: true }>(
+        `/v1/listings/${id}/media/${mediaId}`,
         true,
       );
     },

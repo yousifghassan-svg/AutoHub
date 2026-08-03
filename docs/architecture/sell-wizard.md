@@ -50,7 +50,7 @@ One plugin-hosted sell experience that is safe to resume, hard to submit incompl
 1. Guest opens `/sell` → redirect `/login?next=/sell` → resume wizard.
 2. Authenticated seller completes steps → review → PENDING.
 3. Seller abandons mid-flow → local draft restore (see draft-engine).
-4. Owner opens Edit → same field sections → PATCH (no full wizard forced).
+4. Owner opens Edit → same Sell Wizard (`mode=edit`) → PATCH + media sync (no parallel editor).
 
 ---
 
@@ -109,7 +109,7 @@ None for host. Domain create uses existing Listing + detail rows.
 | Login return | `router.replace('/login?next=/sell')` — BUG-004 |
 | Drafts | Existing `draft-store` v2 (harden in P5-5) |
 | Publish validator | Replace noop in `validators/publish.ts` |
-| Edit | Extract shared field sections; edit page composes them |
+| Edit | `SellWizard mode="edit"` reuses the same steps/validators/plugins (P5-9) |
 
 ---
 

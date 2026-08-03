@@ -256,13 +256,13 @@ Complexity: **S** ≤0.5d · **M** 0.5–2d · **L** 2–5d
 | Field | Detail |
 | --- | --- |
 | Objective | Edit parity with create |
-| Deliverables | Edit loads listing → sell field sections → PATCH + media APIs |
-| Files | `my-listings/[id]/edit/page.tsx`, shared sell fields |
-| API | Existing PATCH vehicles/plates + media |
+| Deliverables | `SellWizard mode="edit"` hydrates listing → same steps → PATCH + media sync |
+| Files | `SellWizard.tsx`, `my-listings/[id]/edit/page.tsx`, hydrate/sync helpers |
+| API | Existing PATCH vehicles/plates + listing media (add/reorder/remove) |
 | DB | None |
-| Test plan | Round-trip title/price/specs/media |
-| Acceptance | No status smuggling; lifecycle respected |
-| Risks | Scope creep into full wizard clone — reuse sections only |
+| Test plan | Hydrate round-trip; media sync deltas; edit submit never creates; draft key isolation |
+| Acceptance | No status smuggling; lifecycle respected; create draft untouched |
+| Risks | Legacy media without `mediaAssetId` not editable via uploader |
 | Complexity | **L** |
 
 ### P5-10 — Production Audit & Freeze

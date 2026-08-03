@@ -24,6 +24,7 @@ export type ApiListing = {
   translations?: Array<{ language: string; title: string; description?: string }>;
   media?: Array<{
     id?: string;
+    mediaAssetId?: string | null;
     r2Key: string;
     thumbnailKey: string | null;
     sortOrder: number;
@@ -209,6 +210,7 @@ export function mapListingToDetail(listing: ApiListing): ListingDetailModel {
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((m) => ({
       id: m.id ?? m.r2Key,
+      mediaAssetId: m.mediaAssetId ?? null,
       url: mediaPublicUrl(m.r2Key) ?? mediaPublicUrl(m.thumbnailKey),
       kind: m.mediaType ?? 'IMAGE',
       blurDataUrl: m.blurDataUrl ?? null,

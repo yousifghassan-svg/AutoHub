@@ -19,7 +19,8 @@
     "test:draft-engine": "pnpm dlx tsx --test src/features/sell/core/draft-store.spec.ts",
     "test:listing-quality": "pnpm dlx tsx --test src/features/sell/quality/adapt-wizard-state.spec.ts",
     "test:publish-flow": "pnpm dlx tsx --test src/features/sell/lib/publish-flow.spec.ts",
-    "test:my-listings": "pnpm dlx tsx --test src/features/listings/lib/relative-time.spec.ts src/features/listings/shared/listing-actions.spec.ts"
+    "test:my-listings": "pnpm dlx tsx --test src/features/listings/lib/relative-time.spec.ts src/features/listings/shared/listing-actions.spec.ts",
+    "test:edit-listing": "pnpm dlx tsx --test src/features/sell/lib/hydrate-from-listing.spec.ts src/features/sell/lib/sync-listing-media.spec.ts src/features/sell/core/workflows.edit.spec.ts src/features/vehicles/sell/submit.spec.ts src/features/sell/lib/listing-price.spec.ts src/features/sell/core/draft-store.spec.ts"
   },
   "dependencies": {
     "@autohub/types": "workspace:*",

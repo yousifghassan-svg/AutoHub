@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   useCallback,
@@ -9,21 +10,26 @@ import {
   useState,
   type ComponentType,
 } from 'react';
-import {
-  pendingMediaAssetIds,
-  withSyncedMediaAssetIds,
-  type ListingDraftEnvelope,
-} from '@autohub/utils';
+import { withSyncedMediaAssetIds, type ListingDraftEnvelope } from '@autohub/utils';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { hrefWithNext } from '@/features/auth/domain/login-return';
 import { Button, Skeleton } from '@/components/ui';
+import { isPlateListing } from '@/features/listings/domain/marketplace-path';
+import type { ListingDetailModel, ListingStatus } from '@/features/listings/domain/types';
 import { useDomainMutations } from '@/features/listings/hooks/useDomainMutations';
+import { createPlatesRepository } from '@/features/plates/data/plates.repository';
 import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch';
+import { createVehiclesRepository } from '@/features/vehicles/data/vehicles.repository';
+import { getHttpClient } from '@/lib/api/client';
 import {
   clearDraftStorage,
+  clearEditDraftStorage,
   createFreshDraftSession,
   loadDraftFromStorage,
+  loadEditDraftFromStorage,
   saveDraftToStorage,
+  sellEditDraftKey,
+  SELL_DRAFT_KEY,
   type DraftSession,
 } from '../core/draft-store';
 import { evaluateWizardListingQuality } from '../quality/adapt-wizard-state';
@@ -32,18 +38,18 @@ import type {
   SellDomainPlugin,
   SellStepId,
   SellStepProps,
+  SellWizardMode,
   SellWizardState,
 } from '../core/types';
 import { DEFAULT_COMMON_STATE } from '../core/types';
-import {
-  clampStepId,
-  getWorkflow,
-} from '../core/workflows';
+import { clampStepId, getWorkflowForMode } from '../core/workflows';
+import { hydrateSellStateFromListing } from '../lib/hydrate-from-listing';
 import {
   friendlyPublishError,
   type PublishUiPhase,
   type PublishWorkStepId,
 } from '../lib/publish-flow';
+import { syncListingMedia } from '../lib/sync-listing-media';
 import {
   resolvePluginFromList,
   useSellDomainPlugins,
@@ -54,6 +60,8 @@ import { PublishSuccess } from './PublishSuccess';
 import { SHARED_SELL_STEPS } from './sharedSteps';
 import { PublishStep } from './steps/PublishStep';
 
+const BLOCKED_EDIT_STATUSES = new Set<ListingStatus>(['SOLD', 'ARCHIVED']);
+
 function resolveStepComponent(
   stepId: SellStepId,
   plugin: SellDomainPlugin,
@@ -62,21 +70,38 @@ function resolveStepComponent(
   return plugin.steps[stepId] ?? SHARED_SELL_STEPS[stepId] ?? null;
 }
 
-export function SellWizard() {
+export type SellWizardProps = {
+  mode?: SellWizardMode;
+  /** Required when mode is edit. */
+  listingId?: string;
+};
+
+export function SellWizard({
+  mode = 'create',
+  listingId: editListingId,
+}: SellWizardProps = {}) {
   const router = useRouter();
-  const { status } = useAuth();
+  const { status, session } = useAuth();
   const catalog = useCatalogFilters();
-  const { addMedia } = useDomainMutations();
+  const { addMedia, reorderMedia, removeMedia } = useDomainMutations();
   const plugins = useSellDomainPlugins();
   const fallbackPlugin = plugins[0]!;
+  const isEdit = mode === 'edit';
+  const draftStorageKey = isEdit
+    ? sellEditDraftKey(editListingId ?? '')
+    : SELL_DRAFT_KEY;
 
   const [stepId, setStepId] = useState<SellStepId>('category');
   const [error, setError] = useState<string | null>(null);
+  const [bootError, setBootError] = useState<string | null>(null);
   const [draftRestored, setDraftRestored] = useState(false);
   const [busy, setBusy] = useState(false);
   const [publishPhase, setPublishPhase] = useState<PublishUiPhase>('review');
   const [workStep, setWorkStep] = useState<PublishWorkStepId>('saving');
-  const [session, setSession] = useState<DraftSession>(() =>
+  const [listingStatus, setListingStatus] = useState<ListingStatus | null>(
+    null,
+  );
+  const [sessionState, setSession] = useState<DraftSession>(() =>
     createFreshDraftSession(),
   );
   const [state, setState] = useState<SellWizardState>(() => ({
@@ -85,12 +110,12 @@ export function SellWizard() {
   }));
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const envelopeRef = useRef<ListingDraftEnvelope | null>(null);
-  const sessionRef = useRef(session);
-  sessionRef.current = session;
+  const sessionRef = useRef(sessionState);
+  sessionRef.current = sessionState;
   const prevCategoryRef = useRef(state.categoryCode);
 
   const plugin = resolvePluginFromList(plugins, state.categoryCode);
-  const workflow = getWorkflow(plugin.workflowId);
+  const workflow = getWorkflowForMode(plugin.workflowId, mode);
   const stepIndex = Math.max(
     0,
     workflow.steps.findIndex((s) => s.id === stepId),
@@ -98,6 +123,8 @@ export function SellWizard() {
   const currentStep = workflow.steps[stepIndex] ?? workflow.steps[0]!;
   const pct = ((stepIndex + 1) / workflow.steps.length) * 100;
   const onPublishStep = currentStep.id === 'publish';
+  const allowsReviewSubmit =
+    !isEdit || listingStatus === 'DRAFT' || listingStatus === 'REJECTED';
 
   const validator = plugin.validators[currentStep.id];
   const canNext = validator ? validator(state) : true;
@@ -119,41 +146,164 @@ export function SellWizard() {
   }, []);
 
   const stepProps: SellStepProps = useMemo(
-    () => ({ state, patchCommon, patchDomain }),
-    [patchCommon, patchDomain, state],
+    () => ({ state, patchCommon, patchDomain, mode }),
+    [mode, patchCommon, patchDomain, state],
   );
+
+  const editReturnPath = editListingId
+    ? `/my-listings/${editListingId}/edit`
+    : '/my-listings';
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.replace(hrefWithNext('/login', '/sell'));
+      router.replace(
+        hrefWithNext('/login', isEdit ? editReturnPath : '/sell'),
+      );
       return;
     }
     if (status === 'needs_profile') {
-      router.replace(hrefWithNext('/profile-setup', '/sell'));
+      router.replace(
+        hrefWithNext('/profile-setup', isEdit ? editReturnPath : '/sell'),
+      );
     }
-  }, [status, router]);
+  }, [status, router, isEdit, editReturnPath]);
 
   useEffect(() => {
     if (draftRestored) return;
-    const hydrated = loadDraftFromStorage(fallbackPlugin);
-    if (hydrated) {
-      setState(hydrated.state);
-      setStepId(hydrated.stepId);
-      setSession(hydrated.session);
-      prevCategoryRef.current = hydrated.state.categoryCode;
+    if (status !== 'authenticated' && status !== 'needs_profile') return;
+
+    let cancelled = false;
+
+    const bootCreate = () => {
+      const hydrated = loadDraftFromStorage(fallbackPlugin);
+      if (hydrated) {
+        setState(hydrated.state);
+        setStepId(hydrated.stepId);
+        setSession(hydrated.session);
+        prevCategoryRef.current = hydrated.state.categoryCode;
+      } else {
+        setState({
+          ...DEFAULT_COMMON_STATE,
+          domainData: fallbackPlugin.createInitialDomainData(),
+        });
+        setSession(createFreshDraftSession());
+      }
       envelopeRef.current = null;
+      setDraftRestored(true);
+    };
+
+    const bootEdit = async () => {
+      if (!editListingId) {
+        setBootError('Missing listing id.');
+        setDraftRestored(true);
+        return;
+      }
+
+      try {
+        let listing: ListingDetailModel;
+        try {
+          listing = await createVehiclesRepository(getHttpClient()).getById(
+            editListingId,
+          );
+        } catch {
+          listing = await createPlatesRepository(getHttpClient()).getById(
+            editListingId,
+          );
+        }
+
+        if (cancelled) return;
+
+        const ownerId = listing.sellerId;
+        const userId = session?.user.id;
+        if (ownerId && userId && ownerId !== userId) {
+          setBootError('You can only edit your own listings.');
+          setDraftRestored(true);
+          return;
+        }
+
+        const statusValue = (listing.status ?? 'DRAFT') as ListingStatus;
+        if (BLOCKED_EDIT_STATUSES.has(statusValue)) {
+          setBootError('Sold or archived listings can’t be edited.');
+          setDraftRestored(true);
+          return;
+        }
+
+        setListingStatus(statusValue);
+
+        const activePlugin = resolvePluginFromList(
+          plugins,
+          listing.categoryCode ||
+            (isPlateListing(listing) ? 'PLATE' : 'CAR'),
+        );
+        const fromListing = hydrateSellStateFromListing(listing, activePlugin);
+        const localDraft = loadEditDraftFromStorage(
+          editListingId,
+          activePlugin,
+        );
+
+        if (localDraft) {
+          setState(localDraft.state);
+          setStepId(clampStepId(localDraft.stepId, getWorkflowForMode(activePlugin.workflowId, 'edit')));
+          setSession({
+            ...localDraft.session,
+            listingId: editListingId,
+            meta: {
+              ...fromListing.mediaMeta,
+              ...localDraft.session.meta,
+              syncedMediaAssetIds:
+                localDraft.session.meta.syncedMediaAssetIds ??
+                fromListing.mediaMeta.syncedMediaAssetIds,
+              listingMediaByAssetId:
+                localDraft.session.meta.listingMediaByAssetId ??
+                fromListing.mediaMeta.listingMediaByAssetId,
+            },
+          });
+          prevCategoryRef.current = localDraft.state.categoryCode;
+        } else {
+          setState(fromListing.state);
+          const editWorkflow = getWorkflowForMode(activePlugin.workflowId, 'edit');
+          setStepId(editWorkflow.steps[0]?.id ?? 'category');
+          setSession({
+            ...createFreshDraftSession(),
+            listingId: editListingId,
+            syncStatus: 'server_draft',
+            meta: fromListing.mediaMeta,
+          });
+          prevCategoryRef.current = fromListing.state.categoryCode;
+        }
+        envelopeRef.current = null;
+      } catch (e) {
+        if (!cancelled) {
+          setBootError(
+            e instanceof Error ? e.message : 'Could not load this listing.',
+          );
+        }
+      } finally {
+        if (!cancelled) setDraftRestored(true);
+      }
+    };
+
+    if (isEdit) {
+      void bootEdit();
     } else {
-      setState({
-        ...DEFAULT_COMMON_STATE,
-        domainData: fallbackPlugin.createInitialDomainData(),
-      });
-      setSession(createFreshDraftSession());
+      bootCreate();
     }
-    setDraftRestored(true);
-  }, [draftRestored, fallbackPlugin]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    draftRestored,
+    editListingId,
+    fallbackPlugin,
+    isEdit,
+    plugins,
+    session?.user.id,
+    status,
+  ]);
 
   useEffect(() => {
-    if (!draftRestored) return;
+    if (!draftRestored || isEdit) return;
     if (prevCategoryRef.current === state.categoryCode) return;
 
     const prevPlugin = resolvePluginFromList(plugins, prevCategoryRef.current);
@@ -175,13 +325,14 @@ export function SellWizard() {
       }));
     }
 
-    const nextWorkflow = getWorkflow(nextPlugin.workflowId);
+    const nextWorkflow = getWorkflowForMode(nextPlugin.workflowId, mode);
     setStepId((id) => clampStepId(id, nextWorkflow));
-  }, [draftRestored, plugins, state.categoryCode]);
+  }, [draftRestored, isEdit, mode, plugins, state.categoryCode]);
 
   useEffect(() => {
-    if (!draftRestored) return;
+    if (!draftRestored || bootError) return;
     if (publishPhase === 'working' || publishPhase === 'success') return;
+    if (isEdit && !editListingId) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       const saved = saveDraftToStorage(
@@ -190,6 +341,7 @@ export function SellWizard() {
         state,
         sessionRef.current,
         envelopeRef.current,
+        draftStorageKey,
       );
       envelopeRef.current = saved;
       setSession((prev) =>
@@ -201,7 +353,17 @@ export function SellWizard() {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [draftRestored, plugin, publishPhase, state, stepId]);
+  }, [
+    bootError,
+    draftRestored,
+    draftStorageKey,
+    editListingId,
+    isEdit,
+    plugin,
+    publishPhase,
+    state,
+    stepId,
+  ]);
 
   useEffect(() => {
     if (!catalog.data?.categories) return;
@@ -218,7 +380,6 @@ export function SellWizard() {
     state.categoryId,
   ]);
 
-  // Reset publish UX when leaving the review step.
   useEffect(() => {
     if (!onPublishStep) {
       setPublishPhase('review');
@@ -240,35 +401,21 @@ export function SellWizard() {
 
   const displayTitle = state.title.trim() || 'Untitled listing';
 
-  const attachPendingMedia = useCallback(
+  const attachAndSyncMedia = useCallback(
     async (listingId: string) => {
-      const pending = pendingMediaAssetIds(
+      const nextMeta = await syncListingMedia(
         {
-          imageAssetIds: state.imageAssetIds,
-          videoAssetIds: state.videoAssetIds,
+          addMedia: (input) => addMedia.mutateAsync(input),
+          reorderMedia: (input) => reorderMedia.mutateAsync(input),
+          removeMedia: (input) => removeMedia.mutateAsync(input),
         },
-        session.meta,
+        listingId,
+        state,
+        sessionRef.current.meta,
       );
-      if (!pending.length) return;
-
-      const imageSet = new Set(state.imageAssetIds);
-      for (let i = 0; i < pending.length; i++) {
-        const mediaAssetId = pending[i];
-        if (!mediaAssetId) continue;
-        await addMedia.mutateAsync({
-          listingId,
-          mediaAssetId,
-          mediaType: imageSet.has(mediaAssetId) ? 'IMAGE' : 'VIDEO',
-          sortOrder: i,
-        });
-      }
-
-      setSession((prev) => ({
-        ...prev,
-        meta: withSyncedMediaAssetIds(prev.meta, pending),
-      }));
+      setSession((prev) => ({ ...prev, meta: nextMeta }));
     },
-    [addMedia, session.meta, state.imageAssetIds, state.videoAssetIds],
+    [addMedia, removeMedia, reorderMedia, state],
   );
 
   const runPublish = useCallback(
@@ -283,24 +430,42 @@ export function SellWizard() {
         return;
       }
 
+      if (isEdit && !sessionState.listingId && !editListingId) {
+        setError('Missing listing id for edit.');
+        return;
+      }
+
       setBusy(true);
       setPublishPhase('working');
       setWorkStep('saving');
       try {
         const result = await plugin.submit({
           state,
-          listingId: session.listingId,
-          submitForReview,
+          listingId: sessionState.listingId ?? editListingId ?? null,
+          submitForReview: submitForReview && allowsReviewSubmit,
+          mode,
           attachMedia: async (listingId) => {
             setWorkStep('photos');
-            await attachPendingMedia(listingId);
+            await attachAndSyncMedia(listingId);
             if (submitForReview) setWorkStep('sending');
           },
         });
 
-        if (submitForReview) {
+        if (submitForReview && allowsReviewSubmit) {
           setWorkStep('sending');
-          clearDraftStorage();
+          if (isEdit) {
+            clearEditDraftStorage(result.listingId);
+          } else {
+            clearDraftStorage();
+          }
+          envelopeRef.current = null;
+          setPublishPhase('success');
+          return;
+        }
+
+        // Live listing edit: PATCH + media sync, then clear edit draft.
+        if (isEdit && !allowsReviewSubmit) {
+          clearEditDraftStorage(result.listingId);
           envelopeRef.current = null;
           setPublishPhase('success');
           return;
@@ -322,6 +487,7 @@ export function SellWizard() {
           state,
           nextSession,
           envelopeRef.current,
+          draftStorageKey,
         );
         envelopeRef.current = saved;
         setPublishPhase('draft_saved');
@@ -337,10 +503,15 @@ export function SellWizard() {
       }
     },
     [
-      attachPendingMedia,
+      allowsReviewSubmit,
+      attachAndSyncMedia,
+      draftStorageKey,
+      editListingId,
+      isEdit,
+      mode,
       plugin,
       quality.missingRequired,
-      session.listingId,
+      sessionState.listingId,
       state,
       stepId,
     ],
@@ -373,16 +544,50 @@ export function SellWizard() {
     );
   }
 
+  if (bootError) {
+    return (
+      <div className="page-container max-w-2xl space-y-4 py-10">
+        <Link href="/my-listings" className="text-sm font-semibold text-brand">
+          ← My listings
+        </Link>
+        <h1 className="section-title">Can’t edit listing</h1>
+        <p className="text-sm text-ink-secondary">{bootError}</p>
+        <Link href="/my-listings">
+          <Button type="button">Back to my listings</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const resolvedSuccessMode: 'review' | 'draft' | 'saved' =
+    isEdit && !allowsReviewSubmit ? 'saved' : 'review';
+
   return (
     <div className="page-container max-w-2xl py-10">
       {showFlowChrome ? (
         <>
-          <h1 className="section-title">
-            {onPublishStep ? 'Review & publish' : 'Create listing'}
+          {isEdit ? (
+            <Link
+              href="/my-listings"
+              className="text-sm font-semibold text-brand"
+            >
+              ← My listings
+            </Link>
+          ) : null}
+          <h1 className={`section-title ${isEdit ? 'mt-3' : ''}`}>
+            {onPublishStep
+              ? isEdit
+                ? 'Review & save'
+                : 'Review & publish'
+              : isEdit
+                ? 'Edit listing'
+                : 'Create listing'}
           </h1>
           <p className="mt-2 text-ink-secondary">
             {onPublishStep
-              ? 'A calm last look before your listing goes for review.'
+              ? isEdit
+                ? 'Same checklist as create — confirm details, then save.'
+                : 'A calm last look before your listing goes for review.'
               : 'Your progress is saved automatically as you go.'}
           </p>
 
@@ -409,10 +614,12 @@ export function SellWizard() {
 
         {publishPhase === 'success' ? (
           <PublishSuccess
-            mode="review"
+            mode={resolvedSuccessMode}
             title={displayTitle}
             onPrimary={() => router.push('/my-listings')}
-            onSecondary={resetWizard}
+            onSecondary={
+              isEdit ? () => setPublishPhase('review') : resetWizard
+            }
           />
         ) : null}
 
@@ -487,7 +694,7 @@ export function SellWizard() {
                 >
                   Next
                 </Button>
-              ) : (
+              ) : allowsReviewSubmit ? (
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
@@ -495,7 +702,7 @@ export function SellWizard() {
                     disabled={busy}
                     onClick={() => void runPublish(false)}
                   >
-                    Save for later
+                    {isEdit ? 'Save draft' : 'Save for later'}
                   </Button>
                   <Button
                     type="button"
@@ -508,6 +715,14 @@ export function SellWizard() {
                     Send for review
                   </Button>
                 </div>
+              ) : (
+                <Button
+                  type="button"
+                  disabled={busy || !quality.canPublish}
+                  onClick={() => void runPublish(false)}
+                >
+                  Save changes
+                </Button>
               )}
             </div>
           </>

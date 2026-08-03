@@ -83,5 +83,20 @@ export function useDomainMutations() {
         }),
       onSuccess: invalidate,
     }),
+    reorderMedia: useMutation({
+      mutationFn: (input: { listingId: string; orderedIds: string[] }) =>
+        listings().reorderMedia(input.listingId, input.orderedIds),
+      onSuccess: invalidate,
+    }),
+    setPrimaryMedia: useMutation({
+      mutationFn: (input: { listingId: string; mediaId: string }) =>
+        listings().setPrimaryMedia(input.listingId, input.mediaId),
+      onSuccess: invalidate,
+    }),
+    removeMedia: useMutation({
+      mutationFn: (input: { listingId: string; mediaId: string }) =>
+        listings().removeMedia(input.listingId, input.mediaId),
+      onSuccess: invalidate,
+    }),
   };
 }

@@ -43,6 +43,8 @@ export type ListingCardModel = {
 
 export type ListingMediaModel = {
   id: string;
+  /** Platform MediaAsset id when attached via seller upload path. */
+  mediaAssetId?: string | null;
   url: string | null;
   kind: string;
   blurDataUrl?: string | null;

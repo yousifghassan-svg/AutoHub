@@ -22,8 +22,13 @@ import {
 } from './workflows';
 import { resolveSellDomain } from './registry';
 
-/** Storage key — unchanged for upgrade safety. */
+/** Storage key — unchanged for upgrade safety (create flow only). */
 export const SELL_DRAFT_KEY = 'autohub.sell.draft';
+
+/** Edit drafts are scoped per listing so they never collide with create. */
+export function sellEditDraftKey(listingId: string): string {
+  return `autohub.sell.edit.draft:${listingId}`;
+}
 
 export type DraftSession = {
   localId: string;
@@ -200,9 +205,35 @@ export function loadDraftFromStorage(
   }
 }
 
-export function saveDraftEnvelopeToStorage(envelope: ListingDraftEnvelope): void {
+export function loadEditDraftFromStorage(
+  listingId: string,
+  fallbackPlugin: SellDomainPlugin,
+): HydratedSellDraft | null {
+  if (typeof window === 'undefined' || !listingId) return null;
+  try {
+    const raw = localStorage.getItem(sellEditDraftKey(listingId));
+    if (!raw) return null;
+    const hydrated = hydrateDraft(JSON.parse(raw) as unknown, fallbackPlugin);
+    if (!hydrated) return null;
+    // Refuse drafts that point at a different listing.
+    if (hydrated.session.listingId && hydrated.session.listingId !== listingId) {
+      return null;
+    }
+    return {
+      ...hydrated,
+      session: { ...hydrated.session, listingId },
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveDraftEnvelopeToStorage(
+  envelope: ListingDraftEnvelope,
+  storageKey: string = SELL_DRAFT_KEY,
+): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(SELL_DRAFT_KEY, JSON.stringify(envelope));
+  localStorage.setItem(storageKey, JSON.stringify(envelope));
 }
 
 export function saveDraftToStorage(
@@ -211,15 +242,21 @@ export function saveDraftToStorage(
   state: SellWizardState,
   session: DraftSession,
   previous: ListingDraftEnvelope | null = null,
+  storageKey: string = SELL_DRAFT_KEY,
 ): ListingDraftEnvelope {
   const envelope = nextDraftEnvelope(previous, plugin, stepId, state, session);
-  saveDraftEnvelopeToStorage(envelope);
+  saveDraftEnvelopeToStorage(envelope, storageKey);
   return envelope;
 }
 
 export function clearDraftStorage(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(SELL_DRAFT_KEY);
+}
+
+export function clearEditDraftStorage(listingId: string): void {
+  if (typeof window === 'undefined' || !listingId) return;
+  localStorage.removeItem(sellEditDraftKey(listingId));
 }
 
 export function createFreshDraftSession(): DraftSession {

@@ -3,7 +3,7 @@
 import { Button, cn } from '@/components/ui';
 
 type Props = {
-  mode: 'review' | 'draft';
+  mode: 'review' | 'draft' | 'saved';
   title: string;
   onPrimary: () => void;
   onSecondary?: () => void;
@@ -18,6 +18,7 @@ export function PublishSuccess({
   className,
 }: Props) {
   const isReview = mode === 'review';
+  const isSaved = mode === 'saved';
 
   return (
     <div className={cn('space-y-6 py-8 text-center', className)}>
@@ -28,13 +29,22 @@ export function PublishSuccess({
       </div>
       <div className="space-y-2">
         <h2 className="font-display text-2xl font-semibold text-ink">
-          {isReview ? 'Your listing is on its way' : 'Draft saved'}
+          {isReview
+            ? 'Your listing is on its way'
+            : isSaved
+              ? 'Changes saved'
+              : 'Draft saved'}
         </h2>
         <p className="mx-auto max-w-md text-sm text-ink-secondary">
           {isReview ? (
             <>
               <span className="font-medium text-ink">{title}</span> was sent for
               a quick check. You’ll be notified when it’s live for buyers.
+            </>
+          ) : isSaved ? (
+            <>
+              <span className="font-medium text-ink">{title}</span> is up to
+              date. Buyers will see your latest details.
             </>
           ) : (
             <>
@@ -46,7 +56,7 @@ export function PublishSuccess({
       </div>
       <div className="flex flex-wrap justify-center gap-3">
         <Button type="button" onClick={onPrimary}>
-          {isReview ? 'View my listings' : 'Go to my listings'}
+          {isReview || isSaved ? 'View my listings' : 'Go to my listings'}
         </Button>
         {onSecondary ? (
           <Button type="button" variant="secondary" onClick={onSecondary}>

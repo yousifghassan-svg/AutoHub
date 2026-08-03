@@ -50,12 +50,22 @@ export async function submitVehicleListing(
   args: SellSubmitArgs,
 ): Promise<SellSubmitResult> {
   const body = buildCreateVehicleBody(args.state);
-  const listingId = args.listingId
-    ? (await deps.updateVehicle(args.listingId, body)).id
-    : (await deps.createVehicle(body)).id;
+
+  let listingId: string;
+  if (args.mode === 'edit') {
+    if (!args.listingId) {
+      throw new Error('Edit mode requires listingId');
+    }
+    listingId = (await deps.updateVehicle(args.listingId, body)).id;
+  } else if (args.listingId) {
+    listingId = (await deps.updateVehicle(args.listingId, body)).id;
+  } else {
+    listingId = (await deps.createVehicle(body)).id;
+  }
 
   await args.attachMedia(listingId);
 
+  // Host gates submitForReview; never call status on plain save.
   if (args.submitForReview) {
     await deps.changeStatus({ id: listingId, status: 'PENDING' });
   }

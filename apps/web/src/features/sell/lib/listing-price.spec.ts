@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { withNegotiableDescription } from './listing-description';
+import {
+  parseNegotiableDescription,
+  withNegotiableDescription,
+} from './listing-description';
 import {
   cityBelongsToGovernorate,
   hasListingMapPin,
@@ -72,7 +75,7 @@ describe('listing location (P5-3)', () => {
   });
 });
 
-describe('listing description negotiable (P5-3)', () => {
+describe('listing description negotiable (P5-3 / P5-9)', () => {
   it('appends negotiable note once', () => {
     assert.equal(
       withNegotiableDescription('Nice car', true),
@@ -83,5 +86,16 @@ describe('listing description negotiable (P5-3)', () => {
       'Nice car\n\nPrice is negotiable.',
     );
     assert.equal(withNegotiableDescription('Nice car', false), 'Nice car');
+  });
+
+  it('parses negotiable note for edit hydrate', () => {
+    assert.deepEqual(
+      parseNegotiableDescription('Nice car\n\nPrice is negotiable.'),
+      { description: 'Nice car', negotiable: true },
+    );
+    assert.deepEqual(parseNegotiableDescription('Plain'), {
+      description: 'Plain',
+      negotiable: false,
+    });
   });
 });

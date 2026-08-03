@@ -92,3 +92,22 @@ export function clampStepId(
   if (workflow.steps.some((s) => s.id === stepId)) return stepId;
   return workflow.steps[0]?.id ?? 'category';
 }
+
+/**
+ * Edit mode uses the same workflow ids. Plate create omits media; edit inserts
+ * the shared media step so photos can be managed without a second editor.
+ */
+export function getWorkflowForMode(
+  workflowId: string,
+  mode: 'create' | 'edit',
+): SellWorkflowDefinition {
+  const base = getWorkflow(workflowId);
+  if (mode === 'create') return base;
+  if (base.steps.some((s) => s.id === 'media')) return base;
+
+  const steps = [...base.steps];
+  const saleIdx = steps.findIndex((s) => s.id === 'saleInformation');
+  const insertAt = saleIdx >= 0 ? saleIdx : Math.max(steps.length - 1, 0);
+  steps.splice(insertAt, 0, { id: 'media', label: 'Media' });
+  return { id: base.id, steps };
+}

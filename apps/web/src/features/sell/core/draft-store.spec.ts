@@ -5,7 +5,9 @@ import {
   createFreshDraftSession,
   hydrateDraft,
   nextDraftEnvelope,
+  sellEditDraftKey,
   serializeDraft,
+  SELL_DRAFT_KEY,
   type DraftSession,
 } from './draft-store';
 import type { SellDomainPlugin, SellStepProps } from './types';
@@ -96,5 +98,14 @@ describe('web draft-store adapter (P5-5)', () => {
     assert.equal(second.revision, first.revision + 1);
     assert.equal(second.stepId, 'media');
     assert.equal(second.common.title, 'Next');
+  });
+
+  it('scopes edit draft keys away from create', () => {
+    assert.equal(SELL_DRAFT_KEY, 'autohub.sell.draft');
+    assert.equal(
+      sellEditDraftKey('listing-9'),
+      'autohub.sell.edit.draft:listing-9',
+    );
+    assert.notEqual(sellEditDraftKey('listing-9'), SELL_DRAFT_KEY);
   });
 });

@@ -4,6 +4,9 @@ import type { ListingQualityRule } from '@autohub/utils';
 /** Opaque step identifier — domains define their own ids. */
 export type SellStepId = string;
 
+/** Host mode — create and edit share the same steps, validators, and plugins. */
+export type SellWizardMode = 'create' | 'edit';
+
 /** Reusable workflow definition (categories reference by id, never copy steps). */
 export type SellWorkflowDefinition = {
   readonly id: string;
@@ -44,6 +47,7 @@ export type SellStepProps = {
   state: SellWizardState;
   patchCommon: (patch: Partial<SellCommonState>) => void;
   patchDomain: (patch: Record<string, unknown>) => void;
+  mode: SellWizardMode;
 };
 
 export type SellStepValidator = (state: SellWizardState) => boolean;
@@ -57,6 +61,7 @@ export type SellSubmitArgs = {
   /** Server DRAFT listing id when Draft Engine already synced once. */
   listingId: string | null;
   submitForReview: boolean;
+  mode: SellWizardMode;
   /**
    * Host attaches pending (unsynced) media asset ids.
    * Plugins must not invent their own upload path.

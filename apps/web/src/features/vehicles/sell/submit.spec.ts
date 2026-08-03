@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DEFAULT_COMMON_STATE } from '../../sell/core/types';
 import { DEFAULT_VEHICLE_DOMAIN_DATA } from './domain-data';
-import { buildCreateVehicleBody } from './submit';
+import { buildCreateVehicleBody, submitVehicleListing } from './submit';
 import { validateVehicleDetailsStep } from './validators/vehicleDetails';
 
 describe('vehicle sell details (P5-2)', () => {
@@ -105,5 +105,68 @@ describe('vehicle sell details (P5-2)', () => {
       },
     };
     assert.equal(validateVehicleDetailsStep(he), true);
+  });
+});
+
+describe('vehicle sell submit edit mode (P5-9)', () => {
+  const state = {
+    ...DEFAULT_COMMON_STATE,
+    categoryId: 'cat',
+    cityId: 'city',
+    title: 'Edit me please',
+    description: 'Long enough description',
+    primaryPrice: '1000',
+    domainData: { ...DEFAULT_VEHICLE_DOMAIN_DATA, year: '2020' },
+  };
+
+  it('PATCHes existing listing and never creates', async () => {
+    const calls: string[] = [];
+    const result = await submitVehicleListing(
+      {
+        createVehicle: async () => {
+          calls.push('create');
+          return { id: 'new' };
+        },
+        updateVehicle: async (id) => {
+          calls.push(`update:${id}`);
+          return { id };
+        },
+        changeStatus: async () => {
+          calls.push('status');
+        },
+      },
+      {
+        state,
+        listingId: 'listing-9',
+        submitForReview: false,
+        mode: 'edit',
+        attachMedia: async () => {
+          calls.push('media');
+        },
+      },
+    );
+    assert.equal(result.listingId, 'listing-9');
+    assert.deepEqual(calls, ['update:listing-9', 'media']);
+  });
+
+  it('requires listingId in edit mode', async () => {
+    await assert.rejects(
+      () =>
+        submitVehicleListing(
+          {
+            createVehicle: async () => ({ id: 'x' }),
+            updateVehicle: async (id) => ({ id }),
+            changeStatus: async () => undefined,
+          },
+          {
+            state,
+            listingId: null,
+            submitForReview: false,
+            mode: 'edit',
+            attachMedia: async () => undefined,
+          },
+        ),
+      /listingId/,
+    );
   });
 });
