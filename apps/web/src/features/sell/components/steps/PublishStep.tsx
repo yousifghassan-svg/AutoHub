@@ -2,66 +2,75 @@
 
 import type { ComponentType } from 'react';
 import type { ListingQualityResult } from '@autohub/utils';
-import { config } from '@/lib/config';
 import type { SellStepProps } from '../../core/types';
 import { ListingQualityPanel } from '../ListingQualityPanel';
+import { ReviewMediaGallery } from '../ReviewMediaGallery';
+import { ReviewSummaryCards } from '../ReviewSummaryCards';
 
 type PublishStepProps = SellStepProps & {
   Preview: ComponentType<SellStepProps>;
   displayTitle: string;
   cityLabel: string;
-  authMode: string;
-  hasServerDraft?: boolean;
+  governorateLabel?: string;
   quality: ListingQualityResult;
 };
 
+/**
+ * Final inspection before publish — listing-generic shell.
+ * Domain summary comes from plugin Preview (vehicle / plate / future).
+ */
 export function PublishStep({
   Preview,
   displayTitle,
   cityLabel,
-  authMode,
-  hasServerDraft = false,
+  governorateLabel,
   quality,
   ...stepProps
 }: PublishStepProps) {
+  const { state } = stepProps;
+
   return (
     <div className="space-y-8">
-      <ListingQualityPanel quality={quality} />
-
       <div>
-        <h2 className="font-display text-lg font-semibold text-ink">Preview</h2>
-        <p className="mt-1 text-sm text-ink-secondary">
-          Review your listing before publishing.
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">
+          Final check
         </p>
-        <div className="mt-4">
+        <h2 className="mt-1 font-display text-2xl font-semibold text-ink">
+          Review your listing
+        </h2>
+        <p className="mt-1 text-sm text-ink-secondary">
+          Take a last look — this is how buyers will first meet{' '}
+          <span className="font-medium text-ink">{displayTitle}</span>.
+        </p>
+      </div>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-medium text-ink">Photos & video</h3>
+        <ReviewMediaGallery
+          imageAssetIds={state.imageAssetIds}
+          videoAssetIds={state.videoAssetIds}
+        />
+      </section>
+
+      <ReviewSummaryCards
+        price={state.primaryPrice}
+        currencyCode={state.currencyCode}
+        negotiable={state.negotiable}
+        cityLabel={cityLabel}
+        governorateLabel={governorateLabel}
+      />
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-medium text-ink">Listing details</h3>
+        <div className="rounded-xl border border-border bg-surface-muted/20 p-4">
           <Preview {...stepProps} />
         </div>
-      </div>
+      </section>
 
-      <div className="space-y-4 text-sm text-ink-secondary">
-        <p>
-          Ready to publish <strong className="text-ink">{displayTitle}</strong> in{' '}
-          {cityLabel}?
-        </p>
-        <ul className="list-inside list-disc space-y-1">
-          <li>
-            <strong className="text-ink">Submit for review</strong> — requires
-            all required quality items, then syncs media and sets PENDING.
-          </li>
-          <li>
-            <strong className="text-ink">Save draft</strong> —{' '}
-            {hasServerDraft
-              ? 'updates your server DRAFT anytime (required items not needed).'
-              : 'creates a server DRAFT anytime (required items not needed).'}
-          </li>
-        </ul>
-        {authMode === 'dev' ? (
-          <p className="rounded-md bg-brand-soft p-3 text-brand">
-            Auth mode is dev ({config.authMode}). Publishing uses Nest JWT via
-            /v1/auth/dev-login (API required; unavailable in production).
-          </p>
-        ) : null}
-      </div>
+      <section className="space-y-3">
+        <h3 className="text-sm font-medium text-ink">Quality check</h3>
+        <ListingQualityPanel quality={quality} />
+      </section>
     </div>
   );
 }

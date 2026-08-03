@@ -226,14 +226,15 @@ Complexity: **S** ≤0.5d · **M** 0.5–2d · **L** 2–5d
 
 | Field | Detail |
 | --- | --- |
-| Objective | Production review + reliable PENDING |
-| Deliverables | Preview closer to detail; submit error/retry; quality tips |
-| Files | `PublishStep.tsx`, previews, submit helpers |
-| API | Existing create + status |
+| Status | **Implemented — awaiting approval** |
+| Objective | Premium final-inspection review + calm publish flow |
+| Deliverables | Review media/price/location/domain summary; quality tiers; confirm → progress → success (no scary dialogs) |
+| Files | `PublishStep`, review/publish UI components, vehicle/plate previews, `publish-flow` helpers |
+| API | Existing create + status (unchanged) |
 | DB | None |
-| Test plan | Happy path + failure messaging |
-| Acceptance | Preview critical fields; submit → PENDING; approve works |
-| Risks | Partial attach on failure — clear errors |
+| Test plan | Friendly error copy; work-step helpers |
+| Acceptance | Preview critical fields; send for review → success screen; draft save friendly |
+| Risks | Partial attach on failure — clear friendly errors |
 | Complexity | **M** |
 
 ### P5-8 — My Listings

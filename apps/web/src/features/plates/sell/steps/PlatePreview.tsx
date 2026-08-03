@@ -1,12 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useQueries } from '@tanstack/react-query';
 import { CATEGORIES } from '@/features/listings/domain/types';
-import { mediaRepository } from '@/features/media';
-import { formatMoney } from '@/features/currencies/lib/format-money';
-import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch';
-import { mediaPublicUrl } from '@/lib/media/url';
 import { LicensePlate } from '../../components/LicensePlate';
 import type { PlateFormState } from '../../components/PlateEditor';
 import type { SellStepProps } from '@/features/sell/core/types';
@@ -16,105 +10,55 @@ function plateTitle(plate: PlateFormState): string {
   return `${plate.governorate} plate ${plate.code} ${plate.letter} ${plate.number}`;
 }
 
+/** Domain summary for review — media/price/location live in PublishStep shell. */
 export function PlatePreview({ state }: SellStepProps) {
-  const catalog = useCatalogFilters();
   const { plate } = asPlateDomainData(state.domainData);
 
   const categoryLabel =
     CATEGORIES.find((c) => c.code === state.categoryCode)?.label ??
     state.categoryCode;
 
-  const cityLabel =
-    catalog.data?.cities.find((c) => c.id === state.cityId)?.nameEn ??
-    state.cityId;
-
   const displayTitle = state.title.trim() || plateTitle(plate);
-  const previewAssetIds = useMemo(
-    () => [...state.imageAssetIds, ...state.videoAssetIds],
-    [state.imageAssetIds, state.videoAssetIds],
-  );
-
-  const previewAssets = useQueries({
-    queries: previewAssetIds.map((id) => ({
-      queryKey: ['media', id],
-      queryFn: () => mediaRepository.getById(id),
-      enabled: Boolean(id),
-      staleTime: 60_000,
-    })),
-  });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="max-w-md">
         <LicensePlate {...plate} size="fill" showExport={false} />
       </div>
 
-      <div className="space-y-2 text-sm">
-        <p className="font-display text-xl font-semibold text-ink">
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wide text-ink-secondary">
+          {categoryLabel}
+        </p>
+        <p className="mt-1 font-display text-xl font-semibold text-ink">
           {displayTitle}
         </p>
-        <p className="text-ink-secondary">
-          {categoryLabel} · {cityLabel}
-        </p>
-        <p className="text-lg font-semibold text-brand">
-          {state.primaryPrice
-            ? formatMoney(
-                Number(state.primaryPrice),
-                state.currencyCode || 'IQD',
-                'en',
-              )
-            : '—'}
-        </p>
-        <p className="whitespace-pre-wrap text-ink-secondary">
-          {state.description}
-        </p>
+        <dl className="mt-3 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-lg bg-surface px-3 py-2 text-sm">
+            <dt className="text-xs text-ink-secondary">Code</dt>
+            <dd className="font-medium text-ink">{plate.code || '—'}</dd>
+          </div>
+          <div className="rounded-lg bg-surface px-3 py-2 text-sm">
+            <dt className="text-xs text-ink-secondary">Letter</dt>
+            <dd className="font-medium text-ink">{plate.letter || '—'}</dd>
+          </div>
+          <div className="rounded-lg bg-surface px-3 py-2 text-sm">
+            <dt className="text-xs text-ink-secondary">Number</dt>
+            <dd className="font-medium text-ink">{plate.number || '—'}</dd>
+          </div>
+        </dl>
       </div>
 
-      {previewAssetIds.length ? (
+      {state.description.trim() ? (
         <div>
-          <p className="mb-2 text-sm font-medium text-ink-secondary">Media</p>
-          <div className="flex flex-wrap gap-2">
-            {previewAssets.map((q, index) => {
-              const asset = q.data;
-              const thumb =
-                asset?.urls?.thumbnail ??
-                mediaPublicUrl(
-                  asset?.variants?.find((v) => v.kind === 'THUMBNAIL')?.r2Key,
-                ) ??
-                mediaPublicUrl(asset?.originalKey);
-              const assetId = previewAssetIds[index];
-              const isVideo =
-                Boolean(assetId) && state.videoAssetIds.includes(assetId!);
-              return (
-                <div
-                  key={assetId ?? index}
-                  className="relative h-20 w-20 overflow-hidden rounded-md border border-border bg-surface-muted"
-                >
-                  {thumb ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={thumb}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-ink-secondary">
-                      {q.isLoading ? '…' : isVideo ? 'Video' : 'Photo'}
-                    </div>
-                  )}
-                  {isVideo ? (
-                    <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[10px] text-white">
-                      VIDEO
-                    </span>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-secondary">
+            Description
+          </p>
+          <p className="mt-1 whitespace-pre-wrap text-sm text-ink-secondary">
+            {state.description}
+          </p>
         </div>
-      ) : (
-        <p className="text-sm text-ink-secondary">No media uploaded.</p>
-      )}
+      ) : null}
     </div>
   );
 }

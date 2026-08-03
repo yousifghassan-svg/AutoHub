@@ -40,9 +40,17 @@ import {
   getWorkflow,
 } from '../core/workflows';
 import {
+  friendlyPublishError,
+  type PublishUiPhase,
+  type PublishWorkStepId,
+} from '../lib/publish-flow';
+import {
   resolvePluginFromList,
   useSellDomainPlugins,
 } from '../register';
+import { PublishConfirm } from './PublishConfirm';
+import { PublishProgress } from './PublishProgress';
+import { PublishSuccess } from './PublishSuccess';
 import { SHARED_SELL_STEPS } from './sharedSteps';
 import { PublishStep } from './steps/PublishStep';
 
@@ -56,7 +64,7 @@ function resolveStepComponent(
 
 export function SellWizard() {
   const router = useRouter();
-  const { status, authMode } = useAuth();
+  const { status } = useAuth();
   const catalog = useCatalogFilters();
   const { addMedia } = useDomainMutations();
   const plugins = useSellDomainPlugins();
@@ -66,6 +74,8 @@ export function SellWizard() {
   const [error, setError] = useState<string | null>(null);
   const [draftRestored, setDraftRestored] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [publishPhase, setPublishPhase] = useState<PublishUiPhase>('review');
+  const [workStep, setWorkStep] = useState<PublishWorkStepId>('saving');
   const [session, setSession] = useState<DraftSession>(() =>
     createFreshDraftSession(),
   );
@@ -87,6 +97,7 @@ export function SellWizard() {
   );
   const currentStep = workflow.steps[stepIndex] ?? workflow.steps[0]!;
   const pct = ((stepIndex + 1) / workflow.steps.length) * 100;
+  const onPublishStep = currentStep.id === 'publish';
 
   const validator = plugin.validators[currentStep.id];
   const canNext = validator ? validator(state) : true;
@@ -141,7 +152,6 @@ export function SellWizard() {
     setDraftRestored(true);
   }, [draftRestored, fallbackPlugin]);
 
-  // When category switches domain, reset domain payload and clamp step.
   useEffect(() => {
     if (!draftRestored) return;
     if (prevCategoryRef.current === state.categoryCode) return;
@@ -171,6 +181,7 @@ export function SellWizard() {
 
   useEffect(() => {
     if (!draftRestored) return;
+    if (publishPhase === 'working' || publishPhase === 'success') return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       const saved = saveDraftToStorage(
@@ -190,7 +201,7 @@ export function SellWizard() {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [draftRestored, plugin, state, stepId]);
+  }, [draftRestored, plugin, publishPhase, state, stepId]);
 
   useEffect(() => {
     if (!catalog.data?.categories) return;
@@ -207,12 +218,27 @@ export function SellWizard() {
     state.categoryId,
   ]);
 
+  // Reset publish UX when leaving the review step.
+  useEffect(() => {
+    if (!onPublishStep) {
+      setPublishPhase('review');
+      setError(null);
+    }
+  }, [onPublishStep]);
+
   const cityLabel = useMemo(() => {
     const city = catalog.data?.cities.find((c) => c.id === state.cityId);
-    return city?.nameEn ?? state.cityId;
+    return city?.nameEn ?? (state.cityId ? 'Selected city' : 'Not set');
   }, [catalog.data?.cities, state.cityId]);
 
-  const displayTitle = state.title.trim() || 'Untitled';
+  const governorateLabel = useMemo(() => {
+    const gov = catalog.data?.governorates?.find(
+      (g) => g.id === state.governorateId,
+    );
+    return gov?.nameEn ?? '';
+  }, [catalog.data?.governorates, state.governorateId]);
+
+  const displayTitle = state.title.trim() || 'Untitled listing';
 
   const attachPendingMedia = useCallback(
     async (listingId: string) => {
@@ -245,35 +271,41 @@ export function SellWizard() {
     [addMedia, session.meta, state.imageAssetIds, state.videoAssetIds],
   );
 
-  const publish = useCallback(
+  const runPublish = useCallback(
     async (submitForReview: boolean) => {
       setError(null);
-      // Required completeness gates PENDING only — drafts may be incomplete.
       if (submitForReview && !plugin.canSubmit(state)) {
+        setPublishPhase('review');
         setError(
           quality.missingRequired[0]?.recommendation ??
-            'Complete required listing quality items before submitting for review.',
+            'Finish the must-have items before sending for review.',
         );
         return;
       }
 
       setBusy(true);
+      setPublishPhase('working');
+      setWorkStep('saving');
       try {
         const result = await plugin.submit({
           state,
           listingId: session.listingId,
           submitForReview,
-          attachMedia: attachPendingMedia,
+          attachMedia: async (listingId) => {
+            setWorkStep('photos');
+            await attachPendingMedia(listingId);
+            if (submitForReview) setWorkStep('sending');
+          },
         });
 
         if (submitForReview) {
+          setWorkStep('sending');
           clearDraftStorage();
           envelopeRef.current = null;
-          router.push('/my-listings');
+          setPublishPhase('success');
           return;
         }
 
-        // Keep local draft for resume; link server DRAFT listing id.
         const nextSession: DraftSession = {
           ...sessionRef.current,
           listingId: result.listingId,
@@ -292,9 +324,14 @@ export function SellWizard() {
           envelopeRef.current,
         );
         envelopeRef.current = saved;
-        router.push('/my-listings');
+        setPublishPhase('draft_saved');
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Publish failed');
+        setPublishPhase('review');
+        setError(
+          friendlyPublishError(
+            e instanceof Error ? e.message : 'Something went wrong',
+          ),
+        );
       } finally {
         setBusy(false);
       }
@@ -303,14 +340,28 @@ export function SellWizard() {
       attachPendingMedia,
       plugin,
       quality.missingRequired,
-      router,
-      session,
+      session.listingId,
       state,
       stepId,
     ],
   );
 
+  const resetWizard = useCallback(() => {
+    clearDraftStorage();
+    envelopeRef.current = null;
+    setSession(createFreshDraftSession());
+    setState({
+      ...DEFAULT_COMMON_STATE,
+      domainData: fallbackPlugin.createInitialDomainData(),
+    });
+    setStepId('category');
+    setPublishPhase('review');
+    setError(null);
+  }, [fallbackPlugin]);
+
   const StepComponent = resolveStepComponent(currentStep.id, plugin);
+  const showFlowChrome =
+    publishPhase === 'review' || publishPhase === 'confirm';
 
   if (status === 'bootstrapping' || !draftRestored) {
     return (
@@ -324,95 +375,143 @@ export function SellWizard() {
 
   return (
     <div className="page-container max-w-2xl py-10">
-      <h1 className="section-title">Create listing</h1>
-      <p className="mt-2 text-ink-secondary">
-        Multi-step wizard with autosaved draft. Progress is saved locally as you
-        go
-        {session.listingId ? ' and linked to a server draft.' : '.'}
-      </p>
+      {showFlowChrome ? (
+        <>
+          <h1 className="section-title">
+            {onPublishStep ? 'Review & publish' : 'Create listing'}
+          </h1>
+          <p className="mt-2 text-ink-secondary">
+            {onPublishStep
+              ? 'A calm last look before your listing goes for review.'
+              : 'Your progress is saved automatically as you go.'}
+          </p>
 
-      <div className="mt-6 h-2 overflow-hidden rounded-full bg-surface-muted">
-        <div
-          className="h-full bg-brand transition-all"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <div className="mt-2 flex items-center justify-between text-sm">
-        <p className="font-medium text-ink-secondary">
-          Step {stepIndex + 1} of {workflow.steps.length}: {currentStep.label}
-        </p>
-        <p className="text-xs text-ink-secondary">
-          Draft autosaved
-          {session.listingId ? ' · server linked' : ''}
-        </p>
-      </div>
+          <div className="mt-6 h-2 overflow-hidden rounded-full bg-surface-muted">
+            <div
+              className="h-full bg-brand transition-all duration-500"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-sm">
+            <p className="font-medium text-ink-secondary">
+              Step {stepIndex + 1} of {workflow.steps.length}:{' '}
+              {onPublishStep ? 'Review' : currentStep.label}
+            </p>
+            <p className="text-xs text-ink-secondary">Saved automatically</p>
+          </div>
+        </>
+      ) : null}
 
       <div className="mt-8 space-y-4 rounded-xl border border-border bg-surface p-6 shadow-card">
-        {currentStep.id === 'publish' ? (
-          <PublishStep
-            {...stepProps}
-            Preview={plugin.Preview}
-            displayTitle={displayTitle}
-            cityLabel={cityLabel}
-            authMode={authMode}
-            hasServerDraft={Boolean(session.listingId)}
-            quality={quality}
+        {publishPhase === 'working' ? (
+          <PublishProgress current={workStep} />
+        ) : null}
+
+        {publishPhase === 'success' ? (
+          <PublishSuccess
+            mode="review"
+            title={displayTitle}
+            onPrimary={() => router.push('/my-listings')}
+            onSecondary={resetWizard}
           />
-        ) : StepComponent ? (
-          <StepComponent {...stepProps} />
-        ) : (
-          <p className="text-sm text-error">
-            Missing step component for &quot;{currentStep.id}&quot;.
-          </p>
-        )}
+        ) : null}
 
-        {error ? <p className="text-sm text-error">{error}</p> : null}
+        {publishPhase === 'draft_saved' ? (
+          <PublishSuccess
+            mode="draft"
+            title={displayTitle}
+            onPrimary={() => router.push('/my-listings')}
+            onSecondary={() => setPublishPhase('review')}
+          />
+        ) : null}
 
-        <div className="flex flex-wrap justify-between gap-3 pt-2">
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={stepIndex === 0 || busy}
-            onClick={() => {
-              const prev = workflow.steps[stepIndex - 1];
-              if (prev) setStepId(prev.id);
-            }}
-          >
-            Back
-          </Button>
+        {publishPhase === 'confirm' ? (
+          <PublishConfirm
+            title={displayTitle}
+            cityLabel={cityLabel}
+            score={quality.score}
+            busy={busy}
+            onCancel={() => setPublishPhase('review')}
+            onConfirm={() => void runPublish(true)}
+          />
+        ) : null}
 
-          {stepIndex < workflow.steps.length - 1 ? (
-            <Button
-              type="button"
-              disabled={!canNext || busy}
-              onClick={() => {
-                if (!canNext || busy) return;
-                const next = workflow.steps[stepIndex + 1];
-                if (next) setStepId(next.id);
-              }}
-            >
-              Next
-            </Button>
-          ) : (
-            <div className="flex flex-wrap gap-2">
+        {publishPhase === 'review' ? (
+          <>
+            {onPublishStep ? (
+              <PublishStep
+                {...stepProps}
+                Preview={plugin.Preview}
+                displayTitle={displayTitle}
+                cityLabel={cityLabel}
+                governorateLabel={governorateLabel}
+                quality={quality}
+              />
+            ) : StepComponent ? (
+              <StepComponent {...stepProps} />
+            ) : (
+              <p className="text-sm text-ink-secondary">
+                This step isn’t available right now. Go back and try another
+                step.
+              </p>
+            )}
+
+            {error ? (
+              <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-ink">
+                {error}
+              </p>
+            ) : null}
+
+            <div className="flex flex-wrap justify-between gap-3 pt-2">
               <Button
                 type="button"
                 variant="secondary"
-                disabled={busy}
-                onClick={() => void publish(false)}
+                disabled={stepIndex === 0 || busy}
+                onClick={() => {
+                  const prev = workflow.steps[stepIndex - 1];
+                  if (prev) setStepId(prev.id);
+                }}
               >
-                Save draft
+                Back
               </Button>
-              <Button
-                type="button"
-                disabled={busy || !quality.canPublish}
-                onClick={() => void publish(true)}
-              >
-                Submit for review
-              </Button>
+
+              {stepIndex < workflow.steps.length - 1 ? (
+                <Button
+                  type="button"
+                  disabled={!canNext || busy}
+                  onClick={() => {
+                    if (!canNext || busy) return;
+                    const next = workflow.steps[stepIndex + 1];
+                    if (next) setStepId(next.id);
+                  }}
+                >
+                  Next
+                </Button>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() => void runPublish(false)}
+                  >
+                    Save for later
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={busy || !quality.canPublish}
+                    onClick={() => {
+                      setError(null);
+                      setPublishPhase('confirm');
+                    }}
+                  >
+                    Send for review
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        ) : null}
       </div>
     </div>
   );

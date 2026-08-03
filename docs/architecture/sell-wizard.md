@@ -30,7 +30,8 @@ One plugin-hosted sell experience that is safe to resume, hard to submit incompl
 | P5-1 | Host foundation, `?next=` |
 | P5-2 | Vehicle details field parity (CAR-first) |
 | P5-3 | Price & location validation polish |
-| P5-6 / P5-7 | Completeness + review/publish |
+| P5-6 | Listing quality engine + canPublish |
+| P5-7 | Premium review inspection + confirm → progress → success |
 | P5-9 | Edit reuse |
 
 ---

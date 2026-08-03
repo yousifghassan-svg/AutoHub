@@ -2,63 +2,102 @@
 
 import {
   listingQualityGradeLabel,
+  type ListingQualityItem,
   type ListingQualityResult,
+  type ListingQualitySeverity,
 } from '@autohub/utils';
 import { cn } from '@/components/ui';
 
 type Props = {
   quality: ListingQualityResult;
   className?: string;
+  /** Compact mode for confirm strip */
+  compact?: boolean;
 };
 
-function SeverityBadge({
-  severity,
-}: {
-  severity: 'required' | 'recommended' | 'premium';
-}) {
-  const label =
-    severity === 'required'
-      ? 'Required'
-      : severity === 'recommended'
-        ? 'Recommended'
-        : 'Premium';
+const SECTION_COPY: Record<
+  ListingQualitySeverity,
+  { title: string; hint: string }
+> = {
+  required: {
+    title: 'Must have',
+    hint: 'Finish these before sending for review.',
+  },
+  recommended: {
+    title: 'Nice to have',
+    hint: 'These help your listing stand out.',
+  },
+  premium: {
+    title: 'Stand out',
+    hint: 'Optional extras buyers love.',
+  },
+};
+
+function ItemRow({ item }: { item: ListingQualityItem }) {
   return (
-    <span
-      className={cn(
-        'rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-        severity === 'required' && 'bg-error/10 text-error',
-        severity === 'recommended' && 'bg-brand-soft text-brand',
-        severity === 'premium' && 'bg-surface-muted text-ink-secondary',
-      )}
-    >
-      {label}
-    </span>
+    <li className="flex items-start gap-2 text-sm">
+      <span
+        className={cn(
+          'mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs',
+          item.ok ? 'bg-brand/15 text-brand' : 'bg-surface-muted text-ink-secondary',
+        )}
+        aria-hidden
+      >
+        {item.ok ? '✓' : '·'}
+      </span>
+      <div className="min-w-0">
+        <p className={item.ok ? 'text-ink' : 'text-ink-secondary'}>{item.label}</p>
+        {!item.ok ? (
+          <p className="text-xs text-ink-secondary">{item.recommendation}</p>
+        ) : null}
+      </div>
+    </li>
   );
 }
 
-export function ListingQualityPanel({ quality, className }: Props) {
+function SeveritySection({
+  severity,
+  items,
+}: {
+  severity: ListingQualitySeverity;
+  items: ListingQualityItem[];
+}) {
+  if (!items.length) return null;
+  const copy = SECTION_COPY[severity];
+  const open = items.filter((i) => !i.ok).length;
   return (
-    <div className={cn('space-y-4', className)}>
-      <div>
-        <h2 className="font-display text-lg font-semibold text-ink">
-          Listing quality
-        </h2>
-        <p className="mt-1 text-sm text-ink-secondary">
-          Improve visibility with a complete listing. Required items block
-          review submit; recommended and premium tips are optional.
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-sm font-medium text-ink">{copy.title}</p>
+        <p className="text-xs text-ink-secondary">
+          {open === 0 ? 'All set' : `${open} left`}
         </p>
       </div>
+      <p className="text-xs text-ink-secondary">{copy.hint}</p>
+      <ul className="mt-2 space-y-2">
+        {items.map((item) => (
+          <ItemRow key={item.id} item={item} />
+        ))}
+      </ul>
+    </div>
+  );
+}
 
-      <div className="flex flex-wrap items-end justify-between gap-3 rounded-lg border border-border bg-surface-muted/40 px-4 py-3">
+export function ListingQualityPanel({ quality, className, compact }: Props) {
+  const required = quality.items.filter((i) => i.severity === 'required');
+  const recommended = quality.items.filter((i) => i.severity === 'recommended');
+  const premium = quality.items.filter((i) => i.severity === 'premium');
+
+  return (
+    <div className={cn('space-y-5', className)}>
+      <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-border bg-gradient-to-br from-brand-soft/40 to-surface-muted/40 px-4 py-4">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-ink-secondary">
-            Quality score
+            Listing score
           </p>
           <p className="mt-1 font-display text-3xl font-semibold text-ink">
             {quality.score}
-            <span className="text-base font-normal text-ink-secondary">
-              /100
-            </span>
+            <span className="text-base font-normal text-ink-secondary">/100</span>
           </p>
           <p className="text-sm text-ink-secondary">
             {listingQualityGradeLabel(quality.grade)}
@@ -66,24 +105,24 @@ export function ListingQualityPanel({ quality, className }: Props) {
         </div>
         <div className="min-w-[10rem] flex-1 space-y-2">
           <div className="flex justify-between text-xs text-ink-secondary">
-            <span>Completion</span>
+            <span>Overall</span>
             <span>{quality.completionPercent}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-surface-muted">
             <div
-              className="h-full bg-brand transition-all"
+              className="h-full bg-brand transition-all duration-500"
               style={{ width: `${quality.completionPercent}%` }}
             />
           </div>
           <div className="flex justify-between text-xs text-ink-secondary">
-            <span>Required</span>
+            <span>Must have</span>
             <span>{quality.requiredCompletionPercent}%</span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-surface-muted">
             <div
               className={cn(
-                'h-full transition-all',
-                quality.canPublish ? 'bg-brand' : 'bg-error',
+                'h-full transition-all duration-500',
+                quality.canPublish ? 'bg-brand' : 'bg-amber-500',
               )}
               style={{ width: `${quality.requiredCompletionPercent}%` }}
             />
@@ -91,52 +130,29 @@ export function ListingQualityPanel({ quality, className }: Props) {
         </div>
       </div>
 
-      {quality.recommendations.length ? (
-        <div>
-          <p className="text-sm font-medium text-ink">Recommendations</p>
+      {!compact && quality.recommendations.length ? (
+        <div className="rounded-xl border border-border/80 px-4 py-3">
+          <p className="text-sm font-medium text-ink">Suggested next steps</p>
           <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-ink-secondary">
-            {quality.recommendations.map((tip) => (
+            {quality.recommendations.slice(0, 4).map((tip) => (
               <li key={tip}>{tip}</li>
             ))}
           </ul>
         </div>
-      ) : (
-        <p className="text-sm text-ink-secondary">
-          Great work — no open recommendations.
-        </p>
-      )}
+      ) : null}
 
-      <div>
-        <p className="text-sm font-medium text-ink">Checklist</p>
-        <ul className="mt-2 space-y-2">
-          {quality.items.map((item) => (
-            <li
-              key={item.id}
-              className="flex items-start justify-between gap-3 text-sm"
-            >
-              <div className="min-w-0">
-                <p className={cn(item.ok ? 'text-ink' : 'text-ink-secondary')}>
-                  <span className="mr-2" aria-hidden>
-                    {item.ok ? '✓' : '○'}
-                  </span>
-                  {item.label}
-                </p>
-                {!item.ok ? (
-                  <p className="ml-6 text-xs text-ink-secondary">
-                    {item.recommendation}
-                  </p>
-                ) : null}
-              </div>
-              <SeverityBadge severity={item.severity} />
-            </li>
-          ))}
-        </ul>
-      </div>
+      {!compact ? (
+        <div className="space-y-6">
+          <SeveritySection severity="required" items={required} />
+          <SeveritySection severity="recommended" items={recommended} />
+          <SeveritySection severity="premium" items={premium} />
+        </div>
+      ) : null}
 
       {!quality.canPublish ? (
-        <p className="rounded-md bg-error/10 px-3 py-2 text-sm text-error">
-          Complete all required items before submitting for review. You can
-          still save a draft.
+        <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-ink">
+          A few must-have items are still open. You can save for later, or finish
+          them to send for review.
         </p>
       ) : null}
     </div>

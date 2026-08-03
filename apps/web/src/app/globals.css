@@ -111,4 +111,36 @@
   .license-plate__action:disabled {
     opacity: 0.55;
   }
+
+  .publish-success-burst {
+    animation: publish-success-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .publish-success-check {
+    display: inline-block;
+    animation: publish-success-check 0.45s 0.12s cubic-bezier(0.22, 1, 0.36, 1)
+      both;
+  }
+}
+
+@keyframes publish-success-pop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes publish-success-check {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
