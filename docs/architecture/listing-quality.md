@@ -1,6 +1,7 @@
 # Listing Quality & Completeness Architecture (Release 0.5)
 
-**Status:** Normative for Release **0.5** — **P5-6 implemented** (awaiting approval)  
+**Status:** **FROZEN** with Release **0.5** (`marketplace-0.5-freeze`) — P5-6 implemented  
+
 **Master release:** [`../releases/RELEASE_0.5_MARKETPLACE.md`](../releases/RELEASE_0.5_MARKETPLACE.md)
 
 ---

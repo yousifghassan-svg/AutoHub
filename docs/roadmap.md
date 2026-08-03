@@ -17,18 +17,18 @@
 | 11 | Create Listing Wizard | Approved |
 | 12 | My Listings & Listing Management | Approved |
 | 13 | Stabilization & Production Readiness | Awaiting approval |
-| 14 | **Full Web Marketplace** | Closed-beta under Release 0.4; production harden = **Release 0.5** |
+| 14 | **Full Web Marketplace** | Closed-beta under Release 0.4; production harden **FROZEN** as Release 0.5 (`marketplace-0.5-freeze`) |
 | — | Dealer Platform | Deferred → Release **0.9** stub |
 
-### Release train (2026-08-03 renumber)
+### Release train (2026-08-03 renumber; 0.5 frozen 2026-08-04)
 
-| Release | Codename |
-| --- | --- |
-| 0.5 | Marketplace & Listings (production-ready harden) |
-| 0.6 | Messaging (formerly 0.5) |
-| 0.7 | Payments (formerly 0.6) |
-| 0.8 | Trust & Verification |
-| 0.9 | Dealer Platform |
-| 1.0 | Public Launch |
+| Release | Codename | Status |
+| --- | --- | --- |
+| 0.5 | Marketplace & Listings | **FROZEN** (`marketplace-0.5-freeze`) |
+| 0.6 | Messaging (formerly 0.5) | Next |
+| 0.7 | Payments (formerly 0.6) | Future |
+| 0.8 | Trust & Verification | Stub |
+| 0.9 | Dealer Platform | Stub |
+| 1.0 | Public Launch | Gate |
 
 Sprint 14 details: [`sprint-14-web-marketplace.md`](./sprint-14-web-marketplace.md) · Release 0.5: [`releases/RELEASE_0.5_MARKETPLACE.md`](./releases/RELEASE_0.5_MARKETPLACE.md)

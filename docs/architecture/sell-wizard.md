@@ -1,6 +1,7 @@
 # Sell Wizard Architecture (Release 0.5)
 
-**Status:** Normative for Release **0.5**  
+**Status:** **FROZEN** with Release **0.5** (`marketplace-0.5-freeze`)  
+
 **Baseline:** Domain-agnostic host + VEHICLE/PLATE plugins (Release 0.4)  
 **Master release:** [`../releases/RELEASE_0.5_MARKETPLACE.md`](../releases/RELEASE_0.5_MARKETPLACE.md)  
 **Code:** `apps/web/src/features/sell/`, `apps/web/src/features/vehicles/sell/`, `plates/sell/`

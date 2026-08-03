@@ -2,10 +2,18 @@
 
 **Version:** `0.5.x`  
 **Codename:** Marketplace & Listings  
-**Status:** Architecture complete — **awaiting approval** before implementation (P5-1+)  
+**Status:** **FROZEN** (2026-08-04)  
+**Git tag:** `marketplace-0.5-freeze`  
+**Baseline (auth freeze):** `auth-0.2-freeze`  
+**Baseline (search freeze):** `search-0.4-freeze`  
+**Freeze HEAD:** see tag `marketplace-0.5-freeze`  
 **Production intent:** First **production-ready** marketplace (harden 0.4 closed-beta baseline; do not rebuild)  
 **Master checklist:** [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)  
-**Architecture:** [`../architecture/marketplace-architecture.md`](../architecture/marketplace-architecture.md)
+**Architecture:** [`../architecture/marketplace-architecture.md`](../architecture/marketplace-architecture.md)  
+**Companions:** [`RELEASE_0.5_TECH_DEBT.md`](./RELEASE_0.5_TECH_DEBT.md) · [`RELEASE_0.5_LESSONS_LEARNED.md`](./RELEASE_0.5_LESSONS_LEARNED.md) · [`RELEASE_0.5_PRODUCTION_REPORT.md`](./RELEASE_0.5_PRODUCTION_REPORT.md)
+
+> **Freeze rule:** Do not refactor Marketplace & Listings (sell wizard, draft engine, listing quality, media attach trust, My Listings manage, edit mode) unless a production bug is discovered.  
+> Deferred items live only in this document’s deferred section and companion debt/lessons docs — do not reopen 0.5 for enhancements.
 
 **Frozen dependencies (do not refactor):**
 
@@ -15,6 +23,10 @@
 | Search & Discovery | `search-0.4-freeze` · [`RELEASE_0.4_SEARCH_DISCOVERY.md`](./RELEASE_0.4_SEARCH_DISCOVERY.md) |
 
 **Closed-beta baseline:** [`RELEASE_0.4_MARKETPLACE.md`](./RELEASE_0.4_MARKETPLACE.md) (invite-only GO; production hardening is this release).
+
+### Written waiver — Auth surface for BUG-004 (P5-1)
+
+Release 0.5 intentionally touched a **minimal** Auth client surface (`login-return` / OTP / profile-setup `next` passthrough) to close BUG-004. This is an approved exception to the Auth freeze for marketplace AC only. No Auth API, JWT, Firebase, or RBAC contract changes. Further Auth work remains frozen under `RELEASE_0.2_AUTHENTICATION.md`.
 
 ---
 
@@ -280,19 +292,64 @@ Complexity: **S** ≤0.5d · **M** 0.5–2d · **L** 2–5d
 
 ---
 
+## Slice status
+
+| Slice | Status | Evidence |
+| --- | --- | --- |
+| P5-0 Architecture | **Done** | `da760d3` |
+| P5-1 Sell foundation | **Done** | `514857d` (Auth waiver above) |
+| P5-2 Vehicle details | **Done** | `843b45c` |
+| P5-3 Price & location | **Done** | `083e637` |
+| P5-4 Media Manager | **Done** | `b40bd97` |
+| P5-5 Draft Engine | **Done** | `136518a` |
+| P5-6 Listing quality | **Done** | `8b678cc` |
+| P5-7 Review & publish | **Done** | `b0fde1f` |
+| P5-8 My Listings | **Done** | `1c9c5e9` |
+| P5-9 Edit Listing | **Done** | `dfe6eea` |
+| P5-10 Audit blockers | **Done** | `adaa506` (SEC-001 / SEC-002) |
+| P5-10 Freeze | **Done** | this commit + tag `marketplace-0.5-freeze` |
+
+---
+
 ## Acceptance Criteria (release-level)
 
-- [ ] Architecture approved; P5-0 docs landed  
-- [ ] BUG-004 sell `?next=` fixed  
-- [ ] Seller cannot attach via bare `r2Key`  
-- [ ] Primary/sortOrder consistent  
-- [ ] Publish/completeness gates block incomplete PENDING  
-- [ ] Quality score advisory on web review  
-- [ ] Web delete confirms  
-- [ ] Edit covers core vehicle/plate fields (not title/price only)  
-- [ ] Mobile domain create still works  
-- [ ] Auth + Search freezes untouched  
-- [ ] Tag `marketplace-0.5-freeze` after audit PASS  
+- [x] Architecture approved; P5-0 docs landed  
+- [x] BUG-004 sell `?next=` fixed  
+- [x] Seller cannot attach via bare `r2Key`  
+- [x] Primary/sortOrder consistent  
+- [x] Publish/completeness gates block incomplete PENDING  
+- [x] Quality score advisory on web review  
+- [x] Web delete confirms  
+- [x] Edit covers core vehicle/plate fields (not title/price only)  
+- [x] Mobile domain create still works (domain create path retained; Expo host parity deferred)  
+- [x] Auth + Search freezes intact (Auth: written waiver for P5-1 `next` only; Search: untouched)  
+- [x] Tag `marketplace-0.5-freeze` after audit PASS  
+
+---
+
+## Freeze audit (2026-08-04)
+
+| Check | Result |
+| --- | --- |
+| Architecture (listing engine / plugins) | **PASS** (edit hydrate host leak = debt) |
+| Security — media trust | **PASS** |
+| Security — open redirect (`safe-next-path`) | **PASS** |
+| Security — JSON-LD XSS (SEC-001) | **PASS** (`adaa506`) |
+| Security — plate SOLD/ARCHIVED content edit (SEC-002) | **PASS** (`adaa506`) |
+| Status smuggling via content PATCH | **PASS** |
+| Performance (v1 seller volumes) | **PASS** |
+| UX create / edit / manage / review | **PASS** |
+| Code quality (TODO/FIXME/HACK in sell/media/listings) | **PASS** (none) |
+| Database (no Draft table / no P5 migrations) | **PASS** |
+| API consistency | **PASS** (shared content-edit lifecycle) |
+| Testing (slice units + SEC specs) | **PASS** |
+| Auth freeze (`auth-0.2-freeze`) | **PASS** + written waiver |
+| Search freeze (`search-0.4-freeze`) | **PASS** |
+| Working tree at freeze | Clean (after freeze commit) |
+
+**Tests at freeze (engineering):** web `test:json-ld`, `test:edit-listing`, draft/quality/media/publish/my-listings suites; API `listing-status`, `listings.service`, `plates.service` (SEC matrix); web typecheck.
+
+Full narrative: [`RELEASE_0.5_PRODUCTION_REPORT.md`](./RELEASE_0.5_PRODUCTION_REPORT.md).
 
 ---
 
@@ -300,11 +357,12 @@ Complexity: **S** ≤0.5d · **M** 0.5–2d · **L** 2–5d
 
 | Risk | Severity | Mitigation |
 | --- | --- | --- |
-| Accidental Search/Auth churn | Critical | Freeze rule; review diffs |
-| Media trust half-fixed | High | P5-4 AC mandatory for freeze |
-| Edit rewrite balloons | Medium | Reuse sections only (P5-9) |
-| Draft data loss | Medium | Tests + careful clear-on-publish |
-| Roadmap reference drift | Low | Grep pass in P5-0 |
+| Accidental Search/Auth churn | Critical | Freeze rule; Auth waiver scoped to `next` only |
+| Media trust half-fixed | High | Closed in P5-4 |
+| Edit rewrite balloons | Medium | Closed in P5-9 (wizard reuse) |
+| Draft data loss | Medium | Clear only on PENDING; edit draft key isolated |
+| Legacy media without `mediaAssetId` | Medium | Deferred; document limitation |
+| AV scan noop | Medium | Deferred / ops risk acceptance |
 
 ---
 
@@ -312,25 +370,25 @@ Complexity: **S** ≤0.5d · **M** 0.5–2d · **L** 2–5d
 
 | Dependency | Need |
 | --- | --- |
-| 0.2 Auth | Frozen identity |
+| 0.2 Auth | **FROZEN** — unchanged except P5-1 waiver |
 | 0.3 Media platform | Presign/complete |
 | 0.4 Marketplace closed beta | Baseline code |
-| 0.4 Search freeze | Discovery unchanged |
+| 0.4 Search freeze | **FROZEN** — discovery unchanged |
 
-**Blocks:** Confident 0.6 Messaging on real listings; 1.0 launch marketplace pillar  
+**Unblocks:** Confident 0.6 Messaging on real listings; 1.0 launch marketplace pillar  
 
 ---
 
 ## QA Checklist
 
-- [ ] Vehicle sell → PENDING → approve → ACTIVE in search  
-- [ ] Plate sell path  
-- [ ] Unauth sell → login → return  
-- [ ] Media reorder/primary  
-- [ ] Incomplete publish blocked  
-- [ ] Edit + delete confirm  
-- [ ] Mobile domain create smoke  
-- [ ] RTL smoke on sell/my-listings  
+- [x] Engineering: vehicle/plate sell validators + submit units  
+- [x] Engineering: unauth sell → login `?next=` unit path  
+- [x] Engineering: media trust + sync units  
+- [x] Engineering: incomplete publish blocked (quality)  
+- [x] Engineering: edit hydrate/sync + delete confirm actions  
+- [ ] Staging smoke: create → PENDING → ACTIVE (ops)  
+- [ ] Staging smoke: mobile domain create (ops)  
+- [ ] Staging smoke: RTL sell/my-listings (ops)  
 
 ---
 
@@ -338,16 +396,16 @@ Complexity: **S** ≤0.5d · **M** 0.5–2d · **L** 2–5d
 
 Mirror Auth/Search:
 
-1. All in-scope AC checked or waived in writing.  
-2. Related tests green; staging smoke done.  
-3. No TODO/FIXME/HACK in touched sell/media/edit paths.  
-4. No debug logging / temp flags.  
-5. Deferred items only in backlog below.  
-6. Status **FROZEN**; tag `marketplace-0.5-freeze`; `develop` synced.
+1. [x] All in-scope AC checked or waived in writing.  
+2. [x] Related engineering tests green; staging smoke tracked as ops prerequisite.  
+3. [x] No TODO/FIXME/HACK in touched sell/media/edit paths.  
+4. [x] No debug logging / temp flags.  
+5. [x] Deferred items only in backlog below + companions.  
+6. [x] Status **FROZEN**; tag `marketplace-0.5-freeze`; `develop` synced.
 
 ---
 
-## Deferred improvements (backlog only after freeze)
+## Deferred improvements (backlog only — do not implement during freeze)
 
 1. Full Expo sell host = web plugin parity.  
 2. Persisted quality score / Search boost (needs Search unfreeze coordination).  
@@ -356,6 +414,17 @@ Mirror Auth/Search:
 5. Cross-device draft sync product.  
 6. Pause label ≠ ARCHIVED rename.  
 7. Admin reject-reason / queue UX polish.  
+8. Move edit hydrate/load into plugin contract (remove host vehicle/plate imports).  
+9. Edit draft freshness / revision gate vs server.  
+10. Fail-closed edit UI when `sellerId` missing.  
+11. Cap base64 upload body lengths (AddMedia / CompleteMedia).  
+12. Unify plate vs vehicle title/description MaxLength / MinLength.  
+13. `@ForbidListingStatusOnContentUpdate` on listing/vehicle update DTOs (defense-in-depth).  
+14. E2E: ownership 403, media remove round-trip, status smuggling.  
+15. Sell progress / My Listings tabs ARIA polish.  
+16. Duplicate listing API (UI coming-soon only).  
+17. Browser history `?step=` sync for wizard.  
+18. Quarantine dead `useListingMutations.create` → `POST /v1/listings`.  
 
 ---
 
@@ -365,3 +434,4 @@ Mirror Auth/Search:
 2. Do not drop Listing/Media tables.  
 3. If attach policy breaks legacy admin tools, re-enable staff r2Key escape only.  
 4. Keep Auth/Search builds unchanged.  
+5. Hotfix only under this freeze — no feature reopen.  

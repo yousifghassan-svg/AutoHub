@@ -81,13 +81,11 @@ Effort key: **S** ≤ 0.5 day · **M** 0.5–2 days · **L** 2–5 days · **XL*
 | Field | Detail |
 | --- | --- |
 | Class | P1 |
-| Impact | Accidental soft-delete of listings from detail or My Listings. |
-| Reproduction | Owner → Delete on `ListingOwnerActions` → immediate mutate, no dialog. |
-| Root cause | `ListingOwnerActions` runs delete action without confirm step. |
-| Recommended fix | Confirm dialog (“Delete this listing?”) before `softDelete`. |
+| Status | **CLOSED** (Release 0.5 / P5-8) |
+| Impact | ~~Accidental soft-delete of listings from detail or My Listings.~~ Delete confirm modal before soft-delete. |
+| Fix | `ListingOwnerActions` confirm step on manage + detail surfaces |
 | Owner | Web |
-| Effort | S |
-| Evidence | CODE |
+| Evidence | P5-8 commit |
 
 ### BUG-007 — Admin `/listings/[id]` always redirects to vehicles
 | Field | Detail |
@@ -169,13 +167,11 @@ Effort key: **S** ≤ 0.5 day · **M** 0.5–2 days · **L** 2–5 days · **XL*
 | Field | Detail |
 | --- | --- |
 | Class | P2 |
-| Impact | Failed load can show blank form; edit is not full sell-wizard parity. |
-| Reproduction | Force edit GET failure → weak/missing error EmptyState; only title/description/price editable. |
-| Root cause | Edit page error handling incomplete; scope intentionally narrow. |
-| Recommended fix | Dedicated error EmptyState; document limited edit scope for 0.4. |
+| Status | **CLOSED** (Release 0.5 / P5-9) |
+| Impact | ~~Thin title/price edit; weak load errors.~~ Edit mounts `SellWizard mode=edit` with boot error UI. |
+| Fix | Full wizard parity for vehicle/plate fields + media; owner/status gates |
 | Owner | Web |
-| Effort | S (error) / L (full edit) |
-| Evidence | CODE |
+| Evidence | P5-9 commit |
 
 ### BUG-015 — Dashboard pending approvals not deep-linked
 | Field | Detail |

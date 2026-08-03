@@ -12,7 +12,7 @@
 | TD-05 | Owner-only analytics gating | Medium | Privacy + clearer seller dashboard later | P2 fix or 0.4.x | API/Web |
 | TD-06 | Status copy variants (owner vs visitor) | Low | Cleaner public UX | P3 | Web |
 | TD-07 | Multi-status seed fixtures for QA | Medium | Faster RC sign-off | Internal testing prep | Platform |
-| TD-08 | Edit listing → deeper sell-wizard reuse | Medium | Avoid dual edit models | Post-0.4 | Web |
+| TD-08 | Edit listing → deeper sell-wizard reuse | Medium | ~~Avoid dual edit models~~ **CLOSED in 0.5 / P5-9** | — | Web |
 | TD-09 | Favorites server sync architecture | High | Required for public “saved” UX | Before public beta | API + Web |
 | TD-10 | Mobile nav a11y + touch carousel | Low | Accessibility bar | P3 / a11y pass | Web |
 | TD-11 | Remove or gate `/media/demo` | Low | Cleaner prod surface | Anytime | Web |

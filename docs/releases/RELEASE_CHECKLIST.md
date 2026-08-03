@@ -17,7 +17,7 @@ Use this checklist for **every** numbered release document in this folder. A rel
 | [0.3](./RELEASE_0.3_MEDIA.md) | Media | R2 / MediaAsset pipeline |
 | [0.4](./RELEASE_0.4_MARKETPLACE.md) | Marketplace (closed beta) | Vehicles/plates, search, sell, web/admin/mobile browse |
 | [0.4 Search](./RELEASE_0.4_SEARCH_DISCOVERY.md) | Search & Discovery | **FROZEN** — Postgres FTS vehicle path + URL SSOT (`search-0.4-freeze`) |
-| [0.5](./RELEASE_0.5_MARKETPLACE.md) | Marketplace & Listings | Production-ready listings harden (extend 0.4; do not rebuild) |
+| [0.5](./RELEASE_0.5_MARKETPLACE.md) | Marketplace & Listings | **FROZEN** — sell/draft/quality/media trust/edit/manage (`marketplace-0.5-freeze`) |
 | [0.6](./RELEASE_0.6_MESSAGING.md) | Messaging | Chat, notifications, moderation hooks |
 | [0.7](./RELEASE_0.7_PAYMENTS.md) | Payments | Live payments/escrow/subscriptions (future) |
 | [0.8](./RELEASE_0.8_TRUST_VERIFICATION.md) | Trust & Verification | Verification / trust UX (stub) |

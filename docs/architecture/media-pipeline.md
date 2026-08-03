@@ -1,6 +1,7 @@
 # Media Pipeline Architecture (Release 0.5)
 
-**Status:** Normative for Release **0.5** — **P5-4 implemented** (awaiting approval)  
+**Status:** **FROZEN** with Release **0.5** (`marketplace-0.5-freeze`) — P5-4 implemented  
+
 **Baseline:** Media platform Release **0.3** + Sprint 17 bridge  
 **Historical:** [`../media-architecture.md`](../media-architecture.md)  
 **Master release:** [`../releases/RELEASE_0.5_MARKETPLACE.md`](../releases/RELEASE_0.5_MARKETPLACE.md)  

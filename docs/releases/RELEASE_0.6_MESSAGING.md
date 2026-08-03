@@ -5,7 +5,8 @@
 **Production intent:** Listing-scoped inquiry chat + notifications for marketplace trust  
 **Master checklist:** [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)
 
-> **Roadmap note (2026-08-03):** Formerly numbered **0.5**. Renumbered to **0.6** so Release **0.5** can mean production Marketplace & Listings. See [`RELEASE_0.5_MARKETPLACE.md`](./RELEASE_0.5_MARKETPLACE.md).
+> **Roadmap note (2026-08-03):** Formerly numbered **0.5**. Renumbered to **0.6** so Release **0.5** can mean production Marketplace & Listings.  
+> **Dependency:** Release **0.5 Marketplace & Listings** is **FROZEN** (`marketplace-0.5-freeze`) — see [`RELEASE_0.5_MARKETPLACE.md`](./RELEASE_0.5_MARKETPLACE.md).
 
 ---
 
@@ -65,7 +66,7 @@
 | Dependency | Need |
 | --- | --- |
 | 0.2 Authentication | Identity + permissions (FROZEN) |
-| 0.5 Marketplace & Listings | Production-ready listings for listing-scoped threads |
+| 0.5 Marketplace & Listings | **FROZEN** — listings for listing-scoped threads (`marketplace-0.5-freeze`) |
 | 0.4 Search freeze | Discovery unchanged |
 | Redis (optional/as used) | Adapter/support if presence/pubsub relies on it |
 | Content policy / runbook | Abuse response |

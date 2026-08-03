@@ -22,6 +22,7 @@ Launch a trusted Iraq marketplace for **vehicles and plates** as classifieds, wi
 | Auth + RBAC | **FROZEN** — Web Firebase phone → Nest JWT/refresh; permissions enum (`RELEASE_0.2`) |
 | Vehicles & plates domain split | Sprint 20 APIs + admin/web surfaces |
 | Search & discovery | **FROZEN** — Postgres FTS vehicle web path + URL SSOT (`RELEASE_0.4_SEARCH_DISCOVERY.md`, tag `search-0.4-freeze`) |
+| Marketplace & listings (production harden) | **FROZEN** — Sell/draft/quality/media trust/edit/manage (`RELEASE_0.5_MARKETPLACE.md`, tag `marketplace-0.5-freeze`) |
 | Media platform | MediaAsset + R2 + listing attach |
 | Mobile consumer app | Expo design system, auth, home, detail, create, manage |
 | Web marketplace | Browse/search/sell/chat/favorites/notifications |
@@ -40,8 +41,8 @@ Launch a trusted Iraq marketplace for **vehicles and plates** as classifieds, wi
 | 0.2 | Authentication | **FROZEN** (`auth-0.2-freeze`) |
 | 0.3 | Media | Shipped; trust gap closed under **0.5** |
 | 0.4 | Marketplace (closed beta) | Closed-beta GO; Search sub-freeze **FROZEN** |
-| **0.5** | **Marketplace & Listings** | **Current** — architecture awaiting approval ([`RELEASE_0.5_MARKETPLACE.md`](../releases/RELEASE_0.5_MARKETPLACE.md)) |
-| 0.6 | Messaging | Next product train (was 0.5) |
+| **0.5** | **Marketplace & Listings** | **FROZEN** (`marketplace-0.5-freeze`) |
+| 0.6 | Messaging | **Current** next product train (was 0.5) |
 | 0.7 | Payments | Future (was 0.6) |
 | 0.8 | Trust & Verification | Stub |
 | 0.9 | Dealer Platform | Stub |
@@ -53,13 +54,13 @@ Launch a trusted Iraq marketplace for **vehicles and plates** as classifieds, wi
 
 | Priority | Item | Outcome |
 | --- | --- | --- |
-| P0 | Keep frozen Auth + Search stable | No drive-by refactors |
-| P1 | **Release 0.5 — Marketplace & Listings** | Production-ready sell/media/draft/edit/completeness — extend 0.4; see architecture under `docs/architecture/` |
-| P1 | Release 0.4 RC follow-up | Closed-beta invites; remaining P1s absorbed into 0.5 where listed |
+| P0 | Keep frozen Auth + Search + Marketplace 0.5 stable | No drive-by refactors; hotfixes only |
+| P1 | **Release 0.6 — Messaging** | Chat, notifications, moderation hooks on real listings |
+| P1 | Staging smoke for 0.5 marketplace | Ops prerequisite recorded in production report |
 | P2 | Mobile Firebase phone auth (0.2 Phase D) | Deferred — do not reopen web auth freeze |
 | P2 | Outbox / async workers | Replace Alpha in-process timers where needed |
 | P2 | CI completeness | Add mobile lint/typecheck (and tests where stable) to CI |
-| P2 | Mobile sell host = web plugin parity | Deferred past 0.5 (domain create remains canonical) |
+| P2 | Mobile sell host = web plugin parity | Deferred (0.5 freeze backlog) |
 
 ---
 
@@ -88,7 +89,8 @@ Feature flags / env gates (concept from deployment docs): keep billing/auctions/
 - Treating legacy mobile `/sell/wizard` (`/v1/listings`) as the future create path  
 - **Authentication refactors** while Release 0.2 is **FROZEN** (see deferred list in `RELEASE_0.2_AUTHENTICATION.md`)  
 - **Search & Discovery refactors** while Priority 4 is **FROZEN** (see deferred list in `RELEASE_0.4_SEARCH_DISCOVERY.md`)  
-- **Marketplace rebuild** — Release 0.5 extends existing sell/listings; does not replace the hub  
+- **Marketplace & Listings refactors** while Release 0.5 is **FROZEN** (see deferred list in `RELEASE_0.5_MARKETPLACE.md`)  
+- **Marketplace rebuild** — Release 0.5 extended existing sell/listings; does not replace the hub  
 
 ---
 

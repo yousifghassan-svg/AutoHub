@@ -26,7 +26,7 @@
 | Auth (0.2) | **FROZEN** — Firebase phone → JWT; no dev bypass |
 | Media (0.3) | Upload + attach; trust items closed under **0.5** or waived |
 | Marketplace closed beta (0.4) | Vehicles + plates baseline; Search **FROZEN** |
-| Marketplace & Listings (0.5) | Production-ready sell/media/draft/edit/completeness |
+| Marketplace & Listings (0.5) | **FROZEN** — sell/media/draft/edit/completeness (`marketplace-0.5-freeze`) |
 | Messaging (0.6) | Listing chat + reports/blocks + basic notifications |
 | Platforms | Production web + API + admin; mobile on App Store / Play (or staged soft launch plan) |
 | Locale/money | Arabic-primary RTL; IQD default; USD supported where built |

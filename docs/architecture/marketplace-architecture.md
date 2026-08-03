@@ -1,6 +1,7 @@
 # Marketplace Architecture (Release 0.5)
 
-**Status:** Normative for Release **0.5 Marketplace & Listings**  
+**Status:** **FROZEN** with Release **0.5** (`marketplace-0.5-freeze`)  
+
 **Baseline:** Closed-beta marketplace shipped under Release **0.4** (extend, do not rebuild)  
 **Master release:** [`../releases/RELEASE_0.5_MARKETPLACE.md`](../releases/RELEASE_0.5_MARKETPLACE.md)  
 **Frozen siblings:** Auth [`RELEASE_0.2`](../releases/RELEASE_0.2_AUTHENTICATION.md) · Search [`RELEASE_0.4_SEARCH_DISCOVERY`](../releases/RELEASE_0.4_SEARCH_DISCOVERY.md)
@@ -173,4 +174,4 @@ Seller attach must prefer `mediaAssetId`; bare `r2Key` for non-staff is deprecat
 
 ## Production freeze criteria
 
-See Release 0.5 freeze section. Marketplace 0.5 freezes when P5-1…P5-9 AC pass, audit clean, tag `marketplace-0.5-freeze` pushed, deferred items listed only in the release backlog.
+**FROZEN** (2026-08-04) — tag `marketplace-0.5-freeze`. See [`../releases/RELEASE_0.5_MARKETPLACE.md`](../releases/RELEASE_0.5_MARKETPLACE.md). Do not refactor marketplace sell/manage/edit/media-trust paths except production hotfixes. Deferred items live only in the release deferred list + tech debt companion.
