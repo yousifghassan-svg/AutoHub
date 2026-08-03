@@ -3,15 +3,35 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
+import {
+  hrefWithNext,
+  resolveLoginReturn,
+} from '@/features/auth/domain/login-return';
+import { safeNextPath } from '@/features/auth/domain/safe-next-path';
 import { ProfileForm } from '@/features/profile/components/ProfileForm';
+
+function readNextFromWindow(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return safeNextPath(new URLSearchParams(window.location.search).get('next'));
+  } catch {
+    return null;
+  }
+}
 
 export default function ProfileSetupPage() {
   const router = useRouter();
   const { status, session, completeProfile } = useAuth();
 
   useEffect(() => {
-    if (status === 'unauthenticated') router.replace('/login');
-    if (status === 'authenticated') router.replace('/profile');
+    const next = readNextFromWindow();
+    if (status === 'unauthenticated') {
+      router.replace(hrefWithNext('/login', next));
+      return;
+    }
+    if (status === 'authenticated') {
+      router.replace(resolveLoginReturn(next, '/profile'));
+    }
   }, [status, router]);
 
   if (status === 'bootstrapping' || status === 'unauthenticated' || status === 'authenticated') {
@@ -38,7 +58,7 @@ export default function ProfileSetupPage() {
           submitLabel="Continue"
           onSubmit={async (input) => {
             await completeProfile(input);
-            router.replace('/');
+            router.replace(resolveLoginReturn(readNextFromWindow(), '/'));
           }}
         />
       </div>

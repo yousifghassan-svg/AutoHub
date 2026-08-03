@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { loadVerification } from '@/features/auth/data/verification-storage';
+import {
+  hrefWithNext,
+  resolveLoginReturn,
+} from '@/features/auth/domain/login-return';
 import { safeNextPath } from '@/features/auth/domain/safe-next-path';
 import { Button, Input } from '@/components/ui';
 import { config } from '@/lib/config';
@@ -80,8 +84,7 @@ export default function OtpPage() {
 
   useEffect(() => {
     if (status !== 'authenticated') return;
-    const next = safeNextPath(readQuery('next'));
-    router.replace(next ?? '/');
+    router.replace(resolveLoginReturn(readQuery('next'), '/'));
   }, [status, router]);
 
   const onResend = async () => {
@@ -118,9 +121,14 @@ export default function OtpPage() {
       const session = await verifyOtp(trimmed);
       const next = safeNextPath(readQuery('next'));
       if (!session.profileSetupComplete || next === '/profile-setup') {
-        router.replace('/profile-setup');
+        router.replace(
+          hrefWithNext(
+            '/profile-setup',
+            next && next !== '/profile-setup' ? next : null,
+          ),
+        );
       } else {
-        router.replace(next ?? '/');
+        router.replace(resolveLoginReturn(next, '/'));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code');

@@ -71,13 +71,11 @@ Effort key: **S** ≤ 0.5 day · **M** 0.5–2 days · **L** 2–5 days · **XL*
 | Field | Detail |
 | --- | --- |
 | Class | P1 |
-| Impact | Unauthenticated sellers sent to `/login` without `?next=/sell`; friction and abandoned drafts. |
-| Reproduction | Logged out → `/sell` → redirected to `/login` (no next). After login, not returned to sell. |
-| Root cause | `SellWizard` uses `router.replace('/login')` without next param (unlike my-listings/messages). |
-| Recommended fix | Redirect to `/login?next=/sell` (preserve query if any). |
+| Status | **CLOSED** (Release 0.5 / P5-1) |
+| Impact | ~~Unauthenticated sellers sent to `/login` without `?next=/sell`~~ Return path restored via `hrefWithNext` + profile-setup `next` passthrough. |
+| Fix | `SellWizard` → `/login?next=/sell`; OTP → profile-setup preserves `next`; draft localStorage unchanged |
 | Owner | Web |
-| Effort | S |
-| Evidence | CODE |
+| Evidence | P5-1 commit |
 
 ### BUG-006 — Owner delete has no confirmation
 | Field | Detail |

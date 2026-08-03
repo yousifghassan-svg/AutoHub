@@ -10,6 +10,7 @@ import {
   type ComponentType,
 } from 'react';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { hrefWithNext } from '@/features/auth/domain/login-return';
 import { Button, Skeleton } from '@/components/ui';
 import { useDomainMutations } from '@/features/listings/hooks/useDomainMutations';
 import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch';
@@ -93,8 +94,13 @@ export function SellWizard() {
   );
 
   useEffect(() => {
-    if (status === 'unauthenticated') router.replace('/login');
-    if (status === 'needs_profile') router.replace('/profile-setup');
+    if (status === 'unauthenticated') {
+      router.replace(hrefWithNext('/login', '/sell'));
+      return;
+    }
+    if (status === 'needs_profile') {
+      router.replace(hrefWithNext('/profile-setup', '/sell'));
+    }
   }, [status, router]);
 
   useEffect(() => {
@@ -292,6 +298,7 @@ export function SellWizard() {
               type="button"
               disabled={!canNext || busy}
               onClick={() => {
+                if (!canNext || busy) return;
                 const next = workflow.steps[stepIndex + 1];
                 if (next) setStepId(next.id);
               }}
