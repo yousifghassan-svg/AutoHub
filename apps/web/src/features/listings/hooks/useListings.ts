@@ -42,11 +42,26 @@ export function useListingDetail(id: string) {
   });
 }
 
-export function useMyListings(status: 'ALL' | ListingStatus) {
+export type MyListingsQuery = {
+  status: 'ALL' | ListingStatus;
+  keyword?: string;
+  sortBy?: ListQuery['sortBy'];
+  sortOrder?: ListQuery['sortOrder'];
+};
+
+export function useMyListings(input: 'ALL' | ListingStatus | MyListingsQuery) {
+  const opts: MyListingsQuery =
+    typeof input === 'object' && input != null && 'status' in input
+      ? input
+      : { status: input as 'ALL' | ListingStatus };
+
   return useListingsInfinite(
     {
       mine: true,
-      status: status === 'ALL' ? undefined : status,
+      status: opts.status === 'ALL' ? undefined : opts.status,
+      keyword: opts.keyword?.trim() || undefined,
+      sortBy: opts.sortBy ?? 'createdAt',
+      sortOrder: opts.sortOrder ?? 'desc',
       pageSize: 20,
     },
     true,

@@ -15,7 +15,7 @@ const STATUS_META: Record<ListingStatus, Omit<ListingStatusMeta, 'status'>> = {
     tone: 'neutral',
   },
   PENDING: {
-    label: 'Pending',
+    label: 'Pending Review',
     description: 'Waiting for review before it appears publicly.',
     tone: 'warning',
   },
@@ -54,16 +54,26 @@ export function getListingStatusMeta(
   return { status: key, ...STATUS_META[key] };
 }
 
-/** Badge + short status description for marketplace detail / owner surfaces. */
+/** Badge + optional short status description for marketplace / manage surfaces. */
 export function ListingStatusBadge({
   status,
   className,
+  compact = false,
 }: {
   status: string | null | undefined;
   className?: string;
+  /** Badge only — used on manage cards. */
+  compact?: boolean;
 }) {
   const meta = getListingStatusMeta(status);
   if (!meta) return null;
+  if (compact) {
+    return (
+      <span className={className}>
+        <Badge tone={meta.tone}>{meta.label}</Badge>
+      </span>
+    );
+  }
   return (
     <div className={className}>
       <Badge tone={meta.tone}>{meta.label}</Badge>

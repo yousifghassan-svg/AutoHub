@@ -36,6 +36,7 @@ export type ListingCardModel = {
   status?: string;
   viewsCount?: number;
   favoritesCount?: number;
+  updatedAt?: string | null;
   plateDetails?: ListingPlateModel | null;
   dealerBadge?: boolean;
 };
@@ -144,4 +145,53 @@ export const STATUS_TABS: Array<{ id: 'ALL' | ListingStatus; label: string }> = 
   { id: 'SOLD', label: 'Sold' },
   { id: 'ARCHIVED', label: 'Archived' },
   { id: 'REJECTED', label: 'Rejected' },
+];
+
+/** Manage dashboard status filters (P5-8) — primary groups first. */
+export const MANAGE_STATUS_TABS: Array<{
+  id: 'ALL' | ListingStatus;
+  label: string;
+}> = [
+  { id: 'ALL', label: 'All' },
+  { id: 'ACTIVE', label: 'Active' },
+  { id: 'DRAFT', label: 'Draft' },
+  { id: 'PENDING', label: 'Pending Review' },
+  { id: 'REJECTED', label: 'Rejected' },
+  { id: 'SOLD', label: 'Sold' },
+  { id: 'ARCHIVED', label: 'Archived' },
+  { id: 'RESERVED', label: 'Reserved' },
+];
+
+export type ManageSortOption = {
+  id: string;
+  label: string;
+  sortBy: 'createdAt' | 'primaryPrice' | 'publishedAt';
+  sortOrder: 'asc' | 'desc';
+};
+
+export const MANAGE_SORT_OPTIONS: ManageSortOption[] = [
+  {
+    id: 'newest',
+    label: 'Newest first',
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+  },
+  {
+    id: 'oldest',
+    label: 'Oldest first',
+    sortBy: 'createdAt',
+    sortOrder: 'asc',
+  },
+  {
+    id: 'price_high',
+    label: 'Price: high to low',
+    sortBy: 'primaryPrice',
+    sortOrder: 'desc',
+  },
+  {
+    id: 'price_low',
+    label: 'Price: low to high',
+    sortBy: 'primaryPrice',
+    sortOrder: 'asc',
+  },
 ];

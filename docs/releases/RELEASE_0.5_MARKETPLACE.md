@@ -241,14 +241,15 @@ Complexity: **S** ≤0.5d · **M** 0.5–2d · **L** 2–5d
 
 | Field | Detail |
 | --- | --- |
-| Objective | Manage UX polish |
-| Deliverables | Web delete confirm (BUG-006); Action Registry unchanged |
-| Files | `ListingOwnerActions.tsx`, `my-listings/page.tsx` |
-| API / DB | None |
-| Test plan | Confirm cancel/confirm; soft-delete |
-| Acceptance | No accidental delete |
+| Status | **Implemented — awaiting approval** |
+| Objective | Modern seller manage dashboard (reuse list/status/delete APIs) |
+| Deliverables | Status filters; manage cards (cover/price/status/updated/views/fav); search/sort; delete confirm (BUG-006); Preview/Continue draft/Archive; Duplicate coming-soon placeholder |
+| Files | `my-listings/page.tsx`, `ManagedListingCard`, `ListingOwnerActions`, `listing-actions`, mappers/types |
+| API / DB | None (existing `GET /v1/listings?mine=true`) |
+| Test plan | Action registry labels; relative updated; delete confirm manual |
+| Acceptance | No accidental delete; manage dashboard usable on mobile widths |
 | Risks | Low |
-| Complexity | **S** |
+| Complexity | **M** |
 
 ### P5-9 — Edit Listing
 

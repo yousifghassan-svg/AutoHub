@@ -15,6 +15,8 @@ export type ApiListing = {
   isVerified: boolean;
   viewsCount?: number;
   favoritesCount?: number;
+  updatedAt?: string | null;
+  createdAt?: string | null;
   publishedAt?: string | null;
   categoryCode?: string;
   domain?: 'VEHICLE' | 'PLATE';
@@ -181,6 +183,7 @@ export function mapListingToCard(
     status: listing.status,
     viewsCount: listing.viewsCount,
     favoritesCount: listing.favoritesCount,
+    updatedAt: listing.updatedAt ?? listing.createdAt ?? null,
     dealerBadge: listing.isVerified,
     plateDetails: listing.plateDetails
       ? {

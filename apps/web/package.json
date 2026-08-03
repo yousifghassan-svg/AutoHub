@@ -18,7 +18,8 @@
     "test:media-sell": "pnpm dlx tsx --test src/features/media/lib/ready-asset-ids.spec.ts src/features/media/lib/client-media-validation.spec.ts",
     "test:draft-engine": "pnpm dlx tsx --test src/features/sell/core/draft-store.spec.ts",
     "test:listing-quality": "pnpm dlx tsx --test src/features/sell/quality/adapt-wizard-state.spec.ts",
-    "test:publish-flow": "pnpm dlx tsx --test src/features/sell/lib/publish-flow.spec.ts"
+    "test:publish-flow": "pnpm dlx tsx --test src/features/sell/lib/publish-flow.spec.ts",
+    "test:my-listings": "pnpm dlx tsx --test src/features/listings/lib/relative-time.spec.ts src/features/listings/shared/listing-actions.spec.ts"
   },
   "dependencies": {
     "@autohub/types": "workspace:*",
