@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ListingStatus } from '@autohub/database';
 import { PlatesService } from './plates.service';
 import { Permission } from '../../auth/domain/permissions';
@@ -157,6 +161,39 @@ describe('PlatesService', () => {
       }),
     );
     expect(listings.changeStatus).not.toHaveBeenCalled();
+  });
+
+  describe('content update lifecycle (SEC-002)', () => {
+    it.each([
+      ListingStatus.ACTIVE,
+      ListingStatus.DRAFT,
+      ListingStatus.REJECTED,
+    ])('allows content update when status is %s', async (status) => {
+      plates.findById.mockResolvedValue({ ...plateListing, status });
+      plates.updateWithDetails.mockResolvedValue({
+        ...plateListing,
+        status,
+        translations: plateListing.translations,
+      });
+
+      await expect(
+        service.update('P1', owner, { title: 'Updated title' }),
+      ).resolves.toBeDefined();
+      expect(plates.updateWithDetails).toHaveBeenCalled();
+    });
+
+    it.each([ListingStatus.SOLD, ListingStatus.ARCHIVED])(
+      'rejects content update when status is %s',
+      async (status) => {
+        plates.findById.mockResolvedValue({ ...plateListing, status });
+
+        await expect(
+          service.update('P1', owner, { title: 'Updated title' }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(plates.updateWithDetails).not.toHaveBeenCalled();
+      },
+    );
   });
 
   it('lists only ACTIVE plates for anonymous callers', async () => {

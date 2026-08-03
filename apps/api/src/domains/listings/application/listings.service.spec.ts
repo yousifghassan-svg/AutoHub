@@ -125,6 +125,32 @@ describe('ListingsService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it.each([ListingStatus.SOLD, ListingStatus.ARCHIVED])(
+    'rejects content update when status is %s (SEC-002)',
+    async (status) => {
+      listings.findById.mockResolvedValue({
+        id: 'L1',
+        sellerId: owner.id,
+        status,
+        city: { governorateId: 'g1' },
+        translations: [],
+        media: [],
+        category: {
+          id: 'c1',
+          code: 'CAR',
+          slug: 'cars',
+          nameEn: 'Cars',
+          nameAr: 'سيارات',
+        },
+      });
+
+      await expect(
+        service.update('L1', owner, { title: 'New title' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(listings.updateWithTranslation).not.toHaveBeenCalled();
+    },
+  );
+
   it('allows admin to update any listing', async () => {
     const listing = {
       id: 'L1',

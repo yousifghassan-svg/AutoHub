@@ -1,6 +1,8 @@
 import { ListingStatus } from '@autohub/database';
 import {
   canTransitionStatus,
+  isListingContentEditable,
+  listingContentEditBlockedMessage,
   requiresModerationApproval,
 } from './listing-status';
 
@@ -36,4 +38,27 @@ describe('listing status transitions', () => {
       requiresModerationApproval(ListingStatus.PENDING, ListingStatus.REJECTED),
     ).toBe(true);
   });
+});
+
+describe('listing content editability (SEC-002)', () => {
+  it.each([
+    ListingStatus.ACTIVE,
+    ListingStatus.DRAFT,
+    ListingStatus.REJECTED,
+    ListingStatus.PENDING,
+    ListingStatus.RESERVED,
+  ])('allows content edit when status is %s', (status) => {
+    expect(isListingContentEditable(status)).toBe(true);
+    expect(listingContentEditBlockedMessage(status)).toBeNull();
+  });
+
+  it.each([ListingStatus.SOLD, ListingStatus.ARCHIVED])(
+    'blocks content edit when status is %s',
+    (status) => {
+      expect(isListingContentEditable(status)).toBe(false);
+      expect(listingContentEditBlockedMessage(status)).toBe(
+        `Cannot edit listing in status ${status}`,
+      );
+    },
+  );
 });

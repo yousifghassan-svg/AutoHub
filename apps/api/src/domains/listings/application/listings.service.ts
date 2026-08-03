@@ -21,6 +21,7 @@ import {
 } from '../domain/listing.policies';
 import {
   canTransitionStatus,
+  listingContentEditBlockedMessage,
   requiresModerationApproval,
 } from '../domain/listing-status';
 import { parseApiMediaType, toApiMediaType } from '../domain/media-type';
@@ -194,8 +195,9 @@ export class ListingsService {
     if (!listing) throw new NotFoundException('Listing not found');
     this.assertCanManage(listing, actor);
 
-    if (listing.status === ListingStatus.SOLD || listing.status === ListingStatus.ARCHIVED) {
-      throw new BadRequestException(`Cannot edit listing in status ${listing.status}`);
+    const contentBlocked = listingContentEditBlockedMessage(listing.status);
+    if (contentBlocked) {
+      throw new BadRequestException(contentBlocked);
     }
 
     if (input.cityId || input.countryId) {

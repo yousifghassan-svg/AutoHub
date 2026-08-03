@@ -13,6 +13,7 @@ import {
 import type { AuthenticatedUser } from '../../auth/domain/auth.types';
 import { ListingsService } from '../../listings/application/listings.service';
 import { CurrenciesService } from '../../currencies/application/currencies.service';
+import { listingContentEditBlockedMessage } from '../../listings/domain/listing-status';
 import { uniqueSlug } from '../../listings/infrastructure/slug.util';
 import { canManagePlate, canViewPlate } from '../domain/plate.policies';
 import {
@@ -142,6 +143,11 @@ export class PlatesService {
     const existing = await this.plates.findById(id);
     if (!existing) throw new NotFoundException('Plate listing not found');
     this.assertCanManage(existing, actor);
+
+    const contentBlocked = listingContentEditBlockedMessage(existing.status);
+    if (contentBlocked) {
+      throw new BadRequestException(contentBlocked);
+    }
 
     const regionCode = input.regionCode ?? existing.plateDetails?.regionCode ?? '';
     const series = (input.series ?? existing.plateDetails?.series ?? '').toUpperCase();

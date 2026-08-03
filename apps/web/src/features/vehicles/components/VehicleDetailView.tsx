@@ -17,6 +17,7 @@ import {
   TextArea,
 } from '@/components/ui';
 import { useRouter } from 'next/navigation';
+import { serializeJsonLdForHtmlScript } from '@/lib/seo/serialize-json-ld';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { createChatRepository } from '@/features/chat/data/chat.repository';
 import { useFavorites } from '@/features/favorites/favorites-store';
@@ -498,7 +499,7 @@ export function VehicleDetailView({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: serializeJsonLdForHtmlScript({
             '@context': 'https://schema.org',
             '@type': 'Vehicle',
             name: listing.title,

@@ -37,3 +37,21 @@ export function requiresModerationApproval(
     (from === ListingStatus.PENDING && to === ListingStatus.REJECTED)
   );
 }
+
+/**
+ * Content PATCH (title/price/details/media metadata) is forbidden after sale
+ * or archive. Shared by vehicles (via ListingsService) and plates.
+ */
+export function isListingContentEditable(status: ListingStatus): boolean {
+  return (
+    status !== ListingStatus.SOLD && status !== ListingStatus.ARCHIVED
+  );
+}
+
+/** Human-readable reason when {@link isListingContentEditable} is false. */
+export function listingContentEditBlockedMessage(
+  status: ListingStatus,
+): string | null {
+  if (isListingContentEditable(status)) return null;
+  return `Cannot edit listing in status ${status}`;
+}
