@@ -34,6 +34,10 @@ export function buildCreatePlateBody(state: SellSubmitArgs['state']) {
 
 export type PlateSubmitDeps = {
   createPlate: (body: Record<string, unknown>) => Promise<{ id: string }>;
+  updatePlate: (
+    id: string,
+    body: Record<string, unknown>,
+  ) => Promise<{ id: string }>;
   changeStatus: (input: {
     id: string;
     status: 'PENDING' | 'DRAFT';
@@ -44,15 +48,15 @@ export async function submitPlateListing(
   deps: PlateSubmitDeps,
   args: SellSubmitArgs,
 ): Promise<SellSubmitResult> {
-  const created = await deps.createPlate(buildCreatePlateBody(args.state));
-  if (
-    args.state.imageAssetIds.length ||
-    args.state.videoAssetIds.length
-  ) {
-    await args.attachMedia(created.id);
-  }
+  const body = buildCreatePlateBody(args.state);
+  const listingId = args.listingId
+    ? (await deps.updatePlate(args.listingId, body)).id
+    : (await deps.createPlate(body)).id;
+
+  await args.attachMedia(listingId);
+
   if (args.submitForReview) {
-    await deps.changeStatus({ id: created.id, status: 'PENDING' });
+    await deps.changeStatus({ id: listingId, status: 'PENDING' });
   }
-  return { listingId: created.id };
+  return { listingId };
 }

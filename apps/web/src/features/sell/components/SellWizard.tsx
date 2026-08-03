@@ -9,6 +9,11 @@ import {
   useState,
   type ComponentType,
 } from 'react';
+import {
+  pendingMediaAssetIds,
+  withSyncedMediaAssetIds,
+  type ListingDraftEnvelope,
+} from '@autohub/utils';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { hrefWithNext } from '@/features/auth/domain/login-return';
 import { Button, Skeleton } from '@/components/ui';
@@ -16,8 +21,10 @@ import { useDomainMutations } from '@/features/listings/hooks/useDomainMutations
 import { useCatalogFilters } from '@/features/search/hooks/useMarketplaceSearch';
 import {
   clearDraftStorage,
+  createFreshDraftSession,
   loadDraftFromStorage,
   saveDraftToStorage,
+  type DraftSession,
 } from '../core/draft-store';
 import type {
   SellCommonState,
@@ -58,11 +65,17 @@ export function SellWizard() {
   const [error, setError] = useState<string | null>(null);
   const [draftRestored, setDraftRestored] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [session, setSession] = useState<DraftSession>(() =>
+    createFreshDraftSession(),
+  );
   const [state, setState] = useState<SellWizardState>(() => ({
     ...DEFAULT_COMMON_STATE,
     domainData: fallbackPlugin.createInitialDomainData(),
   }));
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const envelopeRef = useRef<ListingDraftEnvelope | null>(null);
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
   const prevCategoryRef = useRef(state.categoryCode);
 
   const plugin = resolvePluginFromList(plugins, state.categoryCode);
@@ -109,12 +122,15 @@ export function SellWizard() {
     if (hydrated) {
       setState(hydrated.state);
       setStepId(hydrated.stepId);
+      setSession(hydrated.session);
       prevCategoryRef.current = hydrated.state.categoryCode;
+      envelopeRef.current = null;
     } else {
       setState({
         ...DEFAULT_COMMON_STATE,
         domainData: fallbackPlugin.createInitialDomainData(),
       });
+      setSession(createFreshDraftSession());
     }
     setDraftRestored(true);
   }, [draftRestored, fallbackPlugin]);
@@ -151,7 +167,19 @@ export function SellWizard() {
     if (!draftRestored) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveDraftToStorage(plugin, stepId, state);
+      const saved = saveDraftToStorage(
+        plugin,
+        stepId,
+        state,
+        sessionRef.current,
+        envelopeRef.current,
+      );
+      envelopeRef.current = saved;
+      setSession((prev) =>
+        prev.revision === saved.revision && prev.localId === saved.localId
+          ? prev
+          : { ...prev, revision: saved.revision, localId: saved.localId },
+      );
     }, 500);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -180,30 +208,35 @@ export function SellWizard() {
 
   const displayTitle = state.title.trim() || 'Untitled';
 
-  const attachMedia = useCallback(
+  const attachPendingMedia = useCallback(
     async (listingId: string) => {
-      const assets = [
-        ...state.imageAssetIds.map((mediaAssetId) => ({
-          mediaAssetId,
-          mediaType: 'IMAGE' as const,
-        })),
-        ...state.videoAssetIds.map((mediaAssetId) => ({
-          mediaAssetId,
-          mediaType: 'VIDEO' as const,
-        })),
-      ];
-      for (let i = 0; i < assets.length; i++) {
-        const item = assets[i];
-        if (!item) continue;
+      const pending = pendingMediaAssetIds(
+        {
+          imageAssetIds: state.imageAssetIds,
+          videoAssetIds: state.videoAssetIds,
+        },
+        session.meta,
+      );
+      if (!pending.length) return;
+
+      const imageSet = new Set(state.imageAssetIds);
+      for (let i = 0; i < pending.length; i++) {
+        const mediaAssetId = pending[i];
+        if (!mediaAssetId) continue;
         await addMedia.mutateAsync({
           listingId,
-          mediaAssetId: item.mediaAssetId,
-          mediaType: item.mediaType,
+          mediaAssetId,
+          mediaType: imageSet.has(mediaAssetId) ? 'IMAGE' : 'VIDEO',
           sortOrder: i,
         });
       }
+
+      setSession((prev) => ({
+        ...prev,
+        meta: withSyncedMediaAssetIds(prev.meta, pending),
+      }));
     },
-    [addMedia, state.imageAssetIds, state.videoAssetIds],
+    [addMedia, session.meta, state.imageAssetIds, state.videoAssetIds],
   );
 
   const publish = useCallback(
@@ -216,8 +249,39 @@ export function SellWizard() {
 
       setBusy(true);
       try {
-        await plugin.submit({ state, submitForReview, attachMedia });
-        clearDraftStorage();
+        const result = await plugin.submit({
+          state,
+          listingId: session.listingId,
+          submitForReview,
+          attachMedia: attachPendingMedia,
+        });
+
+        if (submitForReview) {
+          clearDraftStorage();
+          envelopeRef.current = null;
+          router.push('/my-listings');
+          return;
+        }
+
+        // Keep local draft for resume; link server DRAFT listing id.
+        const nextSession: DraftSession = {
+          ...sessionRef.current,
+          listingId: result.listingId,
+          syncStatus: 'server_draft',
+          meta: withSyncedMediaAssetIds(sessionRef.current.meta, [
+            ...state.imageAssetIds,
+            ...state.videoAssetIds,
+          ]),
+        };
+        setSession(nextSession);
+        const saved = saveDraftToStorage(
+          plugin,
+          stepId,
+          state,
+          nextSession,
+          envelopeRef.current,
+        );
+        envelopeRef.current = saved;
         router.push('/my-listings');
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Publish failed');
@@ -225,7 +289,14 @@ export function SellWizard() {
         setBusy(false);
       }
     },
-    [attachMedia, plugin, router, state],
+    [
+      attachPendingMedia,
+      plugin,
+      router,
+      session,
+      state,
+      stepId,
+    ],
   );
 
   const StepComponent = resolveStepComponent(currentStep.id, plugin);
@@ -245,7 +316,8 @@ export function SellWizard() {
       <h1 className="section-title">Create listing</h1>
       <p className="mt-2 text-ink-secondary">
         Multi-step wizard with autosaved draft. Progress is saved locally as you
-        go.
+        go
+        {session.listingId ? ' and linked to a server draft.' : '.'}
       </p>
 
       <div className="mt-6 h-2 overflow-hidden rounded-full bg-surface-muted">
@@ -258,7 +330,10 @@ export function SellWizard() {
         <p className="font-medium text-ink-secondary">
           Step {stepIndex + 1} of {workflow.steps.length}: {currentStep.label}
         </p>
-        <p className="text-xs text-ink-secondary">Draft saved automatically</p>
+        <p className="text-xs text-ink-secondary">
+          Draft autosaved
+          {session.listingId ? ' · server linked' : ''}
+        </p>
       </div>
 
       <div className="mt-8 space-y-4 rounded-xl border border-border bg-surface p-6 shadow-card">
@@ -269,6 +344,7 @@ export function SellWizard() {
             displayTitle={displayTitle}
             cityLabel={cityLabel}
             authMode={authMode}
+            hasServerDraft={Boolean(session.listingId)}
           />
         ) : StepComponent ? (
           <StepComponent {...stepProps} />

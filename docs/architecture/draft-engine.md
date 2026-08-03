@@ -1,49 +1,76 @@
 # Draft Engine Architecture (Release 0.5)
 
-**Status:** Normative for Release **0.5**  
+**Status:** Normative for Release **0.5** — **P5-5 implemented** (awaiting approval)  
 **Master release:** [`../releases/RELEASE_0.5_MARKETPLACE.md`](../releases/RELEASE_0.5_MARKETPLACE.md)
+
+---
+
+## P5-5 audit summary
+
+| Existing mechanism | Role | P5-5 decision |
+| --- | --- | --- |
+| Web `autohub.sell.draft` (v1/v2) | Primary web local draft | **Upgrade** to Listing Draft Engine envelope (`schemaVersion: 2` + `listingId` / `revision` / `meta`) |
+| Mobile create `autohub.create.vehicles.v1` / `plates.v1` | Primary mobile multi-draft | **Keep** as domain payloads behind generic `createJsonDraftStore` |
+| Mobile legacy `autohub.sell.drafts` | Competing vehicle wizard | **Deprecate** — `/sell/wizard` redirects to hub |
+| Server `Listing.status = DRAFT` | Optional server snapshot | **Link** via `listingId` on save draft (PATCH on re-save) |
+| Prisma Draft table | — | **Out of scope** (none) |
+
+**Architecture rule:** The Draft Engine knows only generic listing drafts. Vehicles / plates / heavy equipment / future types own schema, validation, and step config inside plugins (`domainData` opaque).
 
 ---
 
 ## Vision
 
-Sellers never lose in-progress listing work across refresh or brief logout, using one coherent model: **client draft snapshot** plus optional **server `Listing.status = DRAFT`**—without inventing a Prisma `Draft` table.
+Sellers never lose in-progress listing work across refresh or brief logout, using one coherent model: **client draft envelope** plus optional **server `Listing.status = DRAFT`**—without inventing a Prisma `Draft` table.
 
 ---
 
 ## Goals
 
-- Document and harden the existing web localStorage draft v2.
-- Align web optional server DRAFT sync with mobile create’s sync pattern where practical.
-- Deprecate dual mobile draft stores for new entry points (create path wins).
-- Preserve legacy web draft v1 remap for upgrade safety.
+- One platform Listing Draft Engine (`@autohub/utils` listing-draft).
+- Local persistence, autosave, resume last step, versioning, revision conflict helpers (future-ready).
+- Web: keep local draft after “Save draft”; clear only after PENDING submit.
+- Mobile: create path remains primary; legacy wizard does not write a second store.
+- Preserve legacy web v1 remap + flat v2 upgrade.
 
 ---
 
 ## Scope
 
-- P5-5 Draft Engine.
-- Web: `apps/web/src/features/sell` draft-store.
-- Mobile: `apps/mobile/src/features/create/data/draft-store.ts` (+ redirect away from legacy sell draft).
-- Server: existing create/update as DRAFT only.
+- P5-5 Draft Engine only.
+- Shared engine in `packages/utils/src/listing-draft`.
+- Web host adapter: `apps/web/src/features/sell/core/draft-store.ts` + `SellWizard`.
+- Mobile: generic list store + legacy redirect.
+- Server: existing create/update as DRAFT only (no `/v1/drafts`).
 
 ---
 
 ## Out of scope
 
 - New `Draft` / `ListingDraft` Prisma model.
-- Cross-device draft sync as a product (would need server draft listing id always—optional later).
+- Multi-device sync product (helpers only).
 - Offline-first CRDT sync.
-- Auth freeze changes (token storage).
+- Publish completeness gates (P5-6/P5-7).
+- AI autofill.
+- Auth freeze changes.
 
 ---
 
-## User journeys
+## Capability matrix
 
-1. **Web local-only:** Seller fills steps → autosave to `localStorage` → refresh restores step + fields.
-2. **Web + server (target harden):** After first authenticated save/create, `listingId` stored in client draft; further patches update server DRAFT.
-3. **Mobile create:** AsyncStorage draft + `syncDraftRemote` to DRAFT listing (baseline).
-4. **Submit:** Client draft cleared (or marked consumed) after successful PENDING transition.
+| Capability | Status |
+| --- | --- |
+| Local draft persistence | **Done** (web localStorage envelope; mobile AsyncStorage lists) |
+| Future server-side drafts | **Ready** (`listingId` + `syncStatus`) |
+| Automatic recovery | **Done** (hydrate on mount / hub resume) |
+| Versioning | **Done** (`schemaVersion` + migrate v1 / flat v2) |
+| Conflict detection | **Future-ready** (`revision`, `detectListingDraftRevisionConflict`) |
+| Autosave | **Done** (debounced web; mobile create ~400ms) |
+| Resume from last step | **Done** (`stepId`) |
+| Multi-device | **Future** (revision compare helpers) |
+| Offline | **Future** (local-first already; sync queue later) |
+| AI-ready metadata | **Done** (`meta` bag; unused by engine) |
+| Mobile compatibility | **Done** (create path + legacy redirect) |
 
 ---
 
@@ -51,23 +78,62 @@ Sellers never lose in-progress listing work across refresh or brief logout, usin
 
 ```mermaid
 flowchart TB
-  UI[Sell_or_Create_UI]
-  Local[Client_draft_store_v2]
+  Host[Sell_host]
+  Engine[ListingDraftEngine_utils]
+  Plugin[Domain_plugin]
+  Local[Client_storage]
   API[POST_PATCH_vehicles_or_plates]
   Listing[Listing_status_DRAFT]
-  UI --> Local
-  UI --> API
+  Host --> Engine
+  Host --> Plugin
+  Engine --> Local
+  Host -->|"listingId optional"| API
+  Plugin -->|"schema validation steps"| Host
   API --> Listing
-  Local -->|"optional listingId"| API
 ```
 
-| Store | Location | Role |
-| --- | --- | --- |
-| Web sell draft v2 | `features/sell` draft-store (`autohub.sell.draft`) | Primary web |
-| Mobile create draft | `src/features/create/data/draft-store.ts` | Primary mobile |
-| Mobile legacy sell draft | `features/sell/data/draft-store.ts` | Deprecate for new flows |
+| Layer | Owns |
+| --- | --- |
+| Draft Engine | Envelope, migrate, revision, pending media meta helpers, autosave helper |
+| Sell host | Storage adapter, plugin resolve, step clamp, when to clear |
+| Domain plugin | `domainData` schema, validators, steps, create/patch payload |
 
-**Server truth for “saved draft listing”:** `Listing` row with `status = DRAFT`, not a separate table.
+**Server truth for “saved draft listing”:** `Listing` row with `status = DRAFT`.
+
+---
+
+## Envelope (canonical)
+
+```ts
+{
+  schemaVersion: 2,
+  localId: string,
+  listingId: string | null,
+  domainId: string,
+  workflowId: string,
+  stepId: string,
+  revision: number,
+  createdAt: string,
+  updatedAt: string,
+  syncStatus: 'local' | 'server_draft' | 'consumed',
+  meta: { syncedMediaAssetIds?: string[], ... },
+  common: ListingDraftCommon,  // listing-generic fields
+  domainData: unknown          // plugin-opaque
+}
+```
+
+Storage key (web): `autohub.sell.draft` (unchanged for upgrade safety).
+
+---
+
+## Clear policy
+
+| Action | Local draft | Server |
+| --- | --- | --- |
+| Autosave mid-wizard | Upsert envelope | None |
+| Save draft | Keep + set `listingId` / `server_draft` | POST create or PATCH |
+| Submit for review | **Clear** | Sync + PENDING |
+| Discard (future) | Clear | Optional soft-delete DRAFT |
 
 ---
 
@@ -80,56 +146,25 @@ flowchart TB
 ## API contracts
 
 - `POST /v1/vehicles` / `POST /v1/plates` create DRAFT (default).
-- `PATCH /v1/vehicles|:plates/:id` update content while DRAFT/allowed statuses.
+- `PATCH /v1/vehicles/:id` / `PATCH /v1/plates/:id` when `listingId` present.
 - No `/v1/drafts` resource in 0.5.
-
----
-
-## Web architecture
-
-- Keep draft v2 schema; document fields + step id.
-- On login return (`?next=/sell`), restore draft before wipe.
-- When server `listingId` present, prefer PATCH over second POST.
-- Clear draft on successful publish.
-
----
-
-## Mobile compatibility
-
-- Domain create remains the sync reference implementation.
-- Legacy wizard entry should not write a second competing draft for the same user intent.
-- Hub continues to surface local drafts for vehicle/plate.
-
----
-
-## AI readiness
-
-- Draft JSON is structured; future “resume assist” can read the same schema.
-- No AI autofill in 0.5.
 
 ---
 
 ## Security considerations
 
-- Client drafts may contain PII (phone in sale info)—do not log draft payloads.
+- Client drafts may contain PII — do not log draft payloads.
 - Server DRAFT listings must not appear in public Search (ACTIVE-only).
 - Only owner can PATCH their DRAFT.
 
 ---
 
-## Performance considerations
-
-- Debounce local autosave; avoid PATCH storms (debounce server sync similarly).
-- Do not load all historical DRAFTs into sell wizard—only active draft id.
-
----
-
 ## Testing strategy
 
-- Unit: v1→v2 remap; serialize/deserialize.
-- Manual: refresh mid-wizard; login round-trip with `next`.
-- API: DRAFT not returned on public list/search.
-- Mobile: create draft survives app reload.
+- Unit: engine migrate / revision / pending media (`@autohub/utils`).
+- Unit: web adapter hydrate / serialize / revision bump.
+- Manual: refresh mid-wizard; save draft keeps local; submit clears; login `?next=/sell`.
+- Mobile: `/sell/wizard` redirects to hub; create drafts still resume.
 
 ---
 

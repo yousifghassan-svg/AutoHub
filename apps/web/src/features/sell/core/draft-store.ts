@@ -1,10 +1,17 @@
 import {
+  createListingDraftEnvelope,
+  parseListingDraft,
+  touchListingDraft,
+  type ListingDraftEnvelope,
+  type ListingDraftMeta,
+  type ListingDraftSyncStatus,
+  type LegacyListingDraftV1,
+} from '@autohub/utils';
+import {
   DEFAULT_COMMON_STATE,
   type LegacySellDraftV1,
-  type PersistedSellDraft,
   type SellCommonState,
   type SellDomainPlugin,
-  type SellDraftV2,
   type SellStepId,
   type SellWizardState,
 } from './types';
@@ -15,97 +22,109 @@ import {
 } from './workflows';
 import { resolveSellDomain } from './registry';
 
+/** Storage key — unchanged for upgrade safety. */
 export const SELL_DRAFT_KEY = 'autohub.sell.draft';
-export const SELL_DRAFT_VERSION = 2 as const;
+
+export type DraftSession = {
+  localId: string;
+  listingId: string | null;
+  revision: number;
+  syncStatus: ListingDraftSyncStatus;
+  meta: ListingDraftMeta;
+};
 
 export type HydratedSellDraft = {
   state: SellWizardState;
   stepId: SellStepId;
   domainId: string;
   workflowId: string;
+  session: DraftSession;
 };
 
-function isLegacyV1(raw: PersistedSellDraft): raw is LegacySellDraftV1 {
-  return raw.version === 1;
-}
-
-function isV2(raw: PersistedSellDraft): raw is SellDraftV2 {
-  return raw.version === 2;
-}
-
-export function commonFromLegacyForm(
-  form: LegacySellDraftV1['form'],
-  imageAssetIds: string[],
-  videoAssetIds: string[],
-): SellCommonState {
+function toCommon(common: SellCommonState): SellCommonState {
   return {
     ...DEFAULT_COMMON_STATE,
-    categoryCode: form.categoryCode ?? DEFAULT_COMMON_STATE.categoryCode,
-    categoryId: form.categoryId ?? '',
-    governorateId: form.governorateId ?? '',
-    cityId: form.cityId ?? '',
-    title: form.title ?? '',
-    description: form.description ?? '',
-    primaryPrice: form.primaryPrice ?? '',
-    currencyCode: form.currencyCode ?? 'IQD',
-    negotiable: false,
-    locationLat: '',
-    locationLng: '',
-    imageAssetIds,
-    videoAssetIds,
+    ...common,
+    imageAssetIds: common.imageAssetIds ?? [],
+    videoAssetIds: common.videoAssetIds ?? [],
   };
 }
 
+function unwrapDomainPayload(domainData: unknown): {
+  raw: unknown;
+  legacy?: LegacySellDraftV1;
+} {
+  if (
+    domainData &&
+    typeof domainData === 'object' &&
+    '__legacyV1' in domainData
+  ) {
+    return {
+      raw: undefined,
+      legacy: (domainData as { __legacyV1: LegacySellDraftV1 }).__legacyV1,
+    };
+  }
+  return { raw: domainData };
+}
+
+function envelopeToHydrated(
+  envelope: ListingDraftEnvelope,
+  fallbackPlugin: SellDomainPlugin,
+): HydratedSellDraft {
+  const active =
+    resolveSellDomain(envelope.common.categoryCode) ?? fallbackPlugin;
+  const workflow = getWorkflow(active.workflowId);
+  const { raw, legacy } = unwrapDomainPayload(envelope.domainData);
+  return {
+    domainId: active.id,
+    workflowId: workflow.id,
+    stepId: clampStepId(envelope.stepId, workflow),
+    state: {
+      ...toCommon(envelope.common as SellCommonState),
+      domainData: active.mapDraftToDomain(raw, legacy),
+    },
+    session: {
+      localId: envelope.localId,
+      listingId: envelope.listingId,
+      revision: envelope.revision,
+      syncStatus: envelope.syncStatus,
+      meta: envelope.meta ?? {},
+    },
+  };
+}
+
+/**
+ * Host adapter over the platform Listing Draft Engine.
+ * Domain resolution stays here; the engine never imports plugins.
+ */
 export function hydrateDraft(
   raw: unknown,
   fallbackPlugin: SellDomainPlugin,
 ): HydratedSellDraft | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const draft = raw as PersistedSellDraft;
-
-  if (isV2(draft)) {
-    const active =
-      resolveSellDomain(draft.common.categoryCode) ?? fallbackPlugin;
-    const workflow = getWorkflow(active.workflowId);
-    return {
-      domainId: active.id,
-      workflowId: workflow.id,
-      stepId: clampStepId(draft.stepId, workflow),
-      state: {
-        ...DEFAULT_COMMON_STATE,
-        ...draft.common,
-        domainData: active.mapDraftToDomain(draft.domainData),
-      },
+  const envelope = parseListingDraft(raw, (legacy: LegacyListingDraftV1) => {
+    const common = {
+      ...DEFAULT_COMMON_STATE,
+      categoryCode:
+        legacy.form?.categoryCode ?? DEFAULT_COMMON_STATE.categoryCode,
     };
-  }
-
-  if (isLegacyV1(draft)) {
-    const common = commonFromLegacyForm(
-      draft.form ?? {},
-      draft.imageAssetIds ?? [],
-      draft.videoAssetIds ?? [],
-    );
     const active = resolveSellDomain(common.categoryCode) ?? fallbackPlugin;
     const workflow = getWorkflow(active.workflowId);
     return {
       domainId: active.id,
       workflowId: workflow.id,
-      stepId: mapLegacyStepToWorkflowStepId(draft.step ?? 0, workflow),
-      state: {
-        ...common,
-        domainData: active.mapDraftToDomain(undefined, draft),
-      },
+      stepId: mapLegacyStepToWorkflowStepId(legacy.step ?? 0, workflow),
     };
-  }
-
-  return null;
+  });
+  if (!envelope) return null;
+  return envelopeToHydrated(envelope, fallbackPlugin);
 }
 
 export function serializeDraft(
   plugin: SellDomainPlugin,
   stepId: SellStepId,
   state: SellWizardState,
-): SellDraftV2 {
+  session: DraftSession,
+): ListingDraftEnvelope {
   const common: SellCommonState = {
     categoryCode: state.categoryCode,
     categoryId: state.categoryId,
@@ -121,14 +140,51 @@ export function serializeDraft(
     imageAssetIds: state.imageAssetIds,
     videoAssetIds: state.videoAssetIds,
   };
-  return {
-    version: SELL_DRAFT_VERSION,
+
+  const base = createListingDraftEnvelope({
+    localId: session.localId,
+    listingId: session.listingId,
     domainId: plugin.id,
     workflowId: plugin.workflowId,
     stepId,
     common,
     domainData: plugin.serializeDomainData(state.domainData),
+    meta: session.meta,
+    syncStatus: session.syncStatus,
+  });
+
+  // Preserve revision/createdAt from session by reconstructing via touch chain.
+  return {
+    ...base,
+    revision: session.revision,
+    createdAt: base.createdAt,
+    updatedAt: base.updatedAt,
   };
+}
+
+/** Build next envelope for autosave (bumps revision). */
+export function nextDraftEnvelope(
+  previous: ListingDraftEnvelope | null,
+  plugin: SellDomainPlugin,
+  stepId: SellStepId,
+  state: SellWizardState,
+  session: DraftSession,
+): ListingDraftEnvelope {
+  const serialized = serializeDraft(plugin, stepId, state, session);
+  const base =
+    previous && previous.localId === session.localId
+      ? previous
+      : { ...serialized, revision: session.revision };
+  return touchListingDraft(base, {
+    stepId,
+    domainId: plugin.id,
+    workflowId: plugin.workflowId,
+    listingId: session.listingId,
+    syncStatus: session.syncStatus,
+    meta: session.meta,
+    common: serialized.common,
+    domainData: serialized.domainData,
+  });
 }
 
 export function loadDraftFromStorage(
@@ -144,19 +200,39 @@ export function loadDraftFromStorage(
   }
 }
 
+export function saveDraftEnvelopeToStorage(envelope: ListingDraftEnvelope): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(SELL_DRAFT_KEY, JSON.stringify(envelope));
+}
+
 export function saveDraftToStorage(
   plugin: SellDomainPlugin,
   stepId: SellStepId,
   state: SellWizardState,
-): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(
-    SELL_DRAFT_KEY,
-    JSON.stringify(serializeDraft(plugin, stepId, state)),
-  );
+  session: DraftSession,
+  previous: ListingDraftEnvelope | null = null,
+): ListingDraftEnvelope {
+  const envelope = nextDraftEnvelope(previous, plugin, stepId, state, session);
+  saveDraftEnvelopeToStorage(envelope);
+  return envelope;
 }
 
 export function clearDraftStorage(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(SELL_DRAFT_KEY);
+}
+
+export function createFreshDraftSession(): DraftSession {
+  const envelope = createListingDraftEnvelope({
+    domainId: 'pending',
+    workflowId: 'pending',
+    stepId: 'category',
+  });
+  return {
+    localId: envelope.localId,
+    listingId: null,
+    revision: envelope.revision,
+    syncStatus: 'local',
+    meta: {},
+  };
 }

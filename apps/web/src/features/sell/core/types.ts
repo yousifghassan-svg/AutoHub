@@ -53,7 +53,13 @@ export type SellSubmitResult = {
 
 export type SellSubmitArgs = {
   state: SellWizardState;
+  /** Server DRAFT listing id when Draft Engine already synced once. */
+  listingId: string | null;
   submitForReview: boolean;
+  /**
+   * Host attaches pending (unsynced) media asset ids.
+   * Plugins must not invent their own upload path.
+   */
   attachMedia: (listingId: string) => Promise<void>;
 };
 

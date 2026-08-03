@@ -37,7 +37,8 @@ export default function SellHubScreen() {
       <Screen scroll>
         <View style={{ gap: theme.spacing.lg }}>
           <Text variant="body" color="secondary">
-            Create Vehicle or Plate listings. Drafts autosave offline and can be resumed anytime.
+            Create Vehicle or Plate listings. Drafts autosave locally and can be
+            resumed anytime (Listing Draft Engine — create path).
           </Text>
 
           <Button fullWidth onPress={() => router.push('/sell/vehicle' as never)}>

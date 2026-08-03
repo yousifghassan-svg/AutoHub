@@ -3,7 +3,7 @@ import { withNegotiableDescription } from '@/features/sell/lib/listing-descripti
 import { asVehicleDomainData } from './domain-data';
 
 /**
- * Build POST /v1/vehicles body.
+ * Build POST/PATCH /v1/vehicles body.
  * API VehicleDetailsDto uses `makeId` (mapped server-side to brandId).
  */
 export function buildCreateVehicleBody(state: SellSubmitArgs['state']) {
@@ -35,6 +35,10 @@ export function buildCreateVehicleBody(state: SellSubmitArgs['state']) {
 
 export type VehicleSubmitDeps = {
   createVehicle: (body: Record<string, unknown>) => Promise<{ id: string }>;
+  updateVehicle: (
+    id: string,
+    body: Record<string, unknown>,
+  ) => Promise<{ id: string }>;
   changeStatus: (input: {
     id: string;
     status: 'PENDING' | 'DRAFT';
@@ -45,15 +49,15 @@ export async function submitVehicleListing(
   deps: VehicleSubmitDeps,
   args: SellSubmitArgs,
 ): Promise<SellSubmitResult> {
-  const created = await deps.createVehicle(buildCreateVehicleBody(args.state));
-  if (
-    args.state.imageAssetIds.length ||
-    args.state.videoAssetIds.length
-  ) {
-    await args.attachMedia(created.id);
-  }
+  const body = buildCreateVehicleBody(args.state);
+  const listingId = args.listingId
+    ? (await deps.updateVehicle(args.listingId, body)).id
+    : (await deps.createVehicle(body)).id;
+
+  await args.attachMedia(listingId);
+
   if (args.submitForReview) {
-    await deps.changeStatus({ id: created.id, status: 'PENDING' });
+    await deps.changeStatus({ id: listingId, status: 'PENDING' });
   }
-  return { listingId: created.id };
+  return { listingId };
 }

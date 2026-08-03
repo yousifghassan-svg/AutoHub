@@ -9,6 +9,7 @@ type PublishStepProps = SellStepProps & {
   displayTitle: string;
   cityLabel: string;
   authMode: string;
+  hasServerDraft?: boolean;
 };
 
 export function PublishStep({
@@ -16,6 +17,7 @@ export function PublishStep({
   displayTitle,
   cityLabel,
   authMode,
+  hasServerDraft = false,
   ...stepProps
 }: PublishStepProps) {
   return (
@@ -37,12 +39,15 @@ export function PublishStep({
         </p>
         <ul className="list-inside list-disc space-y-1">
           <li>
-            <strong className="text-ink">Submit for review</strong> — creates a draft
-            listing, attaches media, then sets status to PENDING.
+            <strong className="text-ink">Submit for review</strong> — syncs the
+            listing, attaches new media, sets status to PENDING, and clears the
+            local draft.
           </li>
           <li>
-            <strong className="text-ink">Save draft</strong> — creates a DRAFT listing
-            only; finish and submit later from My Listings.
+            <strong className="text-ink">Save draft</strong> —{' '}
+            {hasServerDraft
+              ? 'updates your server DRAFT and keeps the local draft so you can resume.'
+              : 'creates a server DRAFT, keeps the local draft linked, and lets you resume later.'}
           </li>
         </ul>
         {authMode === 'dev' ? (

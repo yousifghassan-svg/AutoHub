@@ -197,12 +197,13 @@ Complexity: **S** ≤0.5d · **M** 0.5–2d · **L** 2–5d
 
 | Field | Detail |
 | --- | --- |
-| Objective | One coherent draft story |
-| Deliverables | Align web optional server DRAFT with mobile create; deprecate duplicate sell draft store usage |
-| Files | Web/mobile draft stores; docs |
-| API | Existing create/update DRAFT |
+| Status | **Implemented — awaiting approval** |
+| Objective | One coherent listing-generic Draft Engine (platform service) |
+| Deliverables | `@autohub/utils` listing-draft engine; web envelope + listingId sync; clear only on PENDING; deprecate mobile legacy wizard |
+| Files | `packages/utils/src/listing-draft/*`, web draft-store/SellWizard, mobile create draft-store + wizard redirect |
+| API | Existing create/update DRAFT (PATCH when listingId present) |
 | DB | None (no Draft table) |
-| Test plan | v2 round-trip; v1 remap; DRAFT not public |
+| Test plan | Engine migrate/revision; web adapter round-trip; v1 remap |
 | Acceptance | Refresh/login safe; dual stores not used for new flows |
 | Risks | Data loss on bad clear — careful publish cleanup |
 | Complexity | **M** |

@@ -22,7 +22,7 @@ import { VehiclePreview } from './steps/VehiclePreview';
 import { validateVehicleDetailsStep } from './validators';
 
 export function useVehicleSellPlugin(): SellDomainPlugin {
-  const { createVehicle, changeStatus } = useDomainMutations();
+  const { createVehicle, updateVehicle, changeStatus } = useDomainMutations();
 
   return useMemo(
     () => ({
@@ -60,6 +60,8 @@ export function useVehicleSellPlugin(): SellDomainPlugin {
         submitVehicleListing(
           {
             createVehicle: (body) => createVehicle.mutateAsync(body),
+            updateVehicle: (id, body) =>
+              updateVehicle.mutateAsync({ id, body }),
             changeStatus: ({ id, status }) =>
               changeStatus.mutateAsync({
                 id,
@@ -70,6 +72,6 @@ export function useVehicleSellPlugin(): SellDomainPlugin {
           args,
         ),
     }),
-    [changeStatus, createVehicle],
+    [changeStatus, createVehicle, updateVehicle],
   );
 }

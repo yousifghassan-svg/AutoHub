@@ -1,8 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { newListingDraftLocalId } from '@autohub/utils';
 
-export function createJsonDraftStore<T extends { localId: string; updatedAt: string }>(
+/**
+ * Generic multi-draft JSON list store (mobile port of the Listing Draft Engine).
+ * Domain plugins supply T; this module never reads vehicle/plate fields.
+ */
+export type ListingDraftListItem = {
+  localId: string;
+  updatedAt: string;
+  /** Optional monotonic revision for future conflict detection. */
+  revision?: number;
+};
+
+export function createJsonDraftStore<T extends ListingDraftListItem>(
   storageKey: string,
+  options?: { maxItems?: number },
 ) {
+  const maxItems = options?.maxItems ?? 40;
+
   async function list(): Promise<T[]> {
     const raw = await AsyncStorage.getItem(storageKey);
     if (!raw) return [];
@@ -24,7 +39,7 @@ export function createJsonDraftStore<T extends { localId: string; updatedAt: str
     const idx = items.findIndex((x) => x.localId === draft.localId);
     if (idx >= 0) items[idx] = draft;
     else items.unshift(draft);
-    await AsyncStorage.setItem(storageKey, JSON.stringify(items.slice(0, 40)));
+    await AsyncStorage.setItem(storageKey, JSON.stringify(items.slice(0, maxItems)));
   }
 
   async function remove(localId: string): Promise<void> {
@@ -34,3 +49,6 @@ export function createJsonDraftStore<T extends { localId: string; updatedAt: str
 
   return { list, get, save, remove };
 }
+
+/** Shared local id generator (same algorithm as web Draft Engine). */
+export { newListingDraftLocalId };

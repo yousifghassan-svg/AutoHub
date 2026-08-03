@@ -20,7 +20,7 @@ import { PlatePreview } from './steps/PlatePreview';
 import { validatePlateDetailsStep } from './validators';
 
 export function usePlateSellPlugin(): SellDomainPlugin {
-  const { createPlate, changeStatus } = useDomainMutations();
+  const { createPlate, updatePlate, changeStatus } = useDomainMutations();
 
   return useMemo(
     () => ({
@@ -47,6 +47,7 @@ export function usePlateSellPlugin(): SellDomainPlugin {
         submitPlateListing(
           {
             createPlate: (body) => createPlate.mutateAsync(body),
+            updatePlate: (id, body) => updatePlate.mutateAsync({ id, body }),
             changeStatus: ({ id, status }) =>
               changeStatus.mutateAsync({
                 id,
@@ -57,6 +58,6 @@ export function usePlateSellPlugin(): SellDomainPlugin {
           args,
         ),
     }),
-    [changeStatus, createPlate],
+    [changeStatus, createPlate, updatePlate],
   );
 }
