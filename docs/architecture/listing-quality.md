@@ -1,8 +1,21 @@
 # Listing Quality & Completeness Architecture (Release 0.5)
 
-**Status:** Normative for Release **0.5**  
-**Master release:** [`../releases/RELEASE_0.5_MARKETPLACE.md`](../releases/RELEASE_0.5_MARKETPLACE.md)  
-**Baseline gap:** `validatePublishStep` is currently a no-op; no listing quality score exists (profile `identityStatus` is unrelated).
+**Status:** Normative for Release **0.5** — **P5-6 implemented** (awaiting approval)  
+**Master release:** [`../releases/RELEASE_0.5_MARKETPLACE.md`](../releases/RELEASE_0.5_MARKETPLACE.md)
+
+---
+
+## P5-6 audit summary
+
+| Finding | Decision |
+| --- | --- |
+| `validatePublishStep` was a no-op; `canSubmit` skipped location/media | **Replaced** with Listing Quality Engine `canPublish` |
+| No score / checklist / tips UI | **Added** `ListingQualityPanel` on publish step |
+| Step validators are boolean only | Kept for Next; quality engine owns publish completeness |
+| Vehicle vs plate rules diverged (web/mobile) | Plugins contribute rules; engine is listing-generic |
+| Quality ≠ only a progress bar | Score + grade + recommendations + required/recommended/premium |
+
+**Product intent:** Help sellers create better listings. Required items gate PENDING; recommended/premium never block.
 
 ---
 
@@ -14,132 +27,125 @@ Every listing submitted for review meets a clear completeness bar, and sellers s
 
 ## Goals
 
-- Shared completeness checklist for vehicle and plate (required vs recommended).
-- Block Next/Publish when required items missing.
-- Derived **quality score** (0–100) from existing fields + media counts for UI hints only.
-- Gate PENDING submit on required completeness (client + align with server validation).
+- Listing-generic quality engine (`@autohub/utils` listing-quality).
+- Plugins contribute scoring rules only.
+- Engine owns: score, progress, recommendations, missing items, completion %.
+- Separate **Required** / **Recommended** / **Premium**.
+- Block PENDING submit only when required items are missing.
+- Allow Save draft with incomplete required set.
 
 ---
 
 ## Scope
 
-- P5-6 Listing Completeness.
-- P5-7 Review surfaces checklist + score.
-- Pure helpers (web first); optional shared package later—not required in 0.5.
+- P5-6 Listing Quality & Completeness Engine.
+- Web publish checklist + score + tips.
+- Vehicle + plate rule packs (future types add rules the same way).
 
 ---
 
 ## Out of scope
 
-- Persisting score columns / Search ranking by quality (Search frozen; ranking unchanged).
+- Persisting `qualityScore` / Search ranking (Search frozen).
 - AI-written titles/descriptions.
 - Moderator ML risk scores (Trust 0.8).
-- Facet counts.
+- Full P5-7 publish UX polish beyond quality panel.
+- Payments / messaging.
 
 ---
 
-## User journeys
+## Architecture
 
-1. Seller on details step → checklist shows missing brand/year.
-2. Seller reaches review → score “Good” with tips (add more photos).
-3. Seller clicks Publish with missing price → blocked with field links.
-4. After fix → PENDING succeeds.
-
----
-
-## Domain architecture
-
-### Completeness (required for PENDING)
-
-| Domain | Required (illustrative — finalize in P5-6) |
-| --- | --- |
-| Vehicle | Category, city, title, description min length, brand/model or HE name fields, year, price, currency, ≥1 READY image (product policy) |
-| Plate | Category, city, plate identity fields, price, currency; media per product policy |
-
-### Quality score (derived, non-blocking)
-
-```text
-score = weighted sum of:
-  required_complete (gate, not points)
-  + photo_count bands
-  + description_length bands
-  + optional specs filled (fuel, transmission, mileage, …)
-  + featured/verified are NOT seller-controlled in create — ignore
+```mermaid
+flowchart LR
+  Plugin[Domain_plugin_rules]
+  Engine[ListingQualityEngine]
+  Host[Sell_host]
+  UI[ListingQualityPanel]
+  Plugin --> Engine
+  Host --> Engine
+  Engine --> UI
+  Engine -->|"canPublish"| Host
 ```
 
-Clamp 0–100; expose `grade` labels (e.g. Needs work / OK / Strong) in UI only.
+| Layer | Owns |
+| --- | --- |
+| Engine (`packages/utils/src/listing-quality`) | Evaluate rules → score, grade, progress, tips, `canPublish` |
+| Common rules | Category, location, title, description, price, currency, photo/video bands |
+| Plugin rule packs | Domain fields (year, VIN, plate identity, …) |
+| Host | Wire `canSubmit`, Save vs Submit gating, panel UI |
 
-### Module sketch
+### Result shape
 
-- `computeListingCompleteness(draft | listing) → { missing[], canPublish }`
-- `computeListingQualityScore(draft | listing) → { score, tips[] }`
+```ts
+{
+  items, missingRequired, missingRecommended, missingPremium,
+  canPublish,              // all required ok
+  completionPercent,       // all items
+  requiredCompletionPercent,
+  score,                   // 0–100 weighted; capped ≤45 if !canPublish
+  grade,                   // needs_work | ok | good | excellent
+  recommendations[]        // prioritized actionable tips
+}
+```
 
-Replace `features/sell/validators/publish.ts` noop with real checks; plugin `canSubmit` must call the same helper.
+### Severity policy
+
+| Severity | Blocks PENDING? | Examples |
+| --- | --- | --- |
+| Required | **Yes** | Category, location, price, description, ≥1 photo (vehicles), year/specs |
+| Recommended | No | Brand/model, color, more photos, richer description |
+| Premium | No | VIN, video, large gallery |
 
 ---
 
 ## Database impact
 
-- **None** for v1 score (computed client-side and optionally echoed in API responses later).
-- Do not add `qualityScore` column in 0.5 unless a later slice explicitly needs server sort (would be post-freeze / Search coordination).
+- **None.** Score is derived client-side.
 
 ---
 
 ## API contracts
 
-- No new public quality endpoint required in 0.5.
-- Server continues to enforce hard validation on create/update; client completeness must not be weaker than server for required fields.
+- No new quality endpoint in 0.5.
+- Server hard validation unchanged; client required set must not be weaker for PENDING fields we already collect.
 
 ---
 
 ## Web architecture
 
-- Publish step shows checklist + score + tips.
-- Step “Next” uses per-step validators; Publish uses full completeness.
-- Edit page reuses same helpers before save when touching required fields.
+- `plugin.getQualityRules(state)` → engine.
+- `plugin.canSubmit` → `result.canPublish`.
+- Publish step shows `ListingQualityPanel`.
+- Submit for review disabled when `!canPublish`; Save draft always allowed (auth/busy aside).
 
 ---
 
 ## Mobile compatibility
 
-- Domain create should apply equivalent required checks before submit (shared rules documented; code may be duplicated short-term).
-- Score UI on mobile is optional in 0.5 if create already blocks incomplete submits.
+- Create path may keep local validators short-term; shared engine is available via `@autohub/utils` for later parity.
+- Score UI on mobile optional in 0.5.
 
 ---
 
 ## AI readiness
 
-- Completeness + tips are structured signals for future assistive copy (“suggest description”)—not implemented now.
-- Do not call external LLM APIs in 0.5.
-
----
-
-## Security considerations
-
-- Score is advisory; never grant ACTIVE from client score.
-- Do not expose other sellers’ draft completeness via API.
-
----
-
-## Performance considerations
-
-- Pure functions over in-memory draft; negligible cost.
-- Do not recompute on every keystroke without debounce in UI.
+- Structured tips/ids are signals for future assistive copy — not implemented now.
 
 ---
 
 ## Testing strategy
 
-- Unit matrix: missing each required field → `canPublish=false`.
-- Unit: photo/description bands move score monotonically.
-- Smoke: cannot submit empty media when policy requires images.
-- Regression: plate path does not require vehicle-only fields.
+- Unit: required missing → `canPublish=false`; premium missing does not block.
+- Unit: photo/description bands move score upward.
+- Unit: plate path does not require vehicle fields or photos.
+- Manual: publish panel shows score + tips; draft save works incomplete.
 
 ---
 
 ## Production freeze criteria
 
-- Noop publish validator removed.
-- Vehicle and plate cannot reach PENDING without required set.
-- Quality score shown on review (web) with at least one tip path.
+- Noop publish validator removed (wired to engine).
+- Vehicle/plate cannot PENDING without required set.
+- Quality score + tips on web review.
 - Score not used for Search ordering.

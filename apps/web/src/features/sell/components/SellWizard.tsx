@@ -26,6 +26,7 @@ import {
   saveDraftToStorage,
   type DraftSession,
 } from '../core/draft-store';
+import { evaluateWizardListingQuality } from '../quality/adapt-wizard-state';
 import type {
   SellCommonState,
   SellDomainPlugin,
@@ -89,6 +90,11 @@ export function SellWizard() {
 
   const validator = plugin.validators[currentStep.id];
   const canNext = validator ? validator(state) : true;
+  const quality = useMemo(
+    () =>
+      evaluateWizardListingQuality(state, plugin.getQualityRules(state)),
+    [plugin, state],
+  );
 
   const patchCommon = useCallback((patch: Partial<SellCommonState>) => {
     setState((prev) => ({ ...prev, ...patch }));
@@ -242,8 +248,12 @@ export function SellWizard() {
   const publish = useCallback(
     async (submitForReview: boolean) => {
       setError(null);
-      if (!plugin.canSubmit(state)) {
-        setError('Complete required fields before publishing.');
+      // Required completeness gates PENDING only — drafts may be incomplete.
+      if (submitForReview && !plugin.canSubmit(state)) {
+        setError(
+          quality.missingRequired[0]?.recommendation ??
+            'Complete required listing quality items before submitting for review.',
+        );
         return;
       }
 
@@ -292,6 +302,7 @@ export function SellWizard() {
     [
       attachPendingMedia,
       plugin,
+      quality.missingRequired,
       router,
       session,
       state,
@@ -345,6 +356,7 @@ export function SellWizard() {
             cityLabel={cityLabel}
             authMode={authMode}
             hasServerDraft={Boolean(session.listingId)}
+            quality={quality}
           />
         ) : StepComponent ? (
           <StepComponent {...stepProps} />
@@ -393,7 +405,7 @@ export function SellWizard() {
               </Button>
               <Button
                 type="button"
-                disabled={busy}
+                disabled={busy || !quality.canPublish}
                 onClick={() => void publish(true)}
               >
                 Submit for review

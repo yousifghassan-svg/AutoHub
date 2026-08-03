@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import type { ListingQualityRule } from '@autohub/utils';
 
 /** Opaque step identifier — domains define their own ids. */
 export type SellStepId = string;
@@ -93,7 +94,12 @@ export type SellDomainPlugin = {
   /** Hydrate domainData from persisted draft payload (v2) or legacy draft. */
   mapDraftToDomain: (raw: unknown, legacy?: LegacySellDraftV1) => Record<string, unknown>;
   serializeDomainData: (domainData: Record<string, unknown>) => unknown;
-  /** Whether required domain steps are complete enough to publish. */
+  /**
+   * Listing quality rules for this domain (common + domain contributions).
+   * Engine owns score/progress; plugins only contribute rules.
+   */
+  getQualityRules: (state: SellWizardState) => ListingQualityRule[];
+  /** Whether required completeness allows PENDING submit. */
   canSubmit: (state: SellWizardState) => boolean;
   submit: (args: SellSubmitArgs) => Promise<SellSubmitResult>;
 };

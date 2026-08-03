@@ -16,6 +16,8 @@ import {
   mapVehicleDraftToDomain,
   serializeVehicleDomainData,
 } from './draft';
+import { evaluateWizardListingQuality } from '@/features/sell/quality/adapt-wizard-state';
+import { createVehicleListingQualityRules } from './quality-rules';
 import { submitVehicleListing } from './submit';
 import { VehicleDetailsStep } from './steps/VehicleDetailsStep';
 import { VehiclePreview } from './steps/VehiclePreview';
@@ -50,12 +52,17 @@ export function useVehicleSellPlugin(): SellDomainPlugin {
         bodyTypeId: '',
         driveTypeId: '',
         colorId: '',
+        vin: '',
       }),
       mapDraftToDomain: mapVehicleDraftToDomain,
       serializeDomainData: serializeVehicleDomainData,
+      getQualityRules: (state) =>
+        createVehicleListingQualityRules(state.categoryCode),
       canSubmit: (state) =>
-        validateVehicleDetailsStep(state) &&
-        validateSaleInformationStep(state),
+        evaluateWizardListingQuality(
+          state,
+          createVehicleListingQualityRules(state.categoryCode),
+        ).canPublish,
       submit: (args) =>
         submitVehicleListing(
           {

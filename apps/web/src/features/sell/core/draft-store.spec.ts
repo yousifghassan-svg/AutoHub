@@ -30,6 +30,7 @@ function stubPlugin(id = 'VEHICLE'): SellDomainPlugin {
       return { year: '' };
     },
     serializeDomainData: (domainData) => domainData,
+    getQualityRules: () => [],
     canSubmit: () => true,
     submit: async () => ({ listingId: 'L1' }),
   };

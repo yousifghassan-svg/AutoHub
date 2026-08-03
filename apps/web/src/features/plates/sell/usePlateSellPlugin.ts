@@ -9,11 +9,13 @@ import {
   validatePublishStep,
   validateSaleInformationStep,
 } from '@/features/sell/validators';
+import { evaluateWizardListingQuality } from '@/features/sell/quality/adapt-wizard-state';
 import {
   createInitialPlateDomainData,
   mapPlateDraftToDomain,
   serializePlateDomainData,
 } from './draft';
+import { createPlateListingQualityRules } from './quality-rules';
 import { submitPlateListing } from './submit';
 import { PlateDetailsStep } from './steps/PlateDetailsStep';
 import { PlatePreview } from './steps/PlatePreview';
@@ -40,9 +42,12 @@ export function usePlateSellPlugin(): SellDomainPlugin {
       createInitialDomainData: createInitialPlateDomainData,
       mapDraftToDomain: mapPlateDraftToDomain,
       serializeDomainData: serializePlateDomainData,
+      getQualityRules: () => createPlateListingQualityRules(),
       canSubmit: (state) =>
-        validatePlateDetailsStep(state) &&
-        validateSaleInformationStep(state),
+        evaluateWizardListingQuality(
+          state,
+          createPlateListingQualityRules(),
+        ).canPublish,
       submit: (args) =>
         submitPlateListing(
           {

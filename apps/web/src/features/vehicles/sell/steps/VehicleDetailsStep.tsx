@@ -161,6 +161,14 @@ export function VehicleDetailsStep({
         ))}
       </Select>
 
+      <Input
+        label="VIN (optional)"
+        value={data.vin}
+        onChange={(e) => patchDomain({ vin: e.target.value })}
+        autoComplete="off"
+        placeholder="Improves listing trust"
+      />
+
       <TextArea
         label="Description"
         value={state.description}

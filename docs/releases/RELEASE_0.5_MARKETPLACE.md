@@ -208,16 +208,17 @@ Complexity: **S** ≤0.5d · **M** 0.5–2d · **L** 2–5d
 | Risks | Data loss on bad clear — careful publish cleanup |
 | Complexity | **M** |
 
-### P5-6 — Listing Completeness
+### P5-6 — Listing Quality & Completeness
 
 | Field | Detail |
 | --- | --- |
-| Objective | Real publish gates + checklist |
-| Deliverables | Replace noop publish validator; shared Next/Publish checklist |
-| Files | `validators/publish.ts`, plugin `canSubmit`, publish UI |
+| Status | **Implemented — awaiting approval** |
+| Objective | Listing-generic quality score + required/recommended/premium guidance |
+| Deliverables | `@autohub/utils` listing-quality engine; plugin rule packs; publish checklist UI; PENDING gated on required only |
+| Files | `packages/utils/src/listing-quality/*`, sell quality adapter/panel, vehicle/plate `quality-rules`, `canSubmit`, PublishStep |
 | API / DB | None |
-| Test plan | Completeness matrix vehicle/plate |
-| Acceptance | Cannot PENDING when required missing |
+| Test plan | Required matrix; score tips; plate vs vehicle rule isolation |
+| Acceptance | Cannot PENDING when required missing; draft save allowed; tips shown |
 | Risks | Plate vs vehicle rule bleed |
 | Complexity | **M** |
 

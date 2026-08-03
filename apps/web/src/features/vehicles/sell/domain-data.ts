@@ -8,6 +8,8 @@ export type VehicleSellDomainData = {
   bodyTypeId: string;
   driveTypeId: string;
   colorId: string;
+  /** Optional trust signal — premium quality tip. */
+  vin: string;
 };
 
 export const DEFAULT_VEHICLE_DOMAIN_DATA: VehicleSellDomainData = {
@@ -20,6 +22,7 @@ export const DEFAULT_VEHICLE_DOMAIN_DATA: VehicleSellDomainData = {
   bodyTypeId: '',
   driveTypeId: '',
   colorId: '',
+  vin: '',
 };
 
 function str(raw: Record<string, unknown>, key: keyof VehicleSellDomainData): string {
@@ -40,6 +43,7 @@ export function asVehicleDomainData(
     bodyTypeId: str(raw, 'bodyTypeId'),
     driveTypeId: str(raw, 'driveTypeId'),
     colorId: str(raw, 'colorId'),
+    vin: str(raw, 'vin'),
   };
 }
 

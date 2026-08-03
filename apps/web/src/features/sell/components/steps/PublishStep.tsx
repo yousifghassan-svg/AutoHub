@@ -1,8 +1,10 @@
 'use client';
 
 import type { ComponentType } from 'react';
+import type { ListingQualityResult } from '@autohub/utils';
 import { config } from '@/lib/config';
 import type { SellStepProps } from '../../core/types';
+import { ListingQualityPanel } from '../ListingQualityPanel';
 
 type PublishStepProps = SellStepProps & {
   Preview: ComponentType<SellStepProps>;
@@ -10,6 +12,7 @@ type PublishStepProps = SellStepProps & {
   cityLabel: string;
   authMode: string;
   hasServerDraft?: boolean;
+  quality: ListingQualityResult;
 };
 
 export function PublishStep({
@@ -18,10 +21,13 @@ export function PublishStep({
   cityLabel,
   authMode,
   hasServerDraft = false,
+  quality,
   ...stepProps
 }: PublishStepProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      <ListingQualityPanel quality={quality} />
+
       <div>
         <h2 className="font-display text-lg font-semibold text-ink">Preview</h2>
         <p className="mt-1 text-sm text-ink-secondary">
@@ -39,15 +45,14 @@ export function PublishStep({
         </p>
         <ul className="list-inside list-disc space-y-1">
           <li>
-            <strong className="text-ink">Submit for review</strong> — syncs the
-            listing, attaches new media, sets status to PENDING, and clears the
-            local draft.
+            <strong className="text-ink">Submit for review</strong> — requires
+            all required quality items, then syncs media and sets PENDING.
           </li>
           <li>
             <strong className="text-ink">Save draft</strong> —{' '}
             {hasServerDraft
-              ? 'updates your server DRAFT and keeps the local draft so you can resume.'
-              : 'creates a server DRAFT, keeps the local draft linked, and lets you resume later.'}
+              ? 'updates your server DRAFT anytime (required items not needed).'
+              : 'creates a server DRAFT anytime (required items not needed).'}
           </li>
         </ul>
         {authMode === 'dev' ? (
