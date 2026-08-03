@@ -122,9 +122,7 @@ export function createApiSellRepository(deps: {
         `/v1/listings/${draft.listingId}/media`,
         {
           mediaType: item.kind === '360_MEDIA' ? '360_MEDIA' : item.kind,
-          r2Key: uploaded.originalKey,
-          mimeType: item.mimeType,
-          byteSize: item.byteSize,
+          mediaAssetId: uploaded.assetId,
           confirmed: true,
         },
       );

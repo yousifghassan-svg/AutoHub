@@ -9,6 +9,7 @@ import {
   ListingCategoryCode,
   ListingStatus,
   MarketplaceDomain,
+  MediaAssetStatus,
   MediaType,
   MediaVariantKind,
   Prisma,
@@ -396,11 +397,21 @@ export class ListingsService {
       throw new BadRequestException('documentPurpose is only valid for DOCUMENT media');
     }
 
+    const isStaff = canModerateListings(actor.role, actor.permissions);
+
     if (mediaAssetId) {
       const asset = await this.mediaAssets.findById(mediaAssetId);
       if (!asset) throw new NotFoundException('Media asset not found');
-      if (asset.ownerId && asset.ownerId !== actor.id && !canModerateListings(actor.role, actor.permissions)) {
-        throw new ForbiddenException('Not allowed to attach this media asset');
+      if (asset.status !== MediaAssetStatus.READY) {
+        throw new BadRequestException(
+          'Media asset must be READY before attach',
+        );
+      }
+      // Sellers must own the asset; null ownerId is not attachable (soft-skip closed).
+      if (!isStaff) {
+        if (!asset.ownerId || asset.ownerId !== actor.id) {
+          throw new ForbiddenException('Not allowed to attach this media asset');
+        }
       }
       r2Key = asset.originalKey;
       mimeType = mimeType ?? asset.mimeType;
@@ -421,10 +432,15 @@ export class ListingsService {
         ownerModule: 'listings',
         ownerEntityId: listing.id,
       });
-    }
-
-    if (!r2Key) {
-      throw new BadRequestException('r2Key or mediaAssetId is required');
+    } else if (input.r2Key?.trim()) {
+      if (!isStaff) {
+        throw new ForbiddenException(
+          'Attaching by r2Key is restricted to moderators; use mediaAssetId',
+        );
+      }
+      r2Key = input.r2Key.trim();
+    } else {
+      throw new BadRequestException('mediaAssetId is required');
     }
 
     const count = await this.media.countActive(listing.id);

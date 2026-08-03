@@ -21,13 +21,17 @@ export class AddMediaDto {
 
   @ApiPropertyOptional({
     description:
-      'Platform MediaAsset id — when set, r2Key/thumb/mime are pulled from the asset',
+      'Platform MediaAsset id (required for sellers). Asset must be READY and owned by the actor.',
   })
-  @IsOptional()
+  @ValidateIf((o: AddMediaDto) => !o.r2Key)
   @IsString()
+  @IsNotEmpty()
   mediaAssetId?: string;
 
-  @ApiPropertyOptional({ description: 'Object key in Cloudflare R2 (required if no mediaAssetId)' })
+  @ApiPropertyOptional({
+    description:
+      'Object storage key escape hatch for moderators only. Sellers must use mediaAssetId.',
+  })
   @ValidateIf((o: AddMediaDto) => !o.mediaAssetId)
   @IsString()
   @IsNotEmpty()

@@ -1,5 +1,5 @@
 import { ForbiddenException, BadRequestException } from '@nestjs/common';
-import { ListingStatus } from '@autohub/database';
+import { ListingStatus, MediaAssetStatus, MediaType } from '@autohub/database';
 import { ListingsService } from './listings.service';
 import { Permission } from '../../auth/domain/permissions';
 
@@ -242,5 +242,187 @@ describe('ListingsService', () => {
     await expect(
       service.changeStatus('L1', owner, ListingStatus.ACTIVE),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  describe('addMedia trust (P5-4)', () => {
+    const draftListing = {
+      id: 'L1',
+      sellerId: owner.id,
+      status: ListingStatus.DRAFT,
+      city: { governorateId: 'g1' },
+      translations: [],
+      media: [],
+      category: {
+        id: 'c1',
+        code: 'CAR',
+        slug: 'cars',
+        nameEn: 'Cars',
+        nameAr: 'سيارات',
+      },
+    };
+
+    it('rejects seller bare r2Key attach', async () => {
+      listings.findById.mockResolvedValue(draftListing);
+
+      await expect(
+        service.addMedia('L1', owner, {
+          mediaType: 'IMAGE',
+          r2Key: 'uploads/evil.jpg',
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(media.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects foreign mediaAssetId for sellers', async () => {
+      listings.findById.mockResolvedValue(draftListing);
+      mediaAssets.findById.mockResolvedValue({
+        id: 'asset-1',
+        status: MediaAssetStatus.READY,
+        ownerId: 'someone-else',
+        originalKey: 'k',
+        mimeType: 'image/jpeg',
+        byteSize: 100,
+        width: 1,
+        height: 1,
+        variants: [],
+        documentPurpose: null,
+      });
+
+      await expect(
+        service.addMedia('L1', owner, {
+          mediaType: 'IMAGE',
+          mediaAssetId: 'asset-1',
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('rejects null-owner mediaAssetId for sellers', async () => {
+      listings.findById.mockResolvedValue(draftListing);
+      mediaAssets.findById.mockResolvedValue({
+        id: 'asset-1',
+        status: MediaAssetStatus.READY,
+        ownerId: null,
+        originalKey: 'k',
+        mimeType: 'image/jpeg',
+        byteSize: 100,
+        width: 1,
+        height: 1,
+        variants: [],
+        documentPurpose: null,
+      });
+
+      await expect(
+        service.addMedia('L1', owner, {
+          mediaType: 'IMAGE',
+          mediaAssetId: 'asset-1',
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('rejects non-READY mediaAssetId', async () => {
+      listings.findById.mockResolvedValue(draftListing);
+      mediaAssets.findById.mockResolvedValue({
+        id: 'asset-1',
+        status: MediaAssetStatus.PENDING_UPLOAD,
+        ownerId: owner.id,
+        originalKey: 'k',
+        mimeType: 'image/jpeg',
+        byteSize: 100,
+        width: 1,
+        height: 1,
+        variants: [],
+        documentPurpose: null,
+      });
+
+      await expect(
+        service.addMedia('L1', owner, {
+          mediaType: 'IMAGE',
+          mediaAssetId: 'asset-1',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('allows seller attach of owned READY mediaAssetId', async () => {
+      listings.findById.mockResolvedValue(draftListing);
+      mediaAssets.findById.mockResolvedValue({
+        id: 'asset-1',
+        status: MediaAssetStatus.READY,
+        ownerId: owner.id,
+        originalKey: 'owner/key.jpg',
+        mimeType: 'image/jpeg',
+        byteSize: 100,
+        width: 10,
+        height: 10,
+        variants: [],
+        documentPurpose: null,
+      });
+      media.countActive.mockResolvedValue(0);
+      media.nextSortOrder.mockResolvedValue(0);
+      media.create.mockResolvedValue({
+        id: 'lm1',
+        listingId: 'L1',
+        mediaAssetId: 'asset-1',
+        r2Key: 'owner/key.jpg',
+        thumbnailKey: null,
+        sortOrder: 0,
+        mediaType: MediaType.IMAGE,
+        mimeType: 'image/jpeg',
+        byteSize: 100,
+        width: 10,
+        height: 10,
+        confirmed: true,
+        documentPurpose: null,
+        createdAt: new Date(),
+      });
+      mediaAssets.update.mockResolvedValue({});
+
+      await service.addMedia('L1', owner, {
+        mediaType: 'IMAGE',
+        mediaAssetId: 'asset-1',
+      });
+
+      expect(media.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          r2Key: 'owner/key.jpg',
+          mediaAsset: { connect: { id: 'asset-1' } },
+        }),
+      );
+    });
+
+    it('allows moderator bare r2Key escape', async () => {
+      listings.findById.mockResolvedValue(draftListing);
+      media.countActive.mockResolvedValue(0);
+      media.nextSortOrder.mockResolvedValue(0);
+      thumbnails.generate.mockResolvedValue({
+        thumbnailKey: 't.jpg',
+        mimeType: 'image/jpeg',
+        byteSize: 1,
+        width: 1,
+        height: 1,
+      });
+      media.create.mockResolvedValue({
+        id: 'lm1',
+        listingId: 'L1',
+        mediaAssetId: null,
+        r2Key: 'staff/key.jpg',
+        thumbnailKey: 't.jpg',
+        sortOrder: 0,
+        mediaType: MediaType.IMAGE,
+        mimeType: 'image/jpeg',
+        byteSize: 1,
+        width: 1,
+        height: 1,
+        confirmed: true,
+        documentPurpose: null,
+        createdAt: new Date(),
+      });
+
+      await service.addMedia('L1', admin, {
+        mediaType: 'IMAGE',
+        r2Key: 'staff/key.jpg',
+      });
+
+      expect(media.create).toHaveBeenCalled();
+    });
   });
 });

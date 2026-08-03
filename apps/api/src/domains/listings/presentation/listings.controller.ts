@@ -89,7 +89,7 @@ export class ListingsController {
   @ApiOperation({
     summary: 'Add listing media (IMAGE | VIDEO | 360_MEDIA | DOCUMENT)',
     description:
-      'Pass mediaAssetId to bridge a platform MediaAsset, or r2Key for legacy attach. Primary = sortOrder 0.',
+      'Sellers must pass mediaAssetId (READY + owned). Bare r2Key is moderator-only. Primary/cover = sortOrder 0.',
   })
   addMedia(
     @Param('id') id: string,

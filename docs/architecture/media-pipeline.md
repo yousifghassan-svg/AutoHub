@@ -1,10 +1,31 @@
 # Media Pipeline Architecture (Release 0.5)
 
-**Status:** Normative for Release **0.5** (seller attach trust + gallery correctness)  
+**Status:** Normative for Release **0.5** — **P5-4 implemented** (awaiting approval)  
 **Baseline:** Media platform Release **0.3** + Sprint 17 bridge  
 **Historical:** [`../media-architecture.md`](../media-architecture.md)  
 **Master release:** [`../releases/RELEASE_0.5_MARKETPLACE.md`](../releases/RELEASE_0.5_MARKETPLACE.md)  
 **Related:** [`../releases/RELEASE_0.3_MEDIA.md`](../releases/RELEASE_0.3_MEDIA.md) (r2Key trust gap)
+
+---
+
+## P5-4 audit summary (platform service)
+
+Media is a **listing capability**, not a vehicle feature. Sell host `MediaStep` + platform `MediaUploader` / `useMediaUpload` are shared by every listing type (vehicles, plates, heavy equipment, motorcycles, trucks, future).
+
+| Finding | Decision |
+| --- | --- |
+| Reusable upload stack already exists (`features/media`) | **Reuse** — no second uploader |
+| Web sell already attaches via `mediaAssetId` | Keep; fix cover order |
+| `setPrimary` did not move item to index 0 | **Fixed** — cover = first id = sortOrder 0 |
+| Seller attach accepted bare `r2Key`; null `ownerId` soft-skipped | **Closed** — READY + owned `mediaAssetId`; staff-only r2Key |
+| Legacy mobile sell posted `r2Key` | **Migrated** to `mediaAssetId` |
+| `VehicleGallery` name is display-only legacy | Left as-is (not a second upload path) |
+| Draft stores asset ids but UI did not restore | **Hydrate** from `initialAssetIds` |
+| Client mime/size validation weak | **Added** client rules mirroring API policies |
+
+**Capability coverage (P5-4):** image upload, video upload (UI ready), drag-drop order, cover/primary, delete/replace, client validation, progress, retry, draft id persistence + hydrate, mobile attach trust, AI-ready (counts only), CDN/object-storage via existing MediaAsset pipeline.
+
+**Out of this slice:** Publish gates, listing quality, AI tagging, payments, server redesign.
 
 ---
 

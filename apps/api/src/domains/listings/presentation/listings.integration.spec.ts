@@ -154,7 +154,7 @@ describe('Listings HTTP integration', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
         mediaType: 'IMAGE',
-        r2Key: 'photos/a.jpg',
+        mediaAssetId: 'asset-1',
       })
       .expect(201);
 

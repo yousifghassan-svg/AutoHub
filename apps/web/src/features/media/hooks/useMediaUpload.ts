@@ -2,11 +2,18 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { compressImage, isHeicFile } from '../lib/compress-image';
+import { validateClientMediaFile } from '../lib/client-media-validation';
 import { mediaRepository, uploadMediaFile } from '../data/media.repository';
-import type { UploadFileState } from '../domain/types';
+import type { MediaAsset, UploadFileState } from '../domain/types';
 
 function localId() {
   return `local_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function placeholderFile(asset: MediaAsset): File {
+  return new File([], asset.filename ?? 'media', {
+    type: asset.mimeType || 'application/octet-stream',
+  });
 }
 
 export function useMediaUpload(options?: {
@@ -23,18 +30,48 @@ export function useMediaUpload(options?: {
     setFiles((prev) => prev.map((f) => (f.localId === id ? { ...f, ...patch } : f)));
   }, []);
 
-  const enqueue = useCallback((incoming: FileList | File[]) => {
-    const list = Array.from(incoming);
+  const enqueue = useCallback(
+    (incoming: FileList | File[]) => {
+      const list = Array.from(incoming);
+      const mediaType = options?.mediaType ?? 'IMAGE';
+      setFiles((prev) => {
+        const next: UploadFileState[] = list.map((file) => {
+          const validation = validateClientMediaFile(file, mediaType);
+          return {
+            localId: localId(),
+            file,
+            progress: 0,
+            status: validation.ok ? 'queued' : 'error',
+            error: validation.ok ? undefined : validation.error,
+            previewUrl: file.type.startsWith('image/')
+              ? URL.createObjectURL(file)
+              : undefined,
+            isPrimary: false,
+          };
+        });
+        const merged = [...prev, ...next];
+        if (!merged.some((f) => f.isPrimary) && merged[0]) {
+          return merged.map((f, i) => ({ ...f, isPrimary: i === 0 }));
+        }
+        return merged;
+      });
+    },
+    [options?.mediaType],
+  );
+
+  const hydrateFromAssets = useCallback((assets: MediaAsset[]) => {
+    if (!assets.length) return;
     setFiles((prev) => {
-      const next: UploadFileState[] = list.map((file, index) => ({
-        localId: localId(),
-        file,
-        progress: 0,
-        status: 'queued',
-        previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
-        isPrimary: prev.length === 0 && index === 0,
+      if (prev.length) return prev;
+      return assets.map((asset, index) => ({
+        localId: `hydrated_${asset.id}`,
+        file: placeholderFile(asset),
+        progress: 100,
+        status: 'done' as const,
+        asset,
+        previewUrl: asset.urls?.thumbnail ?? asset.urls?.small ?? undefined,
+        isPrimary: index === 0,
       }));
-      return [...prev, ...next];
     });
   }, []);
 
@@ -94,30 +131,40 @@ export function useMediaUpload(options?: {
   const startAll = useCallback(async () => {
     const queued = files.filter((f) => f.status === 'queued' || f.status === 'error');
     for (const item of queued) {
+      const validation = validateClientMediaFile(
+        item.file,
+        options?.mediaType ?? 'IMAGE',
+      );
+      if (!validation.ok) {
+        update(item.localId, { status: 'error', error: validation.error });
+        continue;
+      }
       await startOne(item);
     }
-  }, [files, startOne]);
+  }, [files, options?.mediaType, startOne, update]);
 
   const retry = useCallback(
-    (localId: string) => {
-      const item = files.find((f) => f.localId === localId);
+    (id: string) => {
+      const item = files.find((f) => f.localId === id);
       if (!item) return;
-      update(localId, { status: 'queued', progress: 0, error: undefined });
+      update(id, { status: 'queued', progress: 0, error: undefined });
       void startOne({ ...item, status: 'queued', progress: 0, error: undefined });
     },
     [files, startOne, update],
   );
 
-  const cancel = useCallback((localId: string) => {
-    controllers.current.get(localId)?.abort();
-    update(localId, { status: 'cancelled', error: 'Cancelled' });
+  const cancel = useCallback((id: string) => {
+    controllers.current.get(id)?.abort();
+    update(id, { status: 'cancelled', error: 'Cancelled' });
   }, [update]);
 
   const remove = useCallback((id: string) => {
     controllers.current.get(id)?.abort();
     setFiles((prev) => {
       const target = prev.find((f) => f.localId === id);
-      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      if (target?.previewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
       const next = prev.filter((f) => f.localId !== id);
       if (target?.isPrimary && next[0]) {
         return next.map((f, i) => ({ ...f, isPrimary: i === 0 }));
@@ -126,10 +173,20 @@ export function useMediaUpload(options?: {
     });
   }, []);
 
+  /** Cover media: move to index 0 so attach order matches sortOrder 0. */
   const setPrimary = useCallback((id: string) => {
-    setFiles((prev) =>
-      prev.map((f) => ({ ...f, isPrimary: f.localId === id })),
-    );
+    setFiles((prev) => {
+      const idx = prev.findIndex((f) => f.localId === id);
+      if (idx < 0) return prev;
+      if (idx === 0) {
+        return prev.map((f, i) => ({ ...f, isPrimary: i === 0 }));
+      }
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      if (!item) return prev;
+      next.unshift(item);
+      return next.map((f, i) => ({ ...f, isPrimary: i === 0 }));
+    });
   }, []);
 
   const reorder = useCallback((fromIndex: number, toIndex: number) => {
@@ -151,13 +208,26 @@ export function useMediaUpload(options?: {
   }, []);
 
   const replace = useCallback(
-    async (localId: string, nextFile: File) => {
-      const item = files.find((f) => f.localId === localId);
+    async (id: string, nextFile: File) => {
+      const item = files.find((f) => f.localId === id);
       if (!item?.asset?.id) return;
+
+      const validation = validateClientMediaFile(
+        nextFile,
+        options?.mediaType ?? 'IMAGE',
+      );
+      if (!validation.ok) {
+        update(id, { status: 'error', error: validation.error });
+        return;
+      }
+
       const controller = new AbortController();
-      controllers.current.set(localId, controller);
+      controllers.current.set(id, controller);
       try {
-        update(localId, {
+        if (item.previewUrl?.startsWith('blob:')) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+        update(id, {
           status: 'uploading',
           progress: 0,
           file: nextFile,
@@ -170,24 +240,25 @@ export function useMediaUpload(options?: {
           item.asset.id,
           nextFile,
           controller.signal,
-          (pct) => update(localId, { progress: pct }),
+          (pct) => update(id, { progress: pct }),
         );
-        update(localId, { status: 'done', progress: 100, asset, file: nextFile });
+        update(id, { status: 'done', progress: 100, asset, file: nextFile });
       } catch (e) {
-        update(localId, {
+        update(id, {
           status: 'error',
           error: e instanceof Error ? e.message : 'Replace failed',
         });
       } finally {
-        controllers.current.delete(localId);
+        controllers.current.delete(id);
       }
     },
-    [files, update],
+    [files, options?.mediaType, update],
   );
 
   return {
     files,
     enqueue,
+    hydrateFromAssets,
     startAll,
     startOne,
     retry,

@@ -182,13 +182,14 @@ Complexity: **S** ≤0.5d · **M** 0.5–2d · **L** 2–5d
 
 | Field | Detail |
 | --- | --- |
-| Objective | Trusted attach + gallery correctness |
-| Deliverables | Primary = sortOrder 0; seller `mediaAssetId` only; deprecate bare r2Key |
-| Files | `MediaUploader.tsx`, listings add-media, sell submit |
-| API | Tighten `POST /v1/listings/:id/media` |
+| Status | **Implemented — awaiting approval** |
+| Objective | Trusted attach + gallery correctness (listing-generic platform media) |
+| Deliverables | Primary = sortOrder 0; seller `mediaAssetId` only; staff-only r2Key; reuse `MediaUploader` |
+| Files | `features/media/*`, `MediaStep`, listings `addMedia`, mobile sell attach |
+| API | Tighten `POST /v1/listings/:id/media` (READY + ownership) |
 | DB | None |
-| Test plan | Ownership; primary/order; reject r2Key for sellers |
-| Acceptance | No seller raw r2Key; cover image correct |
+| Test plan | Ownership; primary/order; reject r2Key for sellers; client validation |
+| Acceptance | No seller raw r2Key; cover image correct; no vehicle-only uploader |
 | Risks | Legacy clients — staff-only escape |
 | Complexity | **L** |
 
