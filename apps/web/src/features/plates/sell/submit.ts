@@ -1,4 +1,5 @@
 import type { SellSubmitArgs, SellSubmitResult } from '@/features/sell/core/types';
+import { withNegotiableDescription } from '@/features/sell/lib/listing-description';
 import {
   plateFormToApiDetails,
   type PlateFormState,
@@ -16,7 +17,10 @@ export function buildCreatePlateBody(state: SellSubmitArgs['state']) {
     categoryId: state.categoryId,
     cityId: state.cityId,
     title: state.title.trim() || plateTitle(plate),
-    description: state.description.trim(),
+    description: withNegotiableDescription(
+      state.description,
+      state.negotiable,
+    ),
     primaryPrice: Number(state.primaryPrice),
     currencyCode: state.currencyCode || 'IQD',
     language: 'ar',

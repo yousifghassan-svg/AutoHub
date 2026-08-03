@@ -179,3 +179,8 @@ Reviewed end-to-end from the seller’s perspective. **Do not redesign the host.
 | Draft engine compatibility | Client-only draft | Align with mobile create sync; no Draft table | P5-5 |
 | Completeness compatibility | `canSubmit` incomplete | Real publish gates + quality tips | P5-6 / P5-7 |
 | Vehicle field parity | Title/year/mileage/brand/model only | Catalog fuel/trans/body (+ API `makeId`) | **P5-2** |
+| Price & location | Weak validators; no negotiable; city without governorate gate | Listing-generic price/currency/location helpers + negotiable | **P5-3** |
+
+### Listing-generic sell host (normative)
+
+The host is driven by **listing type** (category) + shared common state + domain plugins. Price, currency, negotiable, governorate, city, and draft-only map coordinates live in `SellCommonState` / `features/sell/lib/*`. Vehicle-/plate-specific payload mapping stays inside domain plugins only.

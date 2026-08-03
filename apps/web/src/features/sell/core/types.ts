@@ -12,16 +12,24 @@ export type SellWorkflowDefinition = {
   }>;
 };
 
-/** Marketplace-common fields shared across all sell domains. */
+/** Marketplace-common fields shared across all listing domains (not vehicle-specific). */
 export type SellCommonState = {
   categoryCode: string;
   categoryId: string;
   governorateId: string;
   cityId: string;
+  /**
+   * Draft-only map coordinates until listing geo API exists.
+   * Not sent on create/update in Release 0.5.
+   */
+  locationLat: string;
+  locationLng: string;
   title: string;
   description: string;
   primaryPrice: string;
   currencyCode: string;
+  /** Client flag; persisted like mobile via description note (no DB column). */
+  negotiable: boolean;
   imageAssetIds: string[];
   videoAssetIds: string[];
 };
@@ -123,10 +131,13 @@ export const DEFAULT_COMMON_STATE: SellCommonState = {
   categoryId: '',
   governorateId: '',
   cityId: '',
+  locationLat: '',
+  locationLng: '',
   title: '',
   description: '',
   primaryPrice: '',
   currencyCode: 'IQD',
+  negotiable: false,
   imageAssetIds: [],
   videoAssetIds: [],
 };

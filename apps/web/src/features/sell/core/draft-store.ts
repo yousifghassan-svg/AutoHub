@@ -48,6 +48,9 @@ export function commonFromLegacyForm(
     description: form.description ?? '',
     primaryPrice: form.primaryPrice ?? '',
     currencyCode: form.currencyCode ?? 'IQD',
+    negotiable: false,
+    locationLat: '',
+    locationLng: '',
     imageAssetIds,
     videoAssetIds,
   };
@@ -108,10 +111,13 @@ export function serializeDraft(
     categoryId: state.categoryId,
     governorateId: state.governorateId,
     cityId: state.cityId,
+    locationLat: state.locationLat,
+    locationLng: state.locationLng,
     title: state.title,
     description: state.description,
     primaryPrice: state.primaryPrice,
     currencyCode: state.currencyCode,
+    negotiable: state.negotiable,
     imageAssetIds: state.imageAssetIds,
     videoAssetIds: state.videoAssetIds,
   };

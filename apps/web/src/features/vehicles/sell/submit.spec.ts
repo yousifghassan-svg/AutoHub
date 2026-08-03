@@ -45,6 +45,27 @@ describe('vehicle sell details (P5-2)', () => {
     assert.equal(body.vehicleDetails.mileageKm, 45000);
   });
 
+  it('appends negotiable note via shared listing helper', () => {
+    const body = buildCreateVehicleBody({
+      ...DEFAULT_COMMON_STATE,
+      categoryCode: 'CAR',
+      categoryId: 'cat-car',
+      cityId: 'city-1',
+      title: '2020 Camry',
+      description: 'Clean Camry',
+      primaryPrice: '15000000',
+      negotiable: true,
+      domainData: {
+        ...DEFAULT_VEHICLE_DOMAIN_DATA,
+        year: '2020',
+        mileageKm: '1000',
+        fuelTypeId: 'f',
+        transmissionTypeId: 't',
+      },
+    });
+    assert.match(body.description, /Price is negotiable/);
+  });
+
   it('requires fuel, transmission, and mileage for CAR', () => {
     const incomplete = {
       ...DEFAULT_COMMON_STATE,

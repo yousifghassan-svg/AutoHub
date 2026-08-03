@@ -1,4 +1,5 @@
 import type { SellSubmitArgs, SellSubmitResult } from '@/features/sell/core/types';
+import { withNegotiableDescription } from '@/features/sell/lib/listing-description';
 import { asVehicleDomainData } from './domain-data';
 
 /**
@@ -11,7 +12,10 @@ export function buildCreateVehicleBody(state: SellSubmitArgs['state']) {
     categoryId: state.categoryId,
     cityId: state.cityId,
     title: state.title.trim(),
-    description: state.description.trim(),
+    description: withNegotiableDescription(
+      state.description,
+      state.negotiable,
+    ),
     primaryPrice: Number(state.primaryPrice),
     currencyCode: state.currencyCode || 'IQD',
     language: 'ar',
