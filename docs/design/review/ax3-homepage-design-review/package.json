@@ -1,0 +1,8 @@
+{
+  "name": "ax3-homepage-design-review-tools",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "playwright": "^1.51.0"
+  }
+}

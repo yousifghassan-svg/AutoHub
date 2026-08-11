@@ -1,0 +1,44 @@
+{
+  "capturedAt": "2026-08-04T01:28:07.847Z",
+  "environment": "next dev (localhost:3000) — not production build",
+  "note": "Category scores unavailable in raw Lighthouse JSON due to PowerShell quoting collapsing --only-categories into one invalid id. Core Web Vitals and failed audits were captured from the same successful warm-server run.",
+  "mobile": {
+    "FCP": { "display": "2.0 s", "ms": 2018, "score": 0.83 },
+    "LCP": { "display": "7.3 s", "ms": 7312, "score": 0.05 },
+    "CLS": { "display": "0", "value": 0.00002, "score": 1 },
+    "TBT": { "display": "17,180 ms", "ms": 17177, "score": 0 },
+    "SpeedIndex": { "display": "9.6 s", "ms": 9617, "score": 0.11 },
+    "TTI": { "display": "28.6 s", "score": 0 },
+    "failedBinaryAudits": [
+      "errors-in-console",
+      "valid-source-maps",
+      "meta-description",
+      "bf-cache"
+    ]
+  },
+  "desktop": {
+    "FCP": { "display": "0.5 s", "ms": 486, "score": 1 },
+    "LCP": { "display": "0.5 s", "ms": 539, "score": 1 },
+    "CLS": { "display": "0", "value": 0.00003, "score": 1 },
+    "TBT": { "display": "3,940 ms", "ms": 3942, "score": 0 },
+    "SpeedIndex": { "display": "1.8 s", "ms": 1786, "score": 0.71 },
+    "TTI": { "display": "6.1 s", "score": 0.25 },
+    "failedBinaryAudits": [
+      "errors-in-console",
+      "valid-source-maps",
+      "label-content-name-mismatch",
+      "meta-description",
+      "bf-cache"
+    ]
+  },
+  "bundleImpact": {
+    "framerMotionPackageOnDiskApproxMB": 4.57,
+    "homepageClientIsland": "HomePageView + Framer Motion + react-query section fetches",
+    "productionFirstLoadJs": "Unavailable — next build blocked by concurrent .next lock from dev server (EPERM on .next/trace)",
+    "qualitative": [
+      "AX-3 adds framer-motion dependency to @autohub/web (shared with Design Lab).",
+      "Homepage is a client island; below-fold sections lazy-enable network fetches.",
+      "Hero uses remote Unsplash image (LCP candidate on mobile)."
+    ]
+  }
+}
